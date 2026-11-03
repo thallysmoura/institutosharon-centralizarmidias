@@ -1,0 +1,76 @@
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Pool, QueryResultRow } from 'pg';
+import * as bcrypt from 'bcryptjs';
+
+const MIGRATION = `
+CREATE SCHEMA IF NOT EXISTS sistema;
+CREATE TABLE IF NOT EXISTS sistema.cidades (id SERIAL PRIMARY KEY, nome TEXT UNIQUE NOT NULL);
+ALTER TABLE sistema.cidades ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
+ALTER TABLE sistema.cidades ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION;
+CREATE TABLE IF NOT EXISTS sistema.users (
+  id SERIAL PRIMARY KEY, nome TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('ADMIN','ALUNO')), matricula TEXT,
+  cidade_id INT REFERENCES sistema.cidades(id), created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+ALTER TABLE sistema.users ADD COLUMN IF NOT EXISTS autorizado BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE sistema.users ADD COLUMN IF NOT EXISTS origem TEXT NOT NULL DEFAULT 'senha';
+ALTER TABLE sistema.users ADD COLUMN IF NOT EXISTS foto_url TEXT;
+ALTER TABLE sistema.users ADD COLUMN IF NOT EXISTS ultimo_acesso TIMESTAMPTZ;
+CREATE UNIQUE INDEX IF NOT EXISTS users_matricula_uq ON sistema.users (lower(matricula)) WHERE matricula IS NOT NULL AND matricula <> '';
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_uq ON sistema.users (lower(email));
+CREATE TABLE IF NOT EXISTS sistema.atendimentos (
+  id SERIAL PRIMARY KEY, identificador_paciente TEXT NOT NULL,
+  aluno_id INT NOT NULL REFERENCES sistema.users(id), cidade_id INT NOT NULL REFERENCES sistema.cidades(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+ALTER TABLE sistema.fotos ADD COLUMN IF NOT EXISTS bytes INT NOT NULL DEFAULT 0;
+ALTER TABLE sistema.fotos ADD COLUMN IF NOT EXISTS thumb_key TEXT;
+ALTER TABLE sistema.fotos ADD COLUMN IF NOT EXISTS thumb_bytes INT NOT NULL DEFAULT 0;
+ALTER TABLE sistema.fotos ADD COLUMN IF NOT EXISTS width INT;
+ALTER TABLE sistema.fotos ADD COLUMN IF NOT EXISTS height INT;
+CREATE TABLE IF NOT EXISTS sistema.r2_uso (mes TEXT PRIMARY KEY, classe_a INT NOT NULL DEFAULT 0, classe_b INT NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS atend_aluno_idx ON sistema.atendimentos (aluno_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS sistema.fotos (
+  id SERIAL PRIMARY KEY, atendimento_id INT NOT NULL REFERENCES sistema.atendimentos(id) ON DELETE CASCADE,
+  storage_key TEXT UNIQUE NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+`;
+
+@Injectable()
+export class DbService implements OnModuleInit, OnModuleDestroy {
+  private readonly log = new Logger('Db');
+  readonly pool: Pool;
+
+  constructor(private readonly cfg: ConfigService) {
+    this.pool = new Pool({ connectionString: cfg.getOrThrow('DATABASE_URL'), options: '-c search_path=sistema,public', max: 10 });
+  }
+
+  query<T extends QueryResultRow = any>(text: string, params: unknown[] = []) {
+    return this.pool.query<T>(text, params);
+  }
+
+  async onModuleInit() {
+    await this.pool.query(MIGRATION);
+    for (const [n, lat, lng] of [['Manaus', -3.119, -60.0217], ['Porto Velho', -8.7612, -63.9004], ['São Paulo', -23.5505, -46.6333]] as const)
+      await this.pool.query('INSERT INTO sistema.cidades (nome,lat,lng) VALUES ($1,$2,$3) ON CONFLICT (nome) DO UPDATE SET lat=EXCLUDED.lat, lng=EXCLUDED.lng', [n, lat, lng]);
+    await this.pool.query(
+      "DELETE FROM sistema.cidades c WHERE c.nome='Fortaleza' AND NOT EXISTS (SELECT 1 FROM sistema.users u WHERE u.cidade_id=c.id) AND NOT EXISTS (SELECT 1 FROM sistema.atendimentos a WHERE a.cidade_id=c.id)",
+    );
+    const cidade = async (n: string) => (await this.pool.query('SELECT id FROM sistema.cidades WHERE nome=$1', [n])).rows[0].id;
+    const seed = async (nome: string, email: string, senha: string, role: string, matricula: string | null, cidadeNome: string | null) => {
+      const hash = await bcrypt.hash(senha, 10);
+      await this.pool.query(
+        'INSERT INTO sistema.users (nome,email,password_hash,role,matricula,cidade_id) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (lower(email)) DO NOTHING',
+        [nome, email, hash, role, matricula, cidadeNome ? await cidade(cidadeNome) : null],
+      );
+    };
+    await seed('Administração Sharon', this.cfg.getOrThrow('ADMIN_EMAIL'), this.cfg.getOrThrow('ADMIN_PASSWORD'), 'ADMIN', null, null);
+    if (this.cfg.get('SEED_DEMO', 'false') === 'true') {
+      await seed('Ana Beatriz (aluna teste)', 'aluno@institutosharon.local', 'Aluno@2026', 'ALUNO', 'A0001', 'Manaus');
+      await seed('Maria Souza (aluna teste)', 'aluno2@institutosharon.local', 'Aluno@2026', 'ALUNO', 'A0002', 'Porto Velho');
+    }
+    this.log.log('Schema "sistema" pronto');
+  }
+
+  async onModuleDestroy() {
+    await this.pool.end();
+  }
+}

@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-page font-sans text-ink antialiased; font-size: 0.95rem; line-height: 1.5; }
+  h1, h2, h3 { @apply font-display; letter-spacing: -0.01em; line-height: 1.1; }
+  ::selection { background: #e6cc7a; color: #14110a; }
+  :focus-visible { outline: 2px solid #b8902f; outline-offset: 2px; border-radius: 6px; }
+}
+
+@layer components {
+  .btn { @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-6 text-[0.95rem] font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-gold { @apply text-white shadow-[0_8px_18px_-10px_rgba(125,95,18,.9)] enabled:hover:brightness-105; background: linear-gradient(180deg, #c9a24a 0%, #a67c26 100%); }
+  .btn-line { @apply border border-line bg-white text-ink enabled:hover:border-gold-500; }
+  .field { @apply w-full rounded-xl border border-line bg-white py-3 pl-11 pr-4 text-[0.95rem] outline-none transition focus:border-gold-500; }
+  .field-plain { @apply w-full rounded-lg border border-line bg-white px-3 py-2.5 text-[0.88rem] outline-none transition focus:border-gold-500; }
+  .card { @apply rounded-2xl border border-line bg-white shadow-card; }
+  .gold-text { background: linear-gradient(180deg, #d9b655, #9d7424); -webkit-background-clip: text; background-clip: text; color: transparent; }
+}
+
+@keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes floaty { 50% { transform: translateY(-14px) scale(1.04); } }
+@keyframes sheen { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.rise { animation: rise .8s cubic-bezier(.22,.61,.36,1) both; animation-delay: var(--d, 0ms); }
+.floaty { animation: floaty 9s ease-in-out infinite; }
+.sheen { background: linear-gradient(110deg, #c9a24a 0%, #e9cf85 45%, #c9a24a 60%, #a67c26 100%); background-size: 300% 100%; animation: sheen 6s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .rise, .floaty, .sheen { animation: none; } }

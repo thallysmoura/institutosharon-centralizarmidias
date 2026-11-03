@@ -1,0 +1,27 @@
+{
+  "name": "ham-boilerplate-ia",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Boilerplate monorepo (Next.js + NestJS) pronto para Claude Code + deploy Coolify via push GitHub.",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=24.16.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "turbo": "^2.3.0",
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,0 +1,28 @@
+import type { Metadata, Viewport } from 'next';
+import { Cormorant_Garamond, Montserrat } from 'next/font/google';
+import './globals.css';
+import PwaRegister from '@/components/PwaRegister';
+
+const display = Cormorant_Garamond({ subsets: ['latin'], weight: ['500', '600', '700'], style: ['normal', 'italic'], variable: '--font-display', display: 'swap' });
+const sans = Montserrat({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-sans', display: 'swap' });
+
+export const metadata: Metadata = {
+  title: 'Sistema de Centralização de Fotos Clínicas | Instituto Sharon',
+  description: 'Centralização das fotografias dos atendimentos realizados pelos alunos do Instituto Sharon.',
+  robots: { index: false, follow: false },
+  applicationName: 'Sharon Fotos',
+  appleWebApp: { capable: true, title: 'Sharon Fotos', statusBarStyle: 'default' },
+  icons: { icon: '/icons/icon-192.png', apple: '/icons/apple-touch-icon.png' },
+};
+export const viewport: Viewport = { themeColor: '#171512', width: 'device-width', initialScale: 1 };
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="pt-BR" className={`${display.variable} ${sans.variable}`}>
+      <body className="min-h-dvh">
+        {children}
+        <PwaRegister />
+      </body>
+    </html>
+  );
+}

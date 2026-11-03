@@ -1,0 +1,53 @@
+import Image from 'next/image';
+
+/** Marca do Instituto: emblema + "INSTITUTO SHARON / EDUCAÇÃO E SAÚDE". `stacked` = centralizada (login); inline = lado a lado (sidebar/cabeçalho). */
+export function Wordmark({ stacked = false, light = false }: { stacked?: boolean; light?: boolean }) {
+  const txt = light ? 'text-white' : 'text-ink';
+  if (stacked)
+    return (
+      <div className="flex flex-col items-center text-center">
+        <Image src="/img/emblem.png" alt="" width={958} height={1624} priority className="h-[74px] w-auto" />
+        <p className={`mt-3 font-display text-[0.8rem] tracking-[0.6em] ${txt}`}>INSTITUTO</p>
+        <p className={`-mt-0.5 font-display text-[2.6rem] leading-[1.05] tracking-[0.2em] ${txt}`}>SHARON</p>
+        <p className="mt-1 text-[0.58rem] font-semibold tracking-[0.42em] text-gold-500">EDUCAÇÃO E SAÚDE</p>
+      </div>
+    );
+  return (
+    <div className="flex items-center gap-2.5">
+      <Image src="/img/emblem.png" alt="" width={958} height={1624} priority className="h-10 w-auto" />
+      <div className="leading-none">
+        <p className={`font-display text-[0.5rem] tracking-[0.5em] ${txt}`}>INSTITUTO</p>
+        <p className={`mt-0.5 font-display text-[1.3rem] tracking-[0.16em] ${txt}`}>SHARON</p>
+        <p className="mt-0.5 text-[0.4rem] font-semibold tracking-[0.34em] text-gold-500">EDUCAÇÃO E SAÚDE</p>
+      </div>
+    </div>
+  );
+}
+
+/** Fitas douradas decorativas (canto superior esquerdo e inferior direito), como no layout de login. */
+export function Ribbons() {
+  return (
+    <>
+      <svg aria-hidden viewBox="0 0 400 220" className="pointer-events-none absolute bottom-0 right-0 w-[88%] max-w-[620px]">
+        <defs>
+          <linearGradient id="gr1" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0" stopColor="#f3e2a6" stopOpacity=".15" />
+            <stop offset=".45" stopColor="#d3ac52" stopOpacity=".75" />
+            <stop offset="1" stopColor="#f6e7b4" stopOpacity=".9" />
+          </linearGradient>
+        </defs>
+        <path d="M0 220C90 170 230 150 400 72V130C250 190 110 205 40 220Z" fill="url(#gr1)" />
+        <path d="M60 220C170 188 300 165 400 108V150C310 196 190 212 120 220Z" fill="url(#gr1)" opacity=".6" />
+      </svg>
+      <svg aria-hidden viewBox="0 0 200 120" className="pointer-events-none absolute left-0 top-0 w-[48%] max-w-[260px]">
+        <defs>
+          <linearGradient id="gr2" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#e0bd62" stopOpacity=".95" />
+            <stop offset="1" stopColor="#f6e7b4" stopOpacity=".2" />
+          </linearGradient>
+        </defs>
+        <path d="M0 0H120C80 28 40 52 0 92Z" fill="url(#gr2)" />
+      </svg>
+    </>
+  );
+}
