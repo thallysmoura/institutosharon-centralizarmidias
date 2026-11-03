@@ -234,11 +234,27 @@ export class AdminController {
     )).rows;
   }
 
+  /** Alunos: busca (nome, e-mail, matrícula), cidade e ordem no servidor, paginado (30 por página). As contagens só são calculadas para a página devolvida. */
   @Get('alunos')
-  async alunos() {
-    return (await this.db.query(
-      "SELECT u.id, u.nome, u.matricula, c.nome AS cidade, COALESCE(t.atendimentos, 0) AS atendimentos, COALESCE(t.fotos, 0) AS fotos FROM sistema.users u LEFT JOIN sistema.cidades c ON c.id=u.cidade_id LEFT JOIN (SELECT a.aluno_id, count(DISTINCT a.id)::int AS atendimentos, count(f.id)::int AS fotos FROM sistema.atendimentos a LEFT JOIN sistema.fotos f ON f.atendimento_id=a.id GROUP BY a.aluno_id) t ON t.aluno_id=u.id WHERE u.role='ALUNO' ORDER BY u.nome LIMIT 3000",
-    )).rows;
+  async alunos(@Query('q') q = '', @Query('cidade') cidade = '', @Query('ordem') ordem = 'nome', @Query('pagina') pagina = '0') {
+    const POR = 30;
+    const p: unknown[] = [];
+    const w = ["u.role='ALUNO'"];
+    const t = q.trim().slice(0, 80);
+    if (t) { p.push(`%${t.replace(/[\\%_]/g, (c) => `\\${c}`)}%`); w.push(`(u.nome ILIKE $${p.length} OR u.email ILIKE $${p.length} OR u.matricula ILIKE $${p.length})`); }
+    if (/^\d+$/.test(cidade)) { p.push(Number(cidade)); w.push(`u.cidade_id = $${p.length}`); }
+    const ord = ordem === 'recentes' ? 'u.created_at DESC, u.id DESC' : ordem === 'antigos' ? 'u.created_at, u.id' : 'u.nome, u.id';
+    const pg = Math.max(0, Math.min(100000, parseInt(pagina, 10) || 0));
+    const r = (await this.db.query(
+      `WITH pag AS (SELECT u.id, count(*) OVER()::int AS total FROM sistema.users u WHERE ${w.join(' AND ')} ORDER BY ${ord} LIMIT ${POR} OFFSET ${pg * POR})
+       SELECT u.id, u.nome, u.email, u.matricula, u.created_at, c.nome AS cidade, pag.total,
+              CASE WHEN u.foto_key IS NOT NULL OR u.foto_url IS NOT NULL THEN '/users/' || u.id || '/foto?v=' || u.foto_v END AS foto,
+              (SELECT count(*)::int FROM sistema.atendimentos a WHERE a.aluno_id=u.id) AS atendimentos,
+              (SELECT count(f.id)::int FROM sistema.fotos f JOIN sistema.atendimentos a ON a.id=f.atendimento_id WHERE a.aluno_id=u.id AND f.oculta_em IS NULL) AS fotos
+         FROM pag JOIN sistema.users u ON u.id=pag.id LEFT JOIN sistema.cidades c ON c.id=u.cidade_id ORDER BY ${ord}`, p)).rows;
+    let total = r[0]?.total ?? 0;
+    if (!r.length && pg > 0) total = (await this.db.query(`SELECT count(*)::int AS n FROM sistema.users u WHERE ${w.join(' AND ')}`, p)).rows[0].n;
+    return { itens: r.map(({ total: _t, ...x }) => x), total, porPagina: POR };
   }
 
   @Get('pacientes')

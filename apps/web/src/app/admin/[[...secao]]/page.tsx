@@ -15,6 +15,7 @@ import Titulo from '@/components/Titulo';
 import MostrarMais, { PASSO } from '@/components/MostrarMais';
 import CartaoAluno, { FotoPerfil } from '@/components/CartaoAluno';
 import BuscaAluno from '@/components/BuscaAluno';
+import ListaAlunos from '@/components/ListaAlunos';
 import Avatar from '@/components/Avatar';
 import PerfilInicial from '@/components/PerfilInicial';
 import Aplicativo from '@/components/Aplicativo';
@@ -27,7 +28,6 @@ type Vista = 'geral' | 'fotos' | 'alunos' | 'pacientes' | 'cidades' | 'armazenam
 type Excl = { id: number; atendimento_id: number; oculta_em: string; identificador_paciente: string; cidade: string; aluno: { id: number; nome: string; matricula: string | null } };
 type Resumo = { fotos: number; pacientes: number; alunos: number; cidades: number; pendentes: number; ocultas?: number };
 type Cidade = { id: number; nome: string; alunos: number; fotos: number };
-type Aluno = { id: number; nome: string; matricula: string | null; cidade: string | null; atendimentos: number; fotos: number };
 type Paciente = { identificador: string; alunos: number; fotos: number; ultima: string };
 type Filtros = { cidade: string; aluno_id: string; q: string; de: string; ate: string };
 const VAZIO: Filtros = { cidade: '', aluno_id: '', q: '', de: '', ate: '' };
@@ -115,7 +115,6 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
   const [carregandoMais, setCarregandoMais] = useState(false);
   const maisBusy = useRef(false);
   const [cartao, setCartao] = useState<{ a: Atendimento; rect: DOMRect } | null>(null);
-  const [nAlunos, setNAlunos] = useState(PASSO);
   const [nPac, setNPac] = useState(PASSO);
   const [nExcl, setNExcl] = useState(PASSO);
   const sentinela = useRef<HTMLDivElement>(null);
@@ -125,7 +124,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
   const [f, setF] = useState<Filtros>(VAZIO);
   const [resumo, setResumo] = useState<Resumo>();
   const [cidades, setCidades] = useState<Cidade[]>([]);
-  const [alunos, setAlunos] = useState<Aluno[]>([]);
+  const [rotAluno, setRotAluno] = useState<string | undefined>(); // nome do aluno filtrado (vindo da lista de alunos ou do cartão)
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [lista, setLista] = useState<Atendimento[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,7 +143,6 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
   useEffect(() => {
     api<Resumo>('/admin/resumo').then(setResumo).catch(() => null);
     api<Cidade[]>('/admin/cidades').then(setCidades).catch(() => null);
-    api<Aluno[]>('/admin/alunos').then(setAlunos).catch(() => null);
     api<Paciente[]>('/admin/pacientes').then(setPacientes).catch(() => null);
   }, []);
 
@@ -274,7 +272,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
   }, [aberta]);
 
   const set = (k: keyof Filtros) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
-  const irFotos = (parcial: Partial<Filtros>) => { setF({ ...VAZIO, ...parcial }); setVista('fotos'); };
+  const irFotos = (parcial: Partial<Filtros>, rotulo?: string) => { setRotAluno(rotulo); setF({ ...VAZIO, ...parcial }); setVista('fotos'); };
 
 
   const tabela = (
@@ -285,7 +283,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
           <select value={f.cidade} onChange={set('cidade')} className="field-plain mt-1"><option value="">Todas</option>{cidades.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select>
         </label>
         <div className="text-[0.78rem] font-semibold text-ink/70">Aluno
-          <BuscaAluno valor={f.aluno_id} rotuloExterno={(() => { const a = alunos.find((x) => String(x.id) === f.aluno_id); return a ? `${nomeLimpo(a.nome)}${a.matricula ? ` (${a.matricula})` : ''}` : undefined; })()} onChange={(id) => setF((x) => ({ ...x, aluno_id: id }))} />
+          <BuscaAluno valor={f.aluno_id} rotuloExterno={f.aluno_id ? rotAluno : undefined} onChange={(id) => setF((x) => ({ ...x, aluno_id: id }))} />
         </div>
         <label className="text-[0.78rem] font-semibold text-ink/70">Paciente
           <select value={f.q} onChange={set('q')} className="field-plain mt-1"><option value="">Todos</option>{pacientes.map((p) => <option key={p.identificador} value={p.identificador}>{p.identificador}</option>)}</select>
@@ -307,7 +305,6 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
     setRk((n) => n + 1);
     atualizarResumo();
     api<Cidade[]>('/admin/cidades').then(setCidades).catch(() => null);
-    api<Aluno[]>('/admin/alunos').then(setAlunos).catch(() => null);
     api<Paciente[]>('/admin/pacientes').then(setPacientes).catch(() => null);
     carregarExcl();
     Promise.resolve(buscar(f)).finally(() => setTimeout(() => setAtualizando(false), 500));
@@ -501,17 +498,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
           </div>
         )}
 
-        {vista === 'alunos' && (
-          <ul className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {alunos.slice(0, nAlunos).map((a) => (
-              <li key={a.id}><button type="button" onClick={() => irFotos({ aluno_id: String(a.id) })} className="card w-full p-4 text-left transition hover:border-gold-500">
-                <p className="font-bold">{nomeLimpo(a.nome)}</p><p className="text-[0.82rem] text-ink/60">{a.matricula ?? 'Sem matrícula'} · {a.cidade ?? 'Sem cidade'}</p>
-                <p className="mt-2 text-[0.82rem] text-gold-700">{a.atendimentos} atendimento(s) · {a.fotos} foto(s)</p>
-              </button></li>
-            ))}
-          <li className="sm:col-span-2 xl:col-span-3"><MostrarMais temMais={alunos.length > nAlunos} onClick={() => setNAlunos((n) => n + PASSO)} /></li>
-          </ul>
-        )}
+        {vista === 'alunos' && <ListaAlunos key={rk} cidades={cidades} onVerFotos={(a) => irFotos({ aluno_id: String(a.id) }, `${nomeLimpo(a.nome)}${a.matricula ? ` (${a.matricula})` : ''}`)} />}
         {vista === 'pacientes' && (
           <ul className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {pacientes.slice(0, nPac).map((p) => (
@@ -558,7 +545,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
         </div>
       )}
 
-      {cartao && <CartaoAluno aluno={cartao.a.aluno} cidade={cartao.a.cidade} ancora={cartao.rect} onFechar={() => setCartao(null)} onVerFotos={() => { irFotos({ aluno_id: String(cartao.a.aluno.id) }); setCartao(null); }} />}
+      {cartao && <CartaoAluno aluno={cartao.a.aluno} cidade={cartao.a.cidade} ancora={cartao.rect} onFechar={() => setCartao(null)} onVerFotos={() => { irFotos({ aluno_id: String(cartao.a.aluno.id) }, `${nomeLimpo(cartao.a.aluno.nome)}${cartao.a.aluno.matricula ? ` (${cartao.a.aluno.matricula})` : ''}`); setCartao(null); }} />}
       {aberta && (
         <div role="dialog" aria-modal="true" aria-label="Foto ampliada" className="fixed inset-0 z-[100] flex flex-col bg-ink/95" onClick={() => setAberta(null)}>
           <div className="flex items-center justify-between gap-4 p-4 text-white" onClick={(e) => e.stopPropagation()}>
