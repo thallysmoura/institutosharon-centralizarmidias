@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react';
 import { api } from './api';
 
-export type Notif = { id: number; titulo: string; corpo: string; created_at: string; editado_em: string | null; autor: string | null; autor_foto: string | null; lida: boolean };
+export type Anexo = { id: number; tipo: 'arquivo' | 'link'; nome: string | null; mime: string | null; tamanho: number | null; url: string | null; titulo: string | null; descricao: string | null; site: string | null; imagem: boolean };
+export type Notif = { id: number; titulo: string; corpo: string; created_at: string; editado_em: string | null; autor: string | null; autor_foto: string | null; lida: boolean; anexos: Anexo[] };
 type Estado = { itens: Notif[]; naoLidas: number; pronto: boolean };
 
 // Estado compartilhado: vários sinos na mesma tela usam uma única consulta periódica.

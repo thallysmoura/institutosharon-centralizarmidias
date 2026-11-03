@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict aFznLxORbaGicI5gz3ArrN3fiyCe5afKmzwITcJIkkCiK2eYAW6Dbyc6IwuxL2f
+\restrict rg4BlFgKnTDZhinqyQq4BVuMURhaqPHUGpCmDmJ03Q7n11m4Ryw8Omh559y7u8e
 
 -- Dumped from database version 16.15
 -- Dumped by pg_dump version 16.15
@@ -100,6 +100,46 @@ ALTER SEQUENCE sistema.auditoria_id_seq OWNED BY sistema.auditoria.id;
 
 
 --
+-- Name: aviso_anexos; Type: TABLE; Schema: sistema; Owner: -
+--
+
+CREATE TABLE sistema.aviso_anexos (
+    id integer NOT NULL,
+    aviso_id integer NOT NULL,
+    tipo text NOT NULL,
+    ordem integer DEFAULT 0 NOT NULL,
+    nome text,
+    mime text,
+    tamanho integer,
+    chave text,
+    url text,
+    titulo text,
+    descricao text,
+    site text
+);
+
+
+--
+-- Name: aviso_anexos_id_seq; Type: SEQUENCE; Schema: sistema; Owner: -
+--
+
+CREATE SEQUENCE sistema.aviso_anexos_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: aviso_anexos_id_seq; Type: SEQUENCE OWNED BY; Schema: sistema; Owner: -
+--
+
+ALTER SEQUENCE sistema.aviso_anexos_id_seq OWNED BY sistema.aviso_anexos.id;
+
+
+--
 -- Name: aviso_destinos; Type: TABLE; Schema: sistema; Owner: -
 --
 
@@ -131,7 +171,8 @@ CREATE TABLE sistema.avisos (
     para_todos boolean DEFAULT true NOT NULL,
     criado_por integer,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    editado_em timestamp with time zone
+    editado_em timestamp with time zone,
+    para_cidades integer[]
 );
 
 
@@ -416,6 +457,13 @@ ALTER TABLE ONLY sistema.auditoria ALTER COLUMN id SET DEFAULT nextval('sistema.
 
 
 --
+-- Name: aviso_anexos id; Type: DEFAULT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.aviso_anexos ALTER COLUMN id SET DEFAULT nextval('sistema.aviso_anexos_id_seq'::regclass);
+
+
+--
 -- Name: avisos id; Type: DEFAULT; Schema: sistema; Owner: -
 --
 
@@ -471,6 +519,14 @@ ALTER TABLE ONLY sistema.atendimentos
 
 ALTER TABLE ONLY sistema.auditoria
     ADD CONSTRAINT auditoria_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: aviso_anexos aviso_anexos_pkey; Type: CONSTRAINT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.aviso_anexos
+    ADD CONSTRAINT aviso_anexos_pkey PRIMARY KEY (id);
 
 
 --
@@ -630,6 +686,20 @@ CREATE INDEX auditoria_quando_idx ON sistema.auditoria USING btree (quando DESC)
 
 
 --
+-- Name: aviso_anexos_aviso_idx; Type: INDEX; Schema: sistema; Owner: -
+--
+
+CREATE INDEX aviso_anexos_aviso_idx ON sistema.aviso_anexos USING btree (aviso_id);
+
+
+--
+-- Name: aviso_leituras_user_idx; Type: INDEX; Schema: sistema; Owner: -
+--
+
+CREATE INDEX aviso_leituras_user_idx ON sistema.aviso_leituras USING btree (user_id);
+
+
+--
 -- Name: avisos_created_idx; Type: INDEX; Schema: sistema; Owner: -
 --
 
@@ -655,6 +725,13 @@ CREATE INDEX push_subs_user_idx ON sistema.push_subs USING btree (user_id);
 --
 
 CREATE INDEX refresh_tokens_user_idx ON sistema.refresh_tokens USING btree (user_id);
+
+
+--
+-- Name: users_cidade_idx; Type: INDEX; Schema: sistema; Owner: -
+--
+
+CREATE INDEX users_cidade_idx ON sistema.users USING btree (cidade_id);
 
 
 --
@@ -685,6 +762,14 @@ ALTER TABLE ONLY sistema.atendimentos
 
 ALTER TABLE ONLY sistema.atendimentos
     ADD CONSTRAINT atendimentos_cidade_id_fkey FOREIGN KEY (cidade_id) REFERENCES sistema.cidades(id);
+
+
+--
+-- Name: aviso_anexos aviso_anexos_aviso_id_fkey; Type: FK CONSTRAINT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.aviso_anexos
+    ADD CONSTRAINT aviso_anexos_aviso_id_fkey FOREIGN KEY (aviso_id) REFERENCES sistema.avisos(id) ON DELETE CASCADE;
 
 
 --
@@ -779,5 +864,5 @@ ALTER TABLE ONLY sistema.users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict aFznLxORbaGicI5gz3ArrN3fiyCe5afKmzwITcJIkkCiK2eYAW6Dbyc6IwuxL2f
+\unrestrict rg4BlFgKnTDZhinqyQq4BVuMURhaqPHUGpCmDmJ03Q7n11m4Ryw8Omh559y7u8e
 

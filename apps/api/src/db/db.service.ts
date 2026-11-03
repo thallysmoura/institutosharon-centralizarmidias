@@ -45,6 +45,13 @@ CREATE TABLE IF NOT EXISTS sistema.aviso_destinos (
 CREATE TABLE IF NOT EXISTS sistema.aviso_leituras (
   aviso_id INT NOT NULL REFERENCES sistema.avisos(id) ON DELETE CASCADE, user_id INT NOT NULL REFERENCES sistema.users(id) ON DELETE CASCADE,
   lido_em TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY (aviso_id, user_id));
+ALTER TABLE sistema.avisos ADD COLUMN IF NOT EXISTS para_cidades INT[];
+CREATE INDEX IF NOT EXISTS aviso_leituras_user_idx ON sistema.aviso_leituras (user_id);
+CREATE INDEX IF NOT EXISTS users_cidade_idx ON sistema.users (cidade_id);
+CREATE TABLE IF NOT EXISTS sistema.aviso_anexos (
+  id SERIAL PRIMARY KEY, aviso_id INT NOT NULL REFERENCES sistema.avisos(id) ON DELETE CASCADE, tipo TEXT NOT NULL, ordem INT NOT NULL DEFAULT 0,
+  nome TEXT, mime TEXT, tamanho INT, chave TEXT, url TEXT, titulo TEXT, descricao TEXT, site TEXT);
+CREATE INDEX IF NOT EXISTS aviso_anexos_aviso_idx ON sistema.aviso_anexos (aviso_id);
 CREATE TABLE IF NOT EXISTS sistema.push_subs (
   id SERIAL PRIMARY KEY, user_id INT NOT NULL REFERENCES sistema.users(id) ON DELETE CASCADE, endpoint TEXT UNIQUE NOT NULL,
   p256dh TEXT NOT NULL, auth TEXT NOT NULL, ua TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now());

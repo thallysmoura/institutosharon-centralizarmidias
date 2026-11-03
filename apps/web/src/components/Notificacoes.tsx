@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Bell, BellRing, X } from 'lucide-react';
 import { API } from '@/lib/api';
+import AvisoAnexos from '@/components/AvisoAnexos';
 import { haTempo, marcarLida, marcarTodasLidas, pedirPermissaoNotificacoes, pushSuportado, sincronizarPush, useNotificacoes } from '@/lib/notificacoes';
 
 const CHAVE = 'sharon_notif_ate';
@@ -112,6 +113,7 @@ export default function Notificacoes({ lugar }: { lugar: 'menu' | 'topo' }) {
                   <span className="mt-1 block text-[0.72rem] text-ink/45">{n.autor ? `${n.autor.split(' ')[0]} · ` : ''}{haTempo(n.created_at)}{n.editado_em ? ' · editado' : ''}</span>
                 </span>
               </button>
+              {n.anexos?.length > 0 && (aberta ? <div className="px-5 pb-3.5 pl-[4.5rem]"><AvisoAnexos anexos={n.anexos} /></div> : <p className="px-5 pb-3 pl-[4.5rem] text-[0.72rem] font-medium text-gold-700">{n.anexos.length} anexo(s)</p>)}
             </li>
           );
         })}
