@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSecao } from '@/lib/rota';
 import { Bell, Download, Eye, GraduationCap, HardDrive, RotateCcw, Trash2, House, ImageIcon, LogOut, MapPin, ShieldCheck, Users, Smartphone, RefreshCw, Settings, ChevronsUpDown, SlidersHorizontal, ChevronDown, LayoutGrid, Menu, X, Search, ScrollText, Megaphone, PlusCircle, History } from 'lucide-react';
 import { API, api, Atendimento, fotoUrl, fmtData, Me } from '@/lib/api';
+
+type Pagina = { itens: Atendimento[]; proximo: string | null };
 import { fmtDia, nomeLimpo, useSession } from '@/lib/session';
 import { Wordmark } from '@/components/Brand';
 import Armazenamento from '@/components/Armazenamento';
@@ -10,6 +12,7 @@ import PageLoader from '@/components/PageLoader';
 import ControleAcesso from '@/components/ControleAcesso';
 import VisaoGeral from '@/components/VisaoGeral';
 import Titulo from '@/components/Titulo';
+import MostrarMais, { PASSO } from '@/components/MostrarMais';
 import BuscaAluno from '@/components/BuscaAluno';
 import Avatar from '@/components/Avatar';
 import PerfilInicial from '@/components/PerfilInicial';
@@ -107,6 +110,13 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
   const [fotosAba, setFotosAba] = useState<'todas' | 'meus'>('todas');
   const envios = useRef<MeusEnviosHandle>(null);
   const [totalEnvios, setTotalEnvios] = useState(0);
+  const [proximo, setProximo] = useState<string | null>(null);
+  const [carregandoMais, setCarregandoMais] = useState(false);
+  const maisBusy = useRef(false);
+  const [nAlunos, setNAlunos] = useState(PASSO);
+  const [nPac, setNPac] = useState(PASSO);
+  const [nExcl, setNExcl] = useState(PASSO);
+  const sentinela = useRef<HTMLDivElement>(null);
   const [rk, setRk] = useState(0);
   const [atualizando, setAtualizando] = useState(false);
   useEffect(() => { if (GOV.includes(vista)) setGovAberto(true); }, [vista]);
@@ -139,8 +149,21 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
   const buscar = useCallback(async (filtros: Filtros) => {
     setLoading(true);
     const qs = new URLSearchParams(Object.entries(filtros).filter(([, v]) => v));
-    try { setLista(await api<Atendimento[]>(`/admin/atendimentos?${qs}`)); } finally { setLoading(false); }
+    try { const r = await api<Pagina>(`/admin/atendimentos?${qs}`); setLista(r.itens); setProximo(r.proximo); } finally { setLoading(false); }
   }, []);
+  /** Próxima página (cursor): acrescenta sem refazer o que já está na tela. */
+  const carregarMais = useCallback(async () => {
+    if (!proximo || maisBusy.current) return;
+    maisBusy.current = true;
+    setCarregandoMais(true);
+    try {
+      const qs = new URLSearchParams(Object.entries(fRef.current).filter(([, v]) => v));
+      qs.set('cursor', proximo);
+      const r = await api<Pagina>(`/admin/atendimentos?${qs}`);
+      setLista((l) => { const ja = new Set(l.map((x) => x.id)); return [...l, ...r.itens.filter((x) => !ja.has(x.id))]; });
+      setProximo(r.proximo);
+    } catch { /* o botão Mostrar mais tenta de novo */ } finally { maisBusy.current = false; setCarregandoMais(false); }
+  }, [proximo]);
   useEffect(() => { const t = setTimeout(() => buscar(f), 200); return () => clearTimeout(t); }, [f, buscar]);
 
   const carregarExcl = useCallback(() => api<Excl[]>('/admin/exclusoes').then(setExcl).catch(() => null), []);
@@ -188,10 +211,10 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
     const qs = new URLSearchParams(Object.entries(fRef.current).filter(([, v]) => v));
     qs.set('ids', ids.join(','));
     try {
-      const novosItens = await api<Atendimento[]>(`/admin/atendimentos?${qs}`);
+      const novosItens = (await api<Pagina>(`/admin/atendimentos?${qs}`)).itens;
       if (novosItens.length) {
         const idsNovos = new Set(novosItens.map((x) => x.id));
-        setLista((l) => [...novosItens, ...l.filter((x) => !idsNovos.has(x.id))].sort((x, y) => +new Date(y.created_at) - +new Date(x.created_at)).slice(0, 200));
+        setLista((l) => [...novosItens, ...l.filter((x) => !idsNovos.has(x.id))].sort((x, y) => +new Date(y.created_at) - +new Date(x.created_at)));
         setNovos((n) => new Set([...n, ...idsNovos]));
         setTimeout(() => setNovos((n) => { const c = new Set(n); idsNovos.forEach((i) => c.delete(i)); return c; }), 8000);
       }
@@ -304,6 +327,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
           </li>
         ))}
       </ul>
+      <MostrarMais auto temMais={!!proximo} carregando={carregandoMais} onClick={carregarMais} mostrados={lista.length} />
       </div>
     </>
   );
@@ -474,7 +498,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
               <div className="card mt-4 px-4 py-12 text-center"><span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><Trash2 size={22} /></span><p className="mt-3 font-semibold">Nenhuma exclusão pendente</p></div>
             ) : (
               <ul className="card mt-4 divide-y divide-line overflow-hidden">
-                {excl.map((x) => (
+                {excl.slice(0, nExcl).map((x) => (
                   <li key={x.id} className="novo-envio flex flex-wrap items-center gap-3 px-4 py-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={fotoUrl(x.id, true)} alt="" loading="lazy" className="h-14 w-14 shrink-0 rounded-lg object-cover ring-1 ring-line" />
@@ -496,6 +520,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
                     </div>
                   </li>
                 ))}
+              <li className="list-none"><MostrarMais temMais={excl.length > nExcl} onClick={() => setNExcl((n) => n + PASSO)} /></li>
               </ul>
             )}
           </div>
@@ -503,22 +528,24 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
 
         {vista === 'alunos' && (
           <ul className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {alunos.map((a) => (
+            {alunos.slice(0, nAlunos).map((a) => (
               <li key={a.id}><button type="button" onClick={() => irFotos({ aluno_id: String(a.id) })} className="card w-full p-4 text-left transition hover:border-gold-500">
                 <p className="font-bold">{nomeLimpo(a.nome)}</p><p className="text-[0.82rem] text-ink/60">{a.matricula ?? 'Sem matrícula'} · {a.cidade ?? 'Sem cidade'}</p>
                 <p className="mt-2 text-[0.82rem] text-gold-700">{a.atendimentos} atendimento(s) · {a.fotos} foto(s)</p>
               </button></li>
             ))}
+          <li className="sm:col-span-2 xl:col-span-3"><MostrarMais temMais={alunos.length > nAlunos} onClick={() => setNAlunos((n) => n + PASSO)} /></li>
           </ul>
         )}
         {vista === 'pacientes' && (
           <ul className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {pacientes.map((p) => (
+            {pacientes.slice(0, nPac).map((p) => (
               <li key={p.identificador}><button type="button" onClick={() => irFotos({ q: p.identificador })} className="card w-full p-4 text-left transition hover:border-gold-500">
                 <p className="font-bold">{p.identificador}</p><p className="text-[0.82rem] text-ink/60">Último envio: {fmtDia(p.ultima)}</p>
                 <p className="mt-2 text-[0.82rem] text-gold-700">{p.fotos} foto(s) · {p.alunos} aluno(s)</p>
               </button></li>
             ))}
+          <li className="sm:col-span-2 xl:col-span-3"><MostrarMais temMais={pacientes.length > nPac} onClick={() => setNPac((n) => n + PASSO)} /></li>
           </ul>
         )}
         {vista === 'cidades' && (

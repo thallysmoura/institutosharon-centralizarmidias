@@ -237,7 +237,7 @@ export class AdminController {
   @Get('alunos')
   async alunos() {
     return (await this.db.query(
-      "SELECT u.id, u.nome, u.matricula, c.nome AS cidade, (SELECT count(*)::int FROM sistema.atendimentos a WHERE a.aluno_id=u.id) AS atendimentos, (SELECT count(*)::int FROM sistema.fotos f JOIN sistema.atendimentos a ON a.id=f.atendimento_id WHERE a.aluno_id=u.id) AS fotos FROM sistema.users u LEFT JOIN sistema.cidades c ON c.id=u.cidade_id WHERE u.role='ALUNO' ORDER BY u.nome",
+      "SELECT u.id, u.nome, u.matricula, c.nome AS cidade, COALESCE(t.atendimentos, 0) AS atendimentos, COALESCE(t.fotos, 0) AS fotos FROM sistema.users u LEFT JOIN sistema.cidades c ON c.id=u.cidade_id LEFT JOIN (SELECT a.aluno_id, count(DISTINCT a.id)::int AS atendimentos, count(f.id)::int AS fotos FROM sistema.atendimentos a LEFT JOIN sistema.fotos f ON f.atendimento_id=a.id GROUP BY a.aluno_id) t ON t.aluno_id=u.id WHERE u.role='ALUNO' ORDER BY u.nome LIMIT 3000",
     )).rows;
   }
 
@@ -296,7 +296,7 @@ export class AdminController {
   }
 
   @Get('atendimentos')
-  async listar(@Query('ids') ids?: string, @Query('cidade') cidade?: string, @Query('aluno') aluno?: string, @Query('aluno_id') alunoId?: string, @Query('de') de?: string, @Query('ate') ate?: string, @Query('q') q?: string) {
+  async listar(@Query('ids') ids?: string, @Query('cidade') cidade?: string, @Query('aluno') aluno?: string, @Query('aluno_id') alunoId?: string, @Query('de') de?: string, @Query('ate') ate?: string, @Query('q') q?: string, @Query('cursor') cursor?: string, @Query('limite') limite?: string) {
     const w: string[] = [];
     const p: unknown[] = [];
     const add = (sql: string, v: unknown) => { p.push(v); w.push(sql.replace('?', `$${p.length}`)); };
@@ -307,8 +307,17 @@ export class AdminController {
     if (de && /^\d{4}-\d{2}-\d{2}$/.test(de)) add('a.created_at >= ?::date', de);
     if (ate && /^\d{4}-\d{2}-\d{2}$/.test(ate)) add("a.created_at < (?::date + interval '1 day')", ate);
     if (q?.trim()) add('a.identificador_paciente ILIKE ?', `%${q.trim()}%`);
-    const r = await this.db.query(`${SELECT_ATEND} ${w.length ? 'WHERE ' + w.join(' AND ') : ''} GROUP BY a.id, c.nome, u.id ORDER BY a.created_at DESC LIMIT 200`, p);
-    return r.rows;
+    const m = cursor && /^(\d{4}-\d{2}-\d{2}T[\d:.]+Z)_(\d+)$/.exec(cursor);
+    if (m) { p.push(m[1], Number(m[2])); w.push(`(a.created_at, a.id) < ($${p.length - 1}::timestamptz, $${p.length}::int)`); }
+    const n = Math.min(Math.max(parseInt(limite ?? '', 10) || 30, 1), 60);
+    // 1) só os ids da página (usa o índice por data, sem juntar as fotos de tudo); 2) monta os atendimentos dessa página
+    const pag = (await this.db.query(
+      `SELECT a.id, to_char(a.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cur FROM sistema.atendimentos a JOIN sistema.users u ON u.id = a.aluno_id
+        ${w.length ? 'WHERE ' + w.join(' AND ') : ''} ORDER BY a.created_at DESC, a.id DESC LIMIT ${n + 1}`, p)).rows;
+    const mais = pag.length > n;
+    const pagina = pag.slice(0, n);
+    const itens = pagina.length ? (await this.db.query(`${SELECT_ATEND} WHERE a.id = ANY($1::int[]) GROUP BY a.id, c.nome, u.id ORDER BY a.created_at DESC, a.id DESC`, [pagina.map((x) => x.id)])).rows : [];
+    return { itens, proximo: mais ? `${pagina[pagina.length - 1].cur}_${pagina[pagina.length - 1].id}` : null };
   }
 }
 

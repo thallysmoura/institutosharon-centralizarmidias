@@ -27,6 +27,7 @@ ALTER TABLE sistema.fotos ADD COLUMN IF NOT EXISTS so TEXT;
 ALTER TABLE sistema.fotos ADD COLUMN IF NOT EXISTS navegador TEXT;
 ALTER TABLE sistema.fotos ADD COLUMN IF NOT EXISTS oculta_em TIMESTAMPTZ;
 ALTER TABLE sistema.fotos ADD COLUMN IF NOT EXISTS oculta_por INT;
+CREATE INDEX IF NOT EXISTS fotos_atend_idx ON sistema.fotos (atendimento_id);
 CREATE INDEX IF NOT EXISTS fotos_oculta_idx ON sistema.fotos (oculta_em) WHERE oculta_em IS NOT NULL;
 CREATE TABLE IF NOT EXISTS sistema.auditoria (
   id BIGSERIAL PRIMARY KEY, quando TIMESTAMPTZ NOT NULL DEFAULT now(), ator_id INT, acao TEXT NOT NULL, foto_id INT, atendimento_id INT, detalhe JSONB);
@@ -81,6 +82,8 @@ ALTER TABLE sistema.fotos ADD COLUMN IF NOT EXISTS width INT;
 ALTER TABLE sistema.fotos ADD COLUMN IF NOT EXISTS height INT;
 CREATE TABLE IF NOT EXISTS sistema.r2_uso (mes TEXT PRIMARY KEY, classe_a INT NOT NULL DEFAULT 0, classe_b INT NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS atend_aluno_idx ON sistema.atendimentos (aluno_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS atend_recentes_idx ON sistema.atendimentos (created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS atend_cidade_idx ON sistema.atendimentos (cidade_id, created_at DESC);
 CREATE TABLE IF NOT EXISTS sistema.fotos (
   id SERIAL PRIMARY KEY, atendimento_id INT NOT NULL REFERENCES sistema.atendimentos(id) ON DELETE CASCADE,
   storage_key TEXT UNIQUE NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
