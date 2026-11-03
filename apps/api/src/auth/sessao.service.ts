@@ -21,6 +21,8 @@ const sha = (t: string) => createHash('sha256').update(t).digest('hex');
 export class SessaoService {
   constructor(private readonly cfg: ConfigService, private readonly db: DbService) {}
 
+  /** Caminho do cookie de renovação; muda só se a API for servida sob um prefixo (ex.: proxy /backend). */
+  private get pathRefresh() { return this.cfg.get<string>('COOKIE_REFRESH_PATH', '/auth'); }
   private get segredo() { return this.cfg.getOrThrow<string>('JWT_SECRET'); }
   private opcoes(path: string, lembrar: boolean): CookieOptions {
     return { httpOnly: true, sameSite: 'lax', secure: this.cfg.get('COOKIE_SECURE') === 'true', path, ...(lembrar ? { maxAge: DIAS_LEMBRAR * 864e5 } : {}) };
@@ -42,7 +44,7 @@ export class SessaoService {
       `INSERT INTO sistema.refresh_tokens (user_id, token_hash, familia, cid, lembrar, expira, ip, ua) VALUES ($1,$2,$3,$4,$5, now() + ($6 || ' days')::interval, $7, $8)`,
       [userId, sha(token), familia, cid, lembrar, String(dias), req?.ip ?? null, String(req?.headers['user-agent'] ?? '').slice(0, 200)],
     );
-    res.cookie(COOKIE_REFRESH, token, this.opcoes('/auth', lembrar));
+    res.cookie(COOKIE_REFRESH, token, this.opcoes(this.pathRefresh, lembrar));
   }
 
   /** Abre uma sessão nova (login/cadastro/Google). Devolve o token CSRF. */
@@ -85,6 +87,6 @@ export class SessaoService {
 
   private limpar(res: Response) {
     res.clearCookie(COOKIE, { path: '/' });
-    res.clearCookie(COOKIE_REFRESH, { path: '/auth' });
+    res.clearCookie(COOKIE_REFRESH, { path: this.pathRefresh });
   }
 }

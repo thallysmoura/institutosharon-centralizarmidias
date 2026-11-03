@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { Trash2, Settings, Camera, CheckCircle2, GraduationCap, History, ImageIcon, Info, LogOut, MapPin, PlusCircle, User } from 'lucide-react';
 import { api, Atendimento, fotoUrl, Me } from '@/lib/api';
 import { fmtDia, nomeLimpo, useSession } from '@/lib/session';
+import Titulo from '@/components/Titulo';
 import PerfilInicial from '@/components/PerfilInicial';
 import { createPortal } from 'react-dom';
 import Avatar, { Ampliada } from '@/components/Avatar';
@@ -95,7 +96,7 @@ function Envio({ me, sair, recarregar, abrirConfig }: { me: Me; sair: () => void
   const painelEnvios = (
     <section key={aba} className={`fade-in flex min-h-0 flex-1 flex-col rounded-2xl border border-line bg-white p-4 shadow-card lg:p-5 ${aba === 'historico' ? 'lg:col-span-2' : ''}`}>
       <div className="flex shrink-0 items-center justify-between">
-        <h2 className="text-[1.45rem] font-bold leading-none">{aba === 'inicio' ? 'Últimos envios' : 'Histórico de envios'}</h2>
+        <Titulo icone={History}>{aba === 'inicio' ? 'Últimos envios' : 'Histórico de envios'}</Titulo>
         {aba === 'inicio' && meus.length > 0 && <button type="button" onClick={() => setAba('historico')} className="text-[0.8rem] font-semibold text-gold-600">Ver todos ({meus.length})</button>}
       </div>
       {meus.length === 0 ? (

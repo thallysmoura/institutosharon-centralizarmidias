@@ -14,6 +14,8 @@ export const metadata: Metadata = {
   applicationName: 'Sharon Fotos',
   appleWebApp: { capable: true, title: 'Sharon Fotos', statusBarStyle: 'default' },
   icons: { icon: '/icons/icon-192.png', apple: '/icons/apple-touch-icon.png' },
+  // iOS: "Adicionar à Tela de Início" abre em tela cheia, como app instalado (sem barra do Safari).
+  other: { 'apple-mobile-web-app-capable': 'yes', 'mobile-web-app-capable': 'yes' },
 };
 export const viewport: Viewport = { themeColor: '#171512', width: 'device-width', initialScale: 1, maximumScale: 1, userScalable: false, viewportFit: 'cover' };
 

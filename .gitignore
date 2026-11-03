@@ -56,3 +56,8 @@ apps/web/.env.local
 apps/api/.env
 apps/api/secrets/
 apps/api/storage/
+
+# Backups com dados pessoais e arquivos temporarios
+backups/
+qrcode-acesso.png
+*.dump

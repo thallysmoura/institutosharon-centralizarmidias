@@ -1,20 +1,21 @@
 import Image from 'next/image';
+import Link from 'next/link';
 
 /** Marca do Instituto: emblema + "INSTITUTO SHARON / EDUCAÇÃO E SAÚDE". `stacked` = centralizada (login); inline = lado a lado (sidebar/cabeçalho). */
 export function Wordmark({ stacked = false, light = false }: { stacked?: boolean; light?: boolean }) {
   const txt = light ? 'text-white' : 'text-ink';
   if (stacked)
     return (
-      <div className="flex flex-col items-center text-center">
-        <Image src="/img/emblem.png" alt="" width={958} height={1624} priority className="h-[74px] w-auto" />
+      <Link href="/" aria-label="Ir para a tela inicial" className="flex select-none flex-col items-center text-center">
+        <Image src="/img/emblem.png" alt="" width={958} height={1624} priority draggable={false} className="pointer-events-none h-[74px] w-auto" />
         <p className={`mt-3 font-display text-[0.8rem] tracking-[0.6em] ${txt}`}>INSTITUTO</p>
         <p className={`-mt-0.5 font-display text-[2.6rem] leading-[1.05] tracking-[0.2em] ${txt}`}>SHARON</p>
         <p className="mt-1 text-[0.58rem] font-semibold tracking-[0.42em] text-gold-500">EDUCAÇÃO E SAÚDE</p>
-      </div>
+      </Link>
     );
   return (
-    <div className="flex items-center gap-2.5">
-      <Image src="/img/emblem.png" alt="" width={958} height={1624} priority className="h-10 w-auto" />
+    <div className="flex select-none items-center gap-2.5">
+      <Image src="/img/emblem.png" alt="" width={958} height={1624} priority draggable={false} className="pointer-events-none h-10 w-auto" />
       <div className="leading-none">
         <p className={`font-display text-[0.5rem] tracking-[0.5em] ${txt}`}>INSTITUTO</p>
         <p className={`mt-0.5 font-display text-[1.3rem] tracking-[0.16em] ${txt}`}>SHARON</p>
@@ -61,13 +62,13 @@ export function Emblema({ className = '', style }: { className?: string; style?:
 /** Marca horizontal do login: emblema + INSTITUTO / SHARON / EDUCAÇÃO E SAÚDE. O tamanho vem do font-size do elemento. */
 export function Logo({ light = false, style }: { light?: boolean; style?: React.CSSProperties }) {
   return (
-    <div className="flex items-center" style={{ gap: '0.5em', ...style }}>
+    <Link href="/" aria-label="Ir para a tela inicial" draggable={false} className="flex select-none items-center" style={{ gap: '0.5em', ...style }}>
       <Emblema style={{ height: '2.2em' }} />
       <div className="leading-none">
-        <p className={`font-sans font-semibold ${light ? 'text-white' : 'text-[#2b1c10]'}`} style={{ fontSize: '0.42em', letterSpacing: '0.55em' }}>INSTITUTO</p>
-        <p className={`font-sans font-semibold ${light ? 'text-white' : 'text-[#2b1c10]'}`} style={{ fontSize: '1em', letterSpacing: '0.2em', marginTop: '0.08em' }}>SHARON</p>
+        <p className={`font-sans font-semibold ${light ? 'text-white' : 'text-[#33240F]'}`} style={{ fontSize: '0.42em', letterSpacing: '0.55em' }}>INSTITUTO</p>
+        <p className={`font-sans font-semibold ${light ? 'text-white' : 'text-[#33240F]'}`} style={{ fontSize: '1em', letterSpacing: '0.2em', marginTop: '0.08em' }}>SHARON</p>
         <p className="font-sans font-medium text-[#c18a1e]" style={{ fontSize: '0.32em', letterSpacing: '0.42em', marginTop: '0.35em' }}>EDUCAÇÃO E SAÚDE</p>
       </div>
-    </div>
+    </Link>
   );
 }

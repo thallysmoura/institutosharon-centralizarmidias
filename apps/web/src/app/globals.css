@@ -6,18 +6,32 @@
   html { -webkit-text-size-adjust: 100%; }
   body { @apply bg-page font-sans text-ink antialiased; font-size: 0.95rem; line-height: 1.5; }
   h1, h2, h3 { @apply font-display; letter-spacing: -0.02em; line-height: 1.15; }
-  ::selection { background: #e6cc7a; color: #14110a; }
-  :focus-visible { outline: 2px solid #b8902f; outline-offset: 2px; border-radius: 6px; }
+  ::selection { background: #e6cc7a; color: #21180D; }
+  :focus-visible { outline: 2px solid #B88B28; outline-offset: 2px; border-radius: 6px; }
+  /* Títulos fluidos (H1 32-56px, H2 26-40px, H3 22-28px) quando sem classe de tamanho */
+  h1 { font-size: clamp(2rem, 1.4rem + 2.4vw, 3.5rem); }
+  h2 { font-size: clamp(1.625rem, 1.3rem + 1.4vw, 2.5rem); }
+  h3 { font-size: clamp(1.375rem, 1.2rem + .6vw, 1.75rem); }
+  img { -webkit-user-drag: none; }
 }
 
 @layer components {
+  /* Botões: .btn + .btn-primary (principal) | .btn-line (secundário) | .btn-ghost (terciário). Alvo de toque mínimo 44px. */
   .eyebrow { @apply inline-flex items-center gap-3 text-[0.7rem] font-semibold uppercase tracking-[0.26em] text-gold-600; }
   .btn { @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-6 text-[0.95rem] font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-50; }
-  .btn-gold { @apply text-white shadow-[0_8px_18px_-10px_rgba(125,95,18,.9)] enabled:hover:brightness-105; background: linear-gradient(180deg, #c9a24a 0%, #a67c26 100%); }
+  .btn-gold { @apply text-white shadow-[0_6px_14px_-8px_rgba(125,95,18,.8)] enabled:hover:brightness-105; background: linear-gradient(180deg, #c9a24a 0%, #a67c26 100%); }
+  .btn-primary { @apply bg-brown text-white shadow-[0_6px_14px_-8px_rgba(33,24,13,.7)] enabled:hover:bg-ink; }
+  .btn-ghost { @apply bg-transparent text-brown enabled:hover:bg-sand; }
   .btn-line { @apply border border-line bg-white text-ink enabled:hover:border-gold-500; }
   .field { @apply w-full rounded-xl border border-line bg-white py-3 pl-11 pr-4 text-[0.95rem] outline-none transition focus:border-gold-500 focus:ring-4 focus:ring-gold-500/15; }
   .field-plain { @apply w-full rounded-lg border border-line bg-white px-3 py-2.5 text-[0.88rem] outline-none transition focus:border-gold-500 focus:ring-4 focus:ring-gold-500/15; }
-  .card { @apply rounded-2xl border border-line bg-white shadow-card; }
+  .card { @apply rounded-card border border-line bg-white shadow-card; }
+  .badge { @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.72rem] font-semibold; }
+  .badge-ok { @apply bg-[#E7F6EE] text-[#17794A]; }
+  .badge-warn { @apply bg-[#FBF1D6] text-[#8A5F10]; }
+  .badge-erro { @apply bg-[#FDF0EE] text-[#B3261E]; }
+  .badge-neutro { @apply bg-sand text-muted; }
+  .skeleton { @apply animate-pulse rounded-lg bg-sand; }
   .gold-text { background: linear-gradient(180deg, #d9b655, #9d7424); -webkit-background-clip: text; background-clip: text; color: transparent; }
 }
 
@@ -69,3 +83,8 @@ body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
 @keyframes novoenvio { 0% { background: #fbeec2; transform: translateY(-6px); opacity: .4; } 40% { opacity: 1; transform: none; } 100% { background: transparent; } }
 .novo-envio { animation: novoenvio 3.5s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .novo-envio { animation: none; } }
+
+/* Menu lateral do admin: itens entram um a um */
+@keyframes nav-in { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+.nav-item { animation: nav-in .5s cubic-bezier(.22,.61,.36,1) both; animation-delay: var(--d, 0ms); }
+@media (prefers-reduced-motion: reduce) { .nav-item { animation: none; } }

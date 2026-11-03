@@ -43,7 +43,7 @@ export function Ampliada({ src, onFechar, nav, baixar, excluir }: { src: string;
       {pronta && (
         <>
           {nav && nav.total > 1 && <span className="absolute left-4 top-[max(1.25rem,env(safe-area-inset-top))] z-10 rounded-full bg-white/12 px-3 py-1.5 text-sm font-semibold tabular-nums text-white/90 backdrop-blur-sm">{nav.atual + 1} / {nav.total}</span>}
-          <button type="button" onClick={(e) => { e.stopPropagation(); onFechar(); }} aria-label="Fechar" title="Fechar (Esc)" className="absolute right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] z-10 grid h-11 w-11 place-items-center rounded-full bg-white text-[#2b1c10] shadow-[0_8px_24px_-8px_rgba(0,0,0,.6)] transition hover:scale-105 hover:bg-[#f6efe0] sm:h-12 sm:w-12"><X size={22} strokeWidth={2.2} /></button>
+          <button type="button" onClick={(e) => { e.stopPropagation(); onFechar(); }} aria-label="Fechar" title="Fechar (Esc)" className="absolute right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] z-10 grid h-11 w-11 place-items-center rounded-full bg-white text-[#33240F] shadow-[0_8px_24px_-8px_rgba(0,0,0,.6)] transition hover:scale-105 hover:bg-[#f6efe0] sm:h-12 sm:w-12"><X size={22} strokeWidth={2.2} /></button>
         </>
       )}
       <div
@@ -87,7 +87,7 @@ export function Ampliada({ src, onFechar, nav, baixar, excluir }: { src: string;
 }
 
 /** Foto de perfil (Google ou enviada). Com `editavel`, o clique abre um menu: ampliar, enviar/trocar e excluir a foto. */
-export default function Avatar({ foto, size = 64, editavel = false, onMudou }: { foto: string | null; size?: number; editavel?: boolean; onMudou?: () => void }) {
+export default function Avatar({ foto, size = 64, editavel = false, onMudou, semBorda = false }: { foto: string | null; size?: number; editavel?: boolean; onMudou?: () => void; semBorda?: boolean }) {
   const input = useRef<HTMLInputElement>(null);
   const raiz = useRef<HTMLSpanElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -151,7 +151,7 @@ export default function Avatar({ foto, size = 64, editavel = false, onMudou }: {
     <span className="relative block shrink-0" style={{ width: size, height: size }}>
       {tem ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={`${API}${foto}`} alt="Foto de perfil" referrerPolicy="no-referrer" onError={() => setFalhou(true)} className="h-full w-full rounded-full object-cover ring-2 ring-white shadow-card" />
+        <img src={`${API}${foto}`} alt="Foto de perfil" referrerPolicy="no-referrer" onError={() => setFalhou(true)} className={`h-full w-full rounded-full object-cover ${semBorda ? '' : 'ring-2 ring-white shadow-card'}`} />
       ) : (
         <span className="grid h-full w-full place-items-center rounded-full bg-[#f6efe0] ring-2 ring-white"><Silhueta size={size * 0.62} /></span>
       )}
@@ -166,7 +166,7 @@ export default function Avatar({ foto, size = 64, editavel = false, onMudou }: {
 
   if (!editavel) return corpo;
 
-  const item = 'flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[0.88rem] font-medium text-[#2b1c10] transition hover:bg-[#f6efe0]';
+  const item = 'flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[0.88rem] font-medium text-[#33240F] transition hover:bg-[#f6efe0]';
   return (
     <span ref={raiz} className="relative inline-flex flex-col items-center">
       <button type="button" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setPos({ top: r.bottom + 12, left: Math.min(Math.max(8, r.left + r.width / 2 - 100), window.innerWidth - 208) }); setMenu((m) => !m); }} aria-haspopup="menu" aria-expanded={menu} aria-label="Opções da foto de perfil" className="group rounded-full outline-none focus-visible:ring-4 focus-visible:ring-[#c9a24a]/30">{corpo}</button>

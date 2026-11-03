@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Cloud, Database, ImageIcon, PenLine, Eye, TriangleAlert, CircleCheck } from 'lucide-react';
+import { Cloud, Database, ImageIcon, PenLine, Eye, TriangleAlert, CircleCheck, MapPin } from 'lucide-react';
+import Titulo from './Titulo';
 import { api } from '@/lib/api';
 import PageLoader from '@/components/PageLoader';
 
@@ -43,7 +44,7 @@ function Barra({ titulo, Icon, usado, limite, rotulo, falta }: { titulo: string;
   );
 }
 
-/** Gestão do armazenamento: uso do Cloudflare R2 frente ao limite gratuito mensal (o que falta para a Cloudflare começar a cobrar). */
+/** Gestão do armazenamento: uso do armazenamento frente ao limite gratuito mensal (o que falta para a cobrança começar). */
 export default function Armazenamento() {
   const [d, setD] = useState<Resumo>();
   const [erro, setErro] = useState('');
@@ -68,18 +69,18 @@ export default function Armazenamento() {
       <div className={`flex items-start gap-3 rounded-2xl border p-4 ${gratis ? 'border-[#cfe8d8] bg-[#eef8f2]' : 'border-[#f0cfc9] bg-[#fdf0ee]'}`}>
         {gratis ? <CircleCheck size={22} className="mt-0.5 shrink-0 text-[#17794a]" /> : <TriangleAlert size={22} className="mt-0.5 shrink-0 text-[#b3261e]" />}
         <div className="text-[0.88rem] leading-snug">
-          <p className="font-bold">{gratis ? 'Dentro do limite gratuito da Cloudflare' : `Acima do limite gratuito - estimativa de ${usd(custo)} neste mês`}</p>
+          <p className="font-bold">{gratis ? 'Dentro do limite gratuito do armazenamento' : `Acima do limite gratuito - estimativa de ${usd(custo)} neste mês`}</p>
           <p className="text-ink/70">
             {d.driver === 's3'
-              ? `Armazenando no Cloudflare R2 · bucket ${d.bucket} · pasta ${d.prefixo ?? '/'}`
-              : 'Armazenamento local de teste. Ao ativar o Cloudflare R2, os números abaixo passam a refletir a cobrança real.'}
+              ? `Armazenando na nuvem · pasta ${d.prefixo ?? '/'}`
+              : 'Armazenamento local de teste. Ao ativar o armazenamento na nuvem, os números abaixo passam a refletir a cobrança real.'}
           </p>
         </div>
       </div>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
         <Barra titulo="Armazenamento usado" Icon={Database} usado={d.bytes} limite={d.limites.bytes} rotulo={`${fmtBytes(d.bytes)} de ${fmtBytes(d.limites.bytes)}`}
-          falta={faltaBytes > 0 ? `Faltam ${fmtBytes(faltaBytes)} para a Cloudflare começar a cobrar${fotosRestantes != null ? ` (cerca de ${n(fotosRestantes)} fotos)` : ''}.` : 'Limite gratuito atingido. Excedente cobrado a US$ 0,015 por GB/mês.'} />
+          falta={faltaBytes > 0 ? `Faltam ${fmtBytes(faltaBytes)} para o armazenamento começar a ser cobrado${fotosRestantes != null ? ` (cerca de ${n(fotosRestantes)} fotos)` : ''}.` : 'Limite gratuito atingido. Excedente cobrado a US$ 0,015 por GB/mês.'} />
         <Barra titulo="Mídias armazenadas" Icon={ImageIcon} usado={d.fotos} limite={Math.max(d.fotos, fotosRestantes != null ? d.fotos + fotosRestantes : d.fotos, 1)} rotulo={`${n(d.fotos)} foto${d.fotos === 1 ? '' : 's'}`}
           falta={d.fotos ? `Média de ${fmtBytes(d.mediaBytes)} por foto (alta qualidade, WebP) + miniatura.` : 'Nenhuma foto enviada ainda.'} />
         <Barra titulo="Operações de escrita (Classe A) no mês" Icon={PenLine} usado={d.mes.classeA} limite={d.limites.classeA} rotulo={`${n(d.mes.classeA)} de ${n(d.limites.classeA)}`}
@@ -89,7 +90,7 @@ export default function Armazenamento() {
       </div>
 
       <section className="card mt-4 p-5" aria-label="Uso por cidade">
-        <h2 className="text-[1.4rem] font-bold">Uso por cidade</h2>
+        <Titulo icone={MapPin}>Uso por cidade</Titulo>
         <ul className="mt-3 space-y-3">
           {d.porCidade.map((c) => (
             <li key={c.cidade}>
@@ -101,8 +102,8 @@ export default function Armazenamento() {
       </section>
 
       <p className="mt-4 text-[0.78rem] leading-relaxed text-ink/55">
-        Limites do plano gratuito do Cloudflare R2 (Standard), por mês: 10 GB de armazenamento, 1 milhão de operações de escrita (Classe A) e 10 milhões de leitura (Classe B). A saída de dados é gratuita.
-        O limite vale para toda a conta Cloudflare, somando todos os buckets; este painel mostra apenas o consumo deste sistema, então o saldo real pode ser menor se outros projetos usam a mesma conta.
+        Limites do plano gratuito do armazenamento, por mês: 10 GB de armazenamento, 1 milhão de operações de escrita (Classe A) e 10 milhões de leitura (Classe B). A saída de dados é gratuita.
+        O limite vale para toda a conta de armazenamento, somando todos os projetos; este painel mostra apenas o consumo deste sistema, então o saldo real pode ser menor se outros projetos usam a mesma conta.
       </p>
     </div>
   );

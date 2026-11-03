@@ -85,7 +85,7 @@ const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/
       <Icon size="1.3em" strokeWidth={1.7} className="shrink-0 text-[#b8902f]" />
       <div className="min-w-0 flex-1 leading-tight">
         <p className="text-[0.68em] font-semibold uppercase tracking-[0.14em] text-[#8a7a62]">{rotulo}</p>
-        <p className="truncate text-[1em] font-medium text-[#2b1c10]">{valor}</p>
+        <p className="truncate text-[1em] font-medium text-[#33240F]">{valor}</p>
         {dica && <p className="text-[0.72em] text-[#8a7a62]">{dica}</p>}
       </div>
       {acao}
@@ -126,7 +126,7 @@ const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/
 
       <section className="rise relative z-10 mt-[clamp(1.4rem,4vw,2.2rem)] w-full max-w-[460px] rounded-[2em] border border-white/80 p-[1.4em] pt-[1.7em] text-[16px] shadow-[0_2em_4.5em_-2.2em_rgba(120,80,20,.28),0_.2em_.7em_rgba(120,80,20,.06)] backdrop-blur-sm sm:max-w-[520px] sm:rounded-[2.2em] sm:p-[2.4em] sm:text-[17px]" style={{ background: 'linear-gradient(180deg,rgba(255,254,250,.96),rgba(252,248,240,.93))', '--d': '80ms' } as React.CSSProperties}>
         {!config && <span aria-hidden className="grow-bar block h-[0.3em] w-[3.4em] rounded-full" style={{ background: 'linear-gradient(90deg,#d9a936,#b3801f)' }} />}
-        <h1 className={`rise font-sans ${config ? '' : 'mt-[0.7em]'} text-[2.1em] font-bold leading-[1.05] tracking-[-0.02em] text-[#2b1c10]`} style={{ '--d': '120ms' } as React.CSSProperties}>{config ? 'Configurações' : 'Primeiro acesso'}</h1>
+        <h1 className={`rise font-sans ${config ? '' : 'mt-[0.7em]'} text-[2.1em] font-bold leading-[1.05] tracking-[-0.02em] text-[#33240F]`} style={{ '--d': '120ms' } as React.CSSProperties}>{config ? 'Configurações' : 'Primeiro acesso'}</h1>
         <p className="rise mt-[0.35em] text-[0.95em] leading-snug text-[#5a5048]" style={{ '--d': '180ms' } as React.CSSProperties}>{config ? 'Edite os seus dados sempre que precisar.' : 'Complete seus dados para continuar.'}</p>
 
         <div className="pop mt-[1.2em] flex flex-col items-center" style={{ '--d': '200ms' } as React.CSSProperties}>
@@ -139,7 +139,7 @@ const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/
             <User size="1.3em" strokeWidth={1.7} className="shrink-0 text-[#b8902f]" aria-hidden />
             <div className="min-w-0 flex-1 leading-tight">
               <p className="text-[0.68em] font-semibold uppercase tracking-[0.14em] text-[#8a7a62]">Nome completo</p>
-              <input id="nome" value={nome} onChange={(e) => { setNome(e.target.value); setErro(''); }} onBlur={() => setNome((x) => x.trim().replace(/\s+/g, ' '))} maxLength={100} autoComplete="name" className="w-full bg-transparent text-[1em] font-medium text-[#2b1c10] outline-none" />
+              <input id="nome" value={nome} onChange={(e) => { setNome(e.target.value); setErro(''); }} onBlur={() => setNome((x) => x.trim().replace(/\s+/g, ' '))} maxLength={100} autoComplete="name" className="w-full bg-transparent text-[1em] font-medium text-[#33240F] outline-none" />
             </div>
             <Pencil size="1.05em" className="shrink-0 text-[#b8902f]/70" aria-hidden />
           </label>
@@ -169,13 +169,12 @@ const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/
         </div>
 
         <form onSubmit={salvar} noValidate className="rise mt-[0.7em]" style={{ '--d': '420ms' } as React.CSSProperties}>
-          <label htmlFor="matricula" className={`${PILULA} cursor-text py-[0.6em] transition focus-within:border-[#c9a24a] focus-within:ring-4 focus-within:ring-[#c9a24a]/15 ${erro ? '!border-[#d9534f]' : ''}`}>
+          <label htmlFor="matricula" className={`${PILULA} cursor-text py-[0.6em] transition focus-within:border-[#c9a24a] focus-within:ring-4 focus-within:ring-[#c9a24a]/15 ${erro || (config && !matricula.trim()) ? '!border-[#d9534f] focus-within:!ring-[#d9534f]/20' : ''}`}>
             <GraduationCap size="1.3em" strokeWidth={1.7} className="shrink-0 text-[#b8902f]" aria-hidden />
             <div className="min-w-0 flex-1 leading-tight">
               <p className="text-[0.68em] font-semibold uppercase tracking-[0.14em] text-[#8a7a62]">Matrícula</p>
-              <input id="matricula" ref={matRef} value={matricula} onChange={(e) => { setMatricula(e.target.value); setErro(''); }} maxLength={30} autoComplete="off" aria-invalid={!!erro} className="w-full bg-transparent text-[1em] font-medium text-[#2b1c10] outline-none" />
+              <input id="matricula" ref={matRef} value={matricula} onChange={(e) => { setMatricula(e.target.value); setErro(''); }} maxLength={30} autoComplete="off" aria-invalid={!!erro} className="w-full bg-transparent text-[1em] font-medium text-[#33240F] outline-none" />
             </div>
-            <span className="text-[1.1em] font-bold text-[#c0392b]" aria-label="obrigatório">*</span>
           </label>
           {erro && <p role="alert" className="mt-1.5 text-[0.82em] font-medium text-[#b3261e]">{erro}</p>}
           {salvo && <p role="status" className="pop mt-2 flex items-center gap-1.5 rounded-xl bg-[#e7f6ee] px-3 py-2 text-[0.85em] font-medium text-[#17794a]"><Check size="1.1em" />Dados salvos com sucesso.</p>}

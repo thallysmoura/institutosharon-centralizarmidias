@@ -5,6 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'Fotos Clínicas - Instituto Sharon',
     short_name: 'Sharon Fotos',
     description: 'Centralização das fotografias dos atendimentos do Instituto Sharon.',
+    id: '/',
     start_url: '/',
     scope: '/',
     display: 'standalone',

@@ -19,7 +19,7 @@ function Passos({ atual }: { atual: 1 | 2 | 3 }) {
         return (
           <li key={t} className="flex items-center gap-2" aria-current={ativo ? 'step' : undefined}>
             <span className={`grid h-6 w-6 place-items-center rounded-full text-[0.7rem] font-bold ${ativo ? 'text-white' : feito ? 'bg-[#e7f6ee] text-[#17794a]' : 'bg-sand text-ink/45'}`} style={ativo ? { background: 'linear-gradient(180deg,#c9a24a,#a67c26)' } : undefined}>{feito ? <Check size={13} /> : n}</span>
-            <span className={`text-[0.72rem] font-semibold ${ativo ? 'text-ink' : 'text-ink/45'}`}>{t}</span>
+            <span className={`whitespace-nowrap text-[0.72rem] font-semibold ${ativo ? 'text-ink' : 'hidden text-ink/45 sm:inline'}`}>{t}</span>
             {n < 3 && <span className="h-px w-4 bg-line sm:w-6" />}
           </li>
         );

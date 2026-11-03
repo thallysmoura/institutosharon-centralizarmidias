@@ -1,13 +1,14 @@
-import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Patch, ParseIntPipe, Post, Query, Res, NotFoundException, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Patch, ParseIntPipe, Post, Query, Req, Res, NotFoundException, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { IsIn, IsString, Matches, MaxLength, MinLength } from 'class-validator';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { memoryStorage } from 'multer';
 import sharp from 'sharp';
 import { DbService } from '../db/db.service';
 import { StorageService } from '../storage/storage.service';
 import { EventosService } from '../eventos/eventos.service';
+import { dispositivoDe, PresencaService } from '../presenca/presenca.service';
 import { AuthGuard, Me, Roles, SessionUser } from '../common/auth';
 
 
@@ -33,8 +34,8 @@ class CriarDto {
 
 const SELECT_ATEND = `
   SELECT a.id, a.identificador_paciente, a.created_at, c.nome AS cidade,
-         json_build_object('id', u.id, 'nome', u.nome, 'matricula', u.matricula) AS aluno,
-         COALESCE(json_agg(json_build_object('id', f.id, 'created_at', f.created_at, 'oculta', f.oculta_em IS NOT NULL) ORDER BY f.id) FILTER (WHERE f.id IS NOT NULL), '[]') AS fotos
+         json_build_object('id', u.id, 'nome', u.nome, 'matricula', u.matricula, 'email', u.email) AS aluno,
+         COALESCE(json_agg(json_build_object('id', f.id, 'created_at', f.created_at, 'oculta', f.oculta_em IS NOT NULL, 'bytes', f.bytes, 'width', f.width, 'height', f.height, 'dispositivo', f.dispositivo, 'so', f.so, 'navegador', f.navegador) ORDER BY f.id) FILTER (WHERE f.id IS NOT NULL), '[]') AS fotos
   FROM sistema.atendimentos a
   JOIN sistema.users u ON u.id = a.aluno_id
   JOIN sistema.cidades c ON c.id = a.cidade_id
@@ -63,7 +64,8 @@ export class AtendimentosController {
 
   @Post()
   @UseInterceptors(FilesInterceptor('fotos', MAX_FILES, { storage: memoryStorage(), limits: { fileSize: MAX_BYTES, files: MAX_FILES } }))
-  async criar(@Me() u: SessionUser, @Body() dto: CriarDto, @UploadedFiles() files: Express.Multer.File[]) {
+  async criar(@Me() u: SessionUser, @Body() dto: CriarDto, @UploadedFiles() files: Express.Multer.File[], @Req() req: Request) {
+    const disp = dispositivoDe(req.headers['user-agent'] ?? '');
     if (!files?.length) throw new BadRequestException('Envie ao menos uma foto.');
     // A cidade vem da sessão (localização do login) e não pode ser escolhida no envio.
     const cidadeId = u.cidade_id;
@@ -91,8 +93,8 @@ export class AtendimentosController {
       const thumbKey = `${u.id}/${atendimentoId}/${id}-t.webp`;
       await Promise.all([this.storage.put(key, full.data, 'image/webp'), this.storage.put(thumbKey, thumb, 'image/webp')]);
       await this.db.query(
-        'INSERT INTO sistema.fotos (atendimento_id, storage_key, thumb_key, bytes, thumb_bytes, width, height) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-        [atendimentoId, key, thumbKey, full.data.length, thumb.length, full.info.width, full.info.height],
+        'INSERT INTO sistema.fotos (atendimento_id, storage_key, thumb_key, bytes, thumb_bytes, width, height, dispositivo, so, navegador) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
+        [atendimentoId, key, thumbKey, full.data.length, thumb.length, full.info.width, full.info.height, disp.dispositivo, disp.so, disp.navegador],
       );
     }
     this.eventos.novoAtendimento(atendimentoId); // painel do administrador atualiza em tempo real
@@ -128,7 +130,7 @@ export class AtendimentosController {
 @UseGuards(AuthGuard)
 @Roles('ADMIN')
 export class AdminController {
-  constructor(private readonly db: DbService, private readonly storage: StorageService, private readonly eventos: EventosService) {}
+  constructor(private readonly db: DbService, private readonly storage: StorageService, private readonly eventos: EventosService, private readonly presenca: PresencaService) {}
 
   /** Gestão do armazenamento: uso, quantidade de mídias e operações do mês frente ao limite gratuito do Cloudflare R2. */
   @Get('armazenamento')
@@ -173,12 +175,18 @@ export class AdminController {
   @Get('acessos')
   async acessos() {
     return (await this.db.query(
-      `SELECT u.id, u.nome, u.email, u.role, u.matricula, u.origem, u.created_at, u.ultimo_acesso, c.nome AS cidade,
+      `SELECT u.id, u.nome, u.email, u.role, u.matricula, u.origem, u.created_at, u.ultimo_acesso, c.nome AS cidade, u.cidade_id,
               CASE WHEN u.foto_key IS NOT NULL OR u.foto_url IS NOT NULL THEN '/users/' || u.id || '/foto?v=' || u.foto_v END AS foto_url,
               (SELECT count(*)::int FROM sistema.fotos f JOIN sistema.atendimentos a ON a.id=f.atendimento_id WHERE a.aluno_id=u.id) AS fotos
        FROM sistema.users u LEFT JOIN sistema.cidades c ON c.id=u.cidade_id
        ORDER BY (u.role='ADMIN') DESC, u.nome`,
     )).rows;
+  }
+
+  /** Presença atual (online, ausente, offline) com aparelho de quem enviou batida; leve, só memória. */
+  @Get('presenca')
+  presencaAtual() {
+    return this.presenca.todos();
   }
 
   /** Define se o usuário é aluno ou administrador. Não é possível alterar o próprio papel. */
@@ -188,6 +196,18 @@ export class AdminController {
     const r = await this.db.query('UPDATE sistema.users SET role=$2 WHERE id=$1 RETURNING id', [id, dto.role]);
     if (!r.rowCount) throw new NotFoundException();
     return { ok: true };
+  }
+
+  /** Busca de aluno para filtros: só com 3+ caracteres e no máximo 20 resultados (escala para muitos cadastros). */
+  @Get('alunos/busca')
+  async buscarAlunos(@Query('q') q = '') {
+    const t = q.trim();
+    if (t.length < 3) return [];
+    const like = `%${t.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    return (await this.db.query(
+      "SELECT u.id, u.nome, u.matricula, c.nome AS cidade FROM sistema.users u LEFT JOIN sistema.cidades c ON c.id=u.cidade_id WHERE u.role='ALUNO' AND (u.nome ILIKE $1 OR u.matricula ILIKE $1 OR u.email ILIKE $1) ORDER BY u.nome LIMIT 20",
+      [like],
+    )).rows;
   }
 
   @Get('alunos')

@@ -52,10 +52,19 @@ const seguranca = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
-    return [{ source: '/:path*', headers: seguranca }];
+    // Sem cache: páginas e service worker sempre revalidados (os arquivos /_next/static têm hash no nome e seguem imutáveis).
+    const semCache = [{ key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' }];
+    return [
+      { source: '/:path*', headers: seguranca },
+      { source: '/((?!_next/static|_next/image).*)', headers: semCache },
+    ];
   },
   output: 'standalone',
   reactStrictMode: true,
+  // Túnel/preview: com NEXT_PUBLIC_API_URL=/backend a API passa pela mesma origem do site.
+  async rewrites() {
+    return API.startsWith('/') ? [{ source: '/backend/:path*', destination: `${process.env.API_PROXY_TARGET ?? 'http://localhost:3001'}/:path*` }] : [];
+  },
 
   env: {
     NEXT_PUBLIC_HAM_REPO: repoName(),

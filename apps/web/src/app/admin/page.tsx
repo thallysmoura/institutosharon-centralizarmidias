@@ -1,14 +1,20 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, Download, Eye, GraduationCap, HardDrive, RotateCcw, Trash2, House, ImageIcon, LogOut, MapPin, ShieldCheck, Users } from 'lucide-react';
+import { Bell, Download, Eye, GraduationCap, HardDrive, RotateCcw, Trash2, House, ImageIcon, LogOut, MapPin, ShieldCheck, Users, Smartphone, RefreshCw, Settings, ChevronsUpDown, SlidersHorizontal, ChevronDown, LayoutGrid, Menu, X, Search } from 'lucide-react';
 import { API, api, Atendimento, fotoUrl, fmtData, Me } from '@/lib/api';
 import { fmtDia, nomeLimpo, useSession } from '@/lib/session';
 import { Wordmark } from '@/components/Brand';
 import Armazenamento from '@/components/Armazenamento';
 import PageLoader from '@/components/PageLoader';
 import ControleAcesso from '@/components/ControleAcesso';
+import VisaoGeral from '@/components/VisaoGeral';
+import Titulo from '@/components/Titulo';
+import BuscaAluno from '@/components/BuscaAluno';
+import Avatar from '@/components/Avatar';
+import PerfilInicial from '@/components/PerfilInicial';
+import Aplicativo from '@/components/Aplicativo';
 
-type Vista = 'geral' | 'fotos' | 'alunos' | 'pacientes' | 'cidades' | 'armazenamento' | 'acessos' | 'exclusoes';
+type Vista = 'geral' | 'fotos' | 'alunos' | 'pacientes' | 'cidades' | 'armazenamento' | 'acessos' | 'exclusoes' | 'aplicativo';
 type Excl = { id: number; atendimento_id: number; oculta_em: string; identificador_paciente: string; cidade: string; aluno: { id: number; nome: string; matricula: string | null } };
 type Resumo = { fotos: number; pacientes: number; alunos: number; cidades: number; pendentes: number; ocultas?: number };
 type Cidade = { id: number; nome: string; alunos: number; fotos: number };
@@ -17,6 +23,7 @@ type Paciente = { identificador: string; alunos: number; fotos: number; ultima: 
 type Filtros = { cidade: string; aluno_id: string; q: string; de: string; ate: string };
 const VAZIO: Filtros = { cidade: '', aluno_id: '', q: '', de: '', ate: '' };
 
+const GOV: Vista[] = ['exclusoes', 'acessos', 'armazenamento'];
 const NAV: [Vista, string, typeof House][] = [
   ['geral', 'Visão Geral', House],
   ['fotos', 'Fotos', ImageIcon],
@@ -25,6 +32,7 @@ const NAV: [Vista, string, typeof House][] = [
   ['cidades', 'Cidades', MapPin],
   ['exclusoes', 'Exclusões', Trash2],
   ['acessos', 'Controle de Acesso', ShieldCheck],
+  ['aplicativo', 'Aplicativo', Smartphone],
   ['armazenamento', 'Armazenamento', HardDrive],
 ];
 const num = (n: number | undefined) => (n ?? 0).toLocaleString('pt-BR');
@@ -42,8 +50,58 @@ function baixar(a: Atendimento) {
   );
 }
 
-function Painel({ me, sair }: { me: Me; sair: () => void }) {
+function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConfig: () => void }) {
+  const [menuUsuario, setMenuUsuario] = useState(false);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [menuMovel, setMenuMovel] = useState(false);
+  const [menuTopo, setMenuTopo] = useState(false);
+  useEffect(() => {
+    if (!menuTopo) return;
+    const fecha = (e: Event) => { if (!(e.target as HTMLElement).closest('[data-menu-topo]')) setMenuTopo(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuTopo(false); };
+    document.addEventListener('mousedown', fecha); document.addEventListener('touchstart', fecha); document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', fecha); document.removeEventListener('touchstart', fecha); document.removeEventListener('keydown', esc); };
+  }, [menuTopo]);
+  const [buscaMenu, setBuscaMenu] = useState('');
+  const buscaRef = useRef<HTMLInputElement>(null);
+  const semAcento = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const [govAberto, setGovAberto] = useState(false);
+  const termo = semAcento(buscaMenu.trim());
+  // Sem busca: itens principais (o grupo Governança fica embaixo); com busca: todos os itens que combinam.
+  const itensMenu = NAV.filter(([k, l]) => (termo ? semAcento(l).includes(termo) : !GOV.includes(k)));
+  // Atalho "/" foca a busca do menu (fora de campos de texto).
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      if (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && !el.isContentEditable) { e.preventDefault(); setMenuMovel(true); buscaRef.current?.focus(); }
+    };
+    document.addEventListener('keydown', k);
+    return () => document.removeEventListener('keydown', k);
+  }, []);
+  // Celular: menu lateral vira gaveta (hambúrguer); fecha com Esc e trava a rolagem do fundo.
+  useEffect(() => {
+    if (!menuMovel) return;
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuMovel(false); };
+    document.addEventListener('keydown', esc);
+    const antes = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', esc); document.body.style.overflow = antes; };
+  }, [menuMovel]);
+  useEffect(() => {
+    if (!menuUsuario) return;
+    const fecha = (e: Event) => { if (!(e.target as HTMLElement).closest('[data-menu-usuario]')) setMenuUsuario(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuUsuario(false); };
+    document.addEventListener('mousedown', fecha); document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', fecha); document.removeEventListener('keydown', esc); };
+  }, [menuUsuario]);
   const [vista, setVista] = useState<Vista>('geral');
+  const [hidratado, setHidratado] = useState(false);
+  const [rk, setRk] = useState(0);
+  const [atualizando, setAtualizando] = useState(false);
+  // F5 permanece na mesma seção: a seção ativa fica no hash da URL.
+  useEffect(() => { const h = window.location.hash.slice(1) as Vista; if (NAV.some((n) => n[0] === h)) setVista(h); setHidratado(true); }, []);
+  useEffect(() => { if (GOV.includes(vista)) setGovAberto(true); }, [vista]);
+  useEffect(() => { if (hidratado) window.history.replaceState(null, '', `#${vista}`); }, [vista, hidratado]);
   const [f, setF] = useState<Filtros>(VAZIO);
   const [resumo, setResumo] = useState<Resumo>();
   const [cidades, setCidades] = useState<Cidade[]>([]);
@@ -52,11 +110,12 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
   const [lista, setLista] = useState<Atendimento[]>([]);
   const [loading, setLoading] = useState(true);
   const [aberta, setAberta] = useState<{ a: Atendimento; i: number } | null>(null);
-  const [aoVivo, setAoVivo] = useState(false);
   const [excl, setExcl] = useState<Excl[]>([]);
   const [confirmaId, setConfirmaId] = useState<number | null>(null);
   const [avisos, setAvisos] = useState<{ id: number; texto: string }[]>([]);
   const [confirmaLb, setConfirmaLb] = useState(false);
+  const [delAt, setDelAt] = useState<Atendimento | null>(null);
+  const [delBusy, setDelBusy] = useState(false);
   const [novos, setNovos] = useState<Set<number>>(new Set());
   const fRef = useRef(f);
   fRef.current = f;
@@ -97,6 +156,15 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
     } catch { /* mantém a foto na tela */ }
   }
 
+  /** Exclui em definitivo todas as fotos do atendimento (após confirmar no modal). */
+  async function excluirAtendimento() {
+    if (!delAt) return;
+    setDelBusy(true);
+    for (const ft of delAt.fotos) await excluirDefinitivo(ft.id);
+    setDelBusy(false);
+    setDelAt(null);
+  }
+
   async function restaurar(fotoId: number, atendimentoId: number) {
     try {
       await api(`/admin/fotos/${fotoId}/restaurar`, { method: 'POST' });
@@ -131,7 +199,7 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
     let t: ReturnType<typeof setTimeout>;
     const abrir = () => {
       es = new EventSource(`${API}/admin/eventos`, { withCredentials: true });
-      es.onopen = () => { tentativa = 0; setAoVivo(true); };
+      es.onopen = () => { tentativa = 0; };
       es.addEventListener('novos', (e) => {
         try { receber((JSON.parse((e as MessageEvent).data) as { ids: number[] }).ids); } catch { /* mensagem inválida */ }
       });
@@ -148,7 +216,6 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
       });
       es.onerror = async () => {
         es?.close();
-        setAoVivo(false);
         if (parar) return;
         await api('/auth/me').catch(() => null); // renova a sessão (refresh) se o acesso expirou
         t = setTimeout(abrir, Math.min(30_000, 1500 * 2 ** tentativa++));
@@ -176,20 +243,17 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
   const set = (k: keyof Filtros) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
   const irFotos = (parcial: Partial<Filtros>) => { setF({ ...VAZIO, ...parcial }); setVista('fotos'); };
 
-  const stats: [string, number | undefined, typeof House][] = [
-    ['Fotos recebidas', resumo?.fotos, ImageIcon], ['Pacientes', resumo?.pacientes, Users], ['Alunos', resumo?.alunos, GraduationCap], ['Cidades', resumo?.cidades, MapPin],
-  ];
 
   const tabela = (
     <>
-      <div className="flex items-center gap-3"><h2 className="text-[1.6rem] font-bold">Fotos dos Atendimentos</h2><span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.72rem] font-semibold ${aoVivo ? 'bg-[#e7f6ee] text-[#17794a]' : 'bg-sand text-ink/50'}`} title={aoVivo ? 'Atualização em tempo real ativa' : 'Reconectando…'}><span className={`h-2 w-2 rounded-full ${aoVivo ? 'animate-pulse bg-[#22a35a]' : 'bg-ink/30'}`} />{aoVivo ? 'Ao vivo' : 'Offline'}</span></div>
-      <div className="card mt-3 grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="flex items-center gap-3"><Titulo icone={ImageIcon}>Fotos dos Atendimentos</Titulo><button type="button" onClick={() => setFiltrosAbertos((v) => !v)} aria-expanded={filtrosAbertos} className="ml-auto inline-flex min-h-[38px] items-center gap-2 rounded-lg border border-line bg-white px-3.5 text-[0.82rem] font-semibold text-ink/80 transition hover:bg-ivory"><SlidersHorizontal size={16} />Filtros{Object.values(f).filter(Boolean).length > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-gold-600 px-1.5 text-[0.68rem] font-bold text-white">{Object.values(f).filter(Boolean).length}</span>}<ChevronDown size={15} className={`transition ${filtrosAbertos ? 'rotate-180' : ''}`} /></button></div>
+      {filtrosAbertos && <div className="card fade-in mt-3 grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
         <label className="text-[0.78rem] font-semibold text-ink/70">Cidade
           <select value={f.cidade} onChange={set('cidade')} className="field-plain mt-1"><option value="">Todas</option>{cidades.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select>
         </label>
-        <label className="text-[0.78rem] font-semibold text-ink/70">Aluno
-          <select value={f.aluno_id} onChange={set('aluno_id')} className="field-plain mt-1"><option value="">Todos</option>{alunos.map((a) => <option key={a.id} value={a.id}>{nomeLimpo(a.nome)}{a.matricula ? ` (${a.matricula})` : ''}</option>)}</select>
-        </label>
+        <div className="text-[0.78rem] font-semibold text-ink/70">Aluno
+          <BuscaAluno valor={f.aluno_id} rotuloExterno={(() => { const a = alunos.find((x) => String(x.id) === f.aluno_id); return a ? `${nomeLimpo(a.nome)}${a.matricula ? ` (${a.matricula})` : ''}` : undefined; })()} onChange={(id) => setF((x) => ({ ...x, aluno_id: id }))} />
+        </div>
         <label className="text-[0.78rem] font-semibold text-ink/70">Paciente
           <select value={f.q} onChange={set('q')} className="field-plain mt-1"><option value="">Todos</option>{pacientes.map((p) => <option key={p.identificador} value={p.identificador}>{p.identificador}</option>)}</select>
         </label>
@@ -199,21 +263,21 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
             <input type="date" aria-label="Até" value={f.ate} onChange={set('ate')} className="field-plain min-w-0 flex-1 !px-2" />
           </div>
         </div>
-      </div>
+      </div>}
 
       <div className="card mt-4 overflow-hidden !p-0">
-      <div className="hidden grid-cols-[130px_90px_1.3fr_1fr_100px_auto] items-center gap-4 border-b border-line bg-[#f3efe7] px-4 py-3 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-ink/70 lg:grid">
-        <span>Prévia</span><span>Paciente</span><span>Aluno (Matrícula)</span><span>Cidade</span><span>Data</span><span className="text-right">Ações</span>
+      <div className="hidden grid-cols-[130px_90px_1.3fr_1fr_100px_auto_70px] items-center gap-4 border-b border-line bg-[#f3efe7] px-4 py-3 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-ink/70 lg:grid">
+        <span>Prévia</span><span>Paciente</span><span>Aluno (Matrícula)</span><span>Cidade</span><span>Data</span><span className="text-right">Ações</span><span className="text-center">Excluir</span>
       </div>
       {loading && lista.length === 0 && <div className="space-y-3 p-4" aria-hidden>{[0, 1, 2].map((i) => <div key={i} className="h-14 animate-pulse rounded-lg bg-sand" />)}</div>}
       {!loading && lista.length === 0 && <div className="px-4 py-12 text-center"><span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><ImageIcon size={22} /></span><p className="mt-3 font-semibold">Nenhum atendimento encontrado</p><p className="text-[0.85rem] text-ink/55">Ajuste os filtros para ampliar a busca.</p></div>}
       <ul className={loading ? 'opacity-60 transition' : 'transition'}>
         {lista.map((a) => (
-          <li key={a.id} className={`${novos.has(a.id) ? 'novo-envio ' : ''}grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 border-b border-line px-4 py-3 transition last:border-b-0 hover:bg-ivory lg:grid-cols-[130px_90px_1.3fr_1fr_100px_auto]`}>
-            <button type="button" onClick={() => setAberta({ a, i: 0 })} aria-label="Visualizar fotos" className="flex overflow-hidden rounded-lg bg-sand">
+          <li key={a.id} className={`${novos.has(a.id) ? 'novo-envio ' : ''}grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 border-b border-line px-4 py-3 transition last:border-b-0 hover:bg-ivory lg:grid-cols-[130px_90px_1.3fr_1fr_100px_auto_70px]`}>
+            <button type="button" onClick={() => setAberta({ a, i: 0 })} aria-label="Visualizar fotos" className="flex w-[130px] overflow-hidden rounded-lg bg-sand">
               {a.fotos.slice(0, 2).map((p) => (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img key={p.id} src={fotoUrl(p.id, true)} alt="" loading="lazy" title={p.oculta ? 'Excluída pelo aluno' : undefined} className={`h-14 w-14 object-cover lg:h-[52px] lg:w-[52px] ${p.oculta ? 'opacity-40 grayscale' : ''}`} />
+                <img key={p.id} src={fotoUrl(p.id, true)} alt="" loading="lazy" className="h-14 min-w-0 flex-1 object-cover lg:h-[52px]" />
               ))}
             </button>
             <div className="contents lg:contents">
@@ -225,6 +289,9 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
                 <button type="button" onClick={() => setAberta({ a, i: 0 })} className="btn btn-line !min-h-[36px] !gap-1.5 !rounded-lg !px-3 !text-[0.78rem]"><Eye size={16} />Visualizar</button>
                 <button type="button" onClick={() => baixar(a)} className="btn btn-gold !min-h-[36px] !gap-1.5 !rounded-lg !px-3 !text-[0.78rem]"><Download size={16} />Baixar</button>
               </div>
+              <div className="col-span-2 flex lg:col-span-1 lg:justify-center">
+                <button type="button" onClick={() => setDelAt(a)} aria-label="Excluir fotos do atendimento" title="Excluir" className="grid h-9 w-9 place-items-center rounded-lg border border-[#b3261e]/40 text-[#b3261e] transition hover:bg-[#fdf0ee]"><Trash2 size={16} /></button>
+              </div>
             </div>
           </li>
         ))}
@@ -233,61 +300,137 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
     </>
   );
 
+  /** Recarrega os dados da seção aberta, sem recarregar a página. */
+  function atualizar() {
+    setAtualizando(true);
+    setRk((n) => n + 1);
+    atualizarResumo();
+    api<Cidade[]>('/admin/cidades').then(setCidades).catch(() => null);
+    api<Aluno[]>('/admin/alunos').then(setAlunos).catch(() => null);
+    api<Paciente[]>('/admin/pacientes').then(setPacientes).catch(() => null);
+    carregarExcl();
+    Promise.resolve(buscar(f)).finally(() => setTimeout(() => setAtualizando(false), 500));
+  }
+
   const Cab = ({ t, s }: { t: string; s: string }) => (
     <div className="flex items-start justify-between gap-4">
-      <div><h1 className="text-[2rem] font-bold leading-tight sm:text-[2.4rem]">{t}</h1><p className="text-[0.88rem] text-ink/65">{s}</p></div>
+      <div><Titulo nivel={1} icone={NAV.find((n) => n[0] === vista)![2]}>{t}</Titulo><p className="mt-1.5 pl-[60px] text-[0.88rem] text-ink/65">{s}</p></div>
       <div className="flex shrink-0 items-center gap-3">
-        <Bell size={22} className="text-ink/80" aria-hidden />
-        <span title={me.nome} className="grid h-11 w-11 place-items-center rounded-full font-bold text-white" style={{ background: 'linear-gradient(180deg,#d9b655,#a67c26)' }}>{me.nome.charAt(0)}</span>
+        <button type="button" onClick={atualizar} disabled={atualizando} aria-label="Atualizar" title="Atualizar" className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-line bg-white px-3.5 text-[0.82rem] font-semibold text-ink/80 transition hover:bg-ivory disabled:opacity-70"><RefreshCw size={16} className={atualizando ? 'animate-spin' : ''} /><span className="hidden sm:inline">Atualizar</span></button>
+        <Bell size={22} className="hidden text-ink/80 lg:block" aria-hidden />
       </div>
     </div>
   );
 
+  const botaoNav = (k: Vista, l: string, Icon: typeof House, i: number, sub = false) => {
+    const ativo = vista === k;
+    return (
+      <button key={k} type="button" onClick={() => { if (k === 'fotos') setF(VAZIO); setVista(k); setMenuMovel(false); setBuscaMenu(''); }} aria-current={ativo ? 'page' : undefined}
+        className={`nav-item flex shrink-0 items-center rounded-xl text-left font-medium transition ${sub ? 'gap-2.5 whitespace-nowrap px-2.5 py-2.5 text-[0.88rem]' : 'gap-3 px-4 py-3 text-[0.92rem]'} ${ativo ? 'text-white shadow-[0_8px_18px_-10px_rgba(0,0,0,.8)]' : 'text-white/80 hover:bg-white/5'}`}
+        style={{ '--d': `${120 + i * 70}ms`, ...(ativo ? { background: 'linear-gradient(180deg,#c9a24a,#a67c26)' } : {}) } as React.CSSProperties}>
+        <Icon size={sub ? 18 : 20} strokeWidth={1.7} />{l}
+        {k === 'exclusoes' && !!resumo?.ocultas && <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-[#b3261e] px-1.5 text-[0.68rem] font-bold text-white">{resumo.ocultas}</span>}
+      </button>
+    );
+  };
+
   return (
     <div className="min-h-dvh lg:flex">
-      <aside className="flex flex-col bg-side text-white lg:sticky lg:top-0 lg:h-dvh lg:w-[240px] lg:shrink-0">
-        <div className="flex items-center justify-between px-5 py-4 lg:block lg:px-6 lg:py-7">
-          <Wordmark light />
-          <button type="button" onClick={sair} aria-label="Sair" className="grid h-10 w-10 place-items-center rounded-full text-white/80 hover:bg-white/10 lg:hidden"><LogOut size={20} /></button>
+      <header className="sticky top-0 z-40 flex items-center justify-between bg-side px-4 py-3 text-white lg:hidden">
+        <button type="button" onClick={() => setMenuMovel(true)} aria-label="Abrir menu" aria-expanded={menuMovel} className="grid h-10 w-10 place-items-center rounded-lg hover:bg-white/10"><Menu size={24} /></button>
+        <button type="button" onClick={() => setVista('geral')} aria-label="Ir para a tela inicial" className="select-none"><Wordmark light /></button>
+        <div data-menu-topo className="relative">
+          <button type="button" onClick={() => setMenuTopo((v) => !v)} aria-haspopup="menu" aria-expanded={menuTopo} aria-label="Menu do usuário" className="block rounded-full">
+            {me.foto_url ? <Avatar foto={me.foto_url} size={36} semBorda /> : <span className="grid h-9 w-9 place-items-center rounded-full text-[0.9rem] font-bold" style={{ background: 'linear-gradient(180deg,#d9b655,#a67c26)' }}>{me.nome.charAt(0)}</span>}
+          </button>
+          {menuTopo && (
+            <div role="menu" className="pop absolute right-0 top-full z-50 mt-2.5 w-[230px] overflow-hidden rounded-xl bg-white py-1.5 text-ink shadow-[0_18px_40px_-12px_rgba(0,0,0,.55)]">
+              <div className="border-b border-line px-4 pb-2.5 pt-2"><p className="truncate text-[0.9rem] font-semibold">{nomeLimpo(me.nome)}</p><p className="truncate text-[0.72rem] text-ink/55">{me.email}</p></div>
+              <button type="button" role="menuitem" onClick={() => { setMenuTopo(false); abrirConfig(); }} className="flex w-full items-center gap-3 px-4 py-3 text-left text-[0.92rem] font-medium transition hover:bg-ivory"><Settings size={18} className="text-gold-600" />Configurações</button>
+              <button type="button" role="menuitem" onClick={sair} className="flex w-full items-center gap-3 px-4 py-3 text-left text-[0.92rem] font-medium transition hover:bg-ivory"><LogOut size={18} className="text-gold-600" />Sair</button>
+            </div>
+          )}
         </div>
-        <nav aria-label="Principal" className="flex gap-2 overflow-x-auto px-4 pb-4 lg:flex-1 lg:flex-col lg:gap-1.5 lg:overflow-visible lg:px-4 lg:pb-0">
-          {NAV.map(([k, l, Icon]) => {
-            const ativo = vista === k;
-            return (
-              <button key={k} type="button" onClick={() => { if (k === 'fotos') setF(VAZIO); setVista(k); }} aria-current={ativo ? 'page' : undefined}
-                className={`flex shrink-0 items-center gap-3 rounded-xl px-4 py-3 text-[0.92rem] font-medium transition ${ativo ? 'text-white shadow-[0_8px_18px_-10px_rgba(0,0,0,.8)]' : 'text-white/80 hover:bg-white/5'}`}
-                style={ativo ? { background: 'linear-gradient(180deg,#c9a24a,#a67c26)' } : undefined}>
-                <Icon size={20} strokeWidth={1.7} />{l}
-                {k === 'exclusoes' && !!resumo?.ocultas && <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-[#b3261e] px-1.5 text-[0.68rem] font-bold text-white">{resumo.ocultas}</span>}
-              </button>
-            );
-          })}
+      </header>
+      {menuMovel && <div className="fade-in fixed inset-0 z-40 bg-black/55 lg:hidden" onClick={() => setMenuMovel(false)} aria-hidden />}
+      <aside aria-label="Menu lateral" className={`fixed inset-y-0 left-0 z-50 flex w-[290px] max-w-[85vw] flex-col bg-side text-white shadow-2xl transition-[transform,visibility] duration-300 ease-out lg:sticky lg:top-0 lg:z-auto lg:h-dvh lg:w-[256px] lg:max-w-none lg:shrink-0 lg:translate-x-0 lg:shadow-none ${menuMovel ? 'translate-x-0' : 'max-lg:invisible max-lg:-translate-x-full'}`}>
+        <div className="flex items-center justify-between px-5 py-5 lg:block lg:px-6 lg:py-7">
+          <button type="button" onClick={() => { setVista('geral'); setMenuMovel(false); }} aria-label="Ir para a tela inicial" className="select-none text-left"><Wordmark light /></button>
+          <button type="button" onClick={() => setMenuMovel(false)} aria-label="Fechar menu" className="grid h-10 w-10 place-items-center rounded-full text-white/80 hover:bg-white/10 lg:hidden"><X size={22} /></button>
+        </div>
+        <div className="relative px-4 pb-3">
+          <Search size={17} className="pointer-events-none absolute left-7 top-1/2 -translate-y-[calc(50%+6px)] text-white/55" aria-hidden />
+          <input ref={buscaRef} value={buscaMenu} onChange={(e) => setBuscaMenu(e.target.value)} aria-label="Buscar no menu" placeholder="Buscar no menu..." autoComplete="off"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') { setBuscaMenu(''); e.currentTarget.blur(); }
+              if (e.key === 'Enter' && itensMenu[0]) { const k = itensMenu[0][0]; if (k === 'fotos') setF(VAZIO); setVista(k); setMenuMovel(false); setBuscaMenu(''); e.currentTarget.blur(); }
+            }}
+            className="w-full rounded-xl border border-white/15 bg-white/[0.06] py-2.5 pl-10 pr-10 text-[0.88rem] text-white outline-none transition placeholder:text-white/50 focus:border-[#c9a24a] focus:bg-white/10" />
+          {buscaMenu ? <button type="button" onClick={() => { setBuscaMenu(''); buscaRef.current?.focus(); }} aria-label="Limpar busca" className="absolute right-7 top-1/2 -translate-y-[calc(50%+6px)] text-white/60 hover:text-white"><X size={15} /></button>
+            : <kbd className="pointer-events-none absolute right-7 top-1/2 hidden -translate-y-[calc(50%+6px)] rounded-md border border-white/20 px-1.5 text-[0.7rem] text-white/55 lg:block">/</kbd>}
+        </div>
+        <nav aria-label="Principal" className="scroll-fino flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-4 pb-3">
+          {itensMenu.length === 0 && <p className="px-4 py-3 text-[0.85rem] text-white/55">Nenhum item encontrado.</p>}
+          {itensMenu.map(([k, l, Icon], i) => botaoNav(k, l, Icon, i))}
         </nav>
-        <div className="hidden items-center gap-3 border-t border-white/10 px-5 py-5 lg:flex">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full font-bold" style={{ background: 'linear-gradient(180deg,#d9b655,#a67c26)' }}>{me.nome.charAt(0)}</span>
-          <div className="min-w-0 flex-1 leading-tight"><p className="truncate text-[0.82rem] font-semibold">Administrador</p><p className="truncate text-[0.65rem] text-white/60">{me.email}</p></div>
-          <button type="button" onClick={sair} aria-label="Sair" title="Sair" className="grid h-9 w-9 place-items-center rounded-full text-white/80 hover:bg-white/10"><LogOut size={19} /></button>
+        {!buscaMenu.trim() && (
+          <div className="shrink-0 px-4 pb-2 pt-1">
+            <button type="button" onClick={() => setGovAberto((v) => !v)} aria-expanded={govAberto} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-[0.92rem] font-semibold text-white/75 transition hover:bg-white/5 hover:text-white">
+              <ShieldCheck size={20} strokeWidth={1.7} />Governança
+              {!govAberto && !!resumo?.ocultas && <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-[#b3261e] px-1.5 text-[0.68rem] font-bold text-white">{resumo.ocultas}</span>}
+              <ChevronDown size={16} className={`${!govAberto && resumo?.ocultas ? '' : 'ml-auto'} transition ${govAberto ? '' : 'rotate-180'}`} />
+            </button>
+            {govAberto && (
+              <div className="fade-in ml-5 mt-1 flex flex-col gap-1 border-l border-white/15 pl-2">
+                {NAV.filter(([k]) => GOV.includes(k)).map(([k, l, Icon], i) => botaoNav(k, l, Icon, i, true))}
+              </div>
+            )}
+          </div>
+        )}
+        <div data-menu-usuario className="relative shrink-0 border-t border-white/10 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          {menuUsuario && (
+            <div role="menu" className="pop absolute inset-x-3 bottom-full mb-2 overflow-hidden rounded-xl bg-white py-1.5 text-ink shadow-[0_18px_40px_-12px_rgba(0,0,0,.55)]">
+              <button type="button" role="menuitem" onClick={() => { setMenuUsuario(false); setMenuMovel(false); abrirConfig(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-[0.9rem] font-medium transition hover:bg-ivory"><Settings size={18} className="text-gold-600" />Configurações</button>
+              <button type="button" role="menuitem" onClick={sair} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-[0.9rem] font-medium transition hover:bg-ivory"><LogOut size={18} className="text-gold-600" />Sair</button>
+            </div>
+          )}
+          <button type="button" onClick={() => setMenuUsuario((v) => !v)} aria-haspopup="menu" aria-expanded={menuUsuario} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-white/5">
+            {me.foto_url ? <Avatar foto={me.foto_url} size={40} semBorda /> : <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full font-bold" style={{ background: 'linear-gradient(180deg,#d9b655,#a67c26)' }}>{me.nome.charAt(0)}</span>}
+            <span className="min-w-0 flex-1 leading-tight"><span className="block truncate text-[0.85rem] font-semibold">{nomeLimpo(me.nome)}</span><span className="block truncate text-[0.68rem] text-white/60">{me.email}</span></span>
+            <ChevronsUpDown size={16} className="shrink-0 text-white/60" aria-hidden />
+          </button>
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 bg-[#fcfbf8] px-5 py-6 sm:px-8 lg:py-8">
+      <main className="min-w-0 flex-1 bg-page px-5 py-6 sm:px-8 lg:py-8">
         <Cab t={vista === 'geral' ? 'Painel do Administrador' : NAV.find((n) => n[0] === vista)![1]} s="Gestão centralizada das fotografias clínicas" />
 
-        {vista === 'geral' && (
-          <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {stats.map(([l, v, Icon]) => (
-              <div key={l} className="card flex items-center gap-3 p-4 transition hover:-translate-y-0.5 hover:shadow-soft">
-                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><Icon size={22} strokeWidth={1.6} /></span>
-                <div className="leading-tight"><p className="text-[1.3rem] font-bold">{num(v)}</p><p className="text-[0.78rem] text-ink/65">{l}</p></div>
-              </div>
-            ))}
-          </div>
+        {vista === 'geral' && <VisaoGeral key={rk} recentes={lista} irPara={(v) => setVista(v)} abrir={(a) => setAberta({ a, i: 0 })} />}
+
+        <div className={vista === 'fotos' ? 'mt-7' : 'hidden'}>{tabela}</div>
+        {vista === 'fotos' && lista.some((a) => a.fotos.length) && (
+          <section className="mt-8" aria-label="Galeria de fotos">
+            <Titulo nivel={3} icone={LayoutGrid}>Galeria <span className="text-[0.85rem] font-medium text-ink/55">· {lista.reduce((n, a) => n + a.fotos.length, 0)} foto(s)</span></Titulo>
+            <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {lista.flatMap((a) => a.fotos.map((p, i) => (
+                <li key={p.id}>
+                  <button type="button" onClick={() => setAberta({ a, i })} aria-label={`Ver foto de ${a.identificador_paciente}`} className="group relative block aspect-square w-full overflow-hidden rounded-xl bg-sand shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={fotoUrl(p.id, true)} alt="" loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                    <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2.5 pb-2 pt-6 text-left text-white">
+                      <span className="block truncate text-[0.78rem] font-semibold">{a.identificador_paciente}</span>
+                      <span className="block truncate text-[0.68rem] text-white/80">{nomeLimpo(a.aluno.nome)} · {fmtDia(p.created_at)}</span>
+                    </span>
+                  </button>
+                </li>
+              )))}
+            </ul>
+          </section>
         )}
 
-        <div className={vista === 'geral' || vista === 'fotos' ? 'mt-7' : 'hidden'}>{tabela}</div>
-
-        {vista === 'armazenamento' && <Armazenamento />}
-        {vista === 'acessos' && <ControleAcesso meuId={me.id} />}
+        {vista === 'armazenamento' && <Armazenamento key={rk} />}
+        {vista === 'aplicativo' && <Aplicativo key={rk} />}
+        {vista === 'acessos' && <ControleAcesso key={rk} meuId={me.id} />}
         {vista === 'exclusoes' && (
           <div className="mt-6">
             <p className="max-w-[640px] text-[0.88rem] text-ink/65">Fotos que os alunos excluíram. Elas ficam ocultas para o aluno e continuam guardadas até você decidir: restaurar ou excluir em definitivo (isso remove o arquivo do armazenamento).</p>
@@ -363,6 +506,20 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
         ))}
       </div>
 
+      {delAt && (
+        <div role="dialog" aria-modal="true" aria-label="Confirmar exclusão" className="fixed inset-0 z-[110] grid place-items-center bg-ink/60 p-4" onClick={() => !delBusy && setDelAt(null)}>
+          <div className="pop w-full max-w-[400px] rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <span className="grid h-11 w-11 place-items-center rounded-full bg-[#fdf0ee] text-[#b3261e]"><Trash2 size={20} /></span>
+            <h3 className="mt-3 text-[1.15rem] font-bold">Tem certeza que deseja excluir?</h3>
+            <p className="mt-1 text-[0.88rem] text-ink/65">{delAt.fotos.length} foto{delAt.fotos.length > 1 ? 's' : ''} do paciente <b>{delAt.identificador_paciente}</b> serão removidas em definitivo. Essa ação não pode ser desfeita.</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" disabled={delBusy} onClick={() => setDelAt(null)} className="btn btn-line !min-h-[40px] !rounded-lg !px-4 !text-[0.85rem]">Cancelar</button>
+              <button type="button" disabled={delBusy} onClick={excluirAtendimento} className="inline-flex min-h-[40px] items-center rounded-lg bg-[#b3261e] px-4 text-[0.85rem] font-semibold text-white disabled:opacity-60">{delBusy ? 'Excluindo…' : 'Sim, excluir'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {aberta && (
         <div role="dialog" aria-modal="true" aria-label="Foto ampliada" className="fixed inset-0 z-[100] flex flex-col bg-ink/95" onClick={() => setAberta(null)}>
           <div className="flex items-center justify-between gap-4 p-4 text-white" onClick={(e) => e.stopPropagation()}>
@@ -382,7 +539,8 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
               <button type="button" onClick={() => { setAberta(null); setConfirmaLb(false); }} aria-label="Fechar" className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-2xl">×</button>
             </div>
           </div>
-          <div className="relative flex min-h-0 flex-1 items-center justify-center px-2 pb-4">
+          <div className="flex min-h-0 flex-1 flex-col lg:flex-row" onClick={(e) => e.stopPropagation()}>
+          <div className="relative flex min-h-0 flex-1 items-center justify-center px-2 pb-4" onClick={() => setAberta(null)}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={fotoUrl(aberta.a.fotos[aberta.i].id)} alt="" onClick={(e) => e.stopPropagation()} className="max-h-full max-w-full rounded-lg object-contain" />
             {aberta.a.fotos.length > 1 && (
@@ -392,14 +550,49 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
               </>
             )}
           </div>
+          <DetalhesFoto a={aberta.a} i={aberta.i} />
+          </div>
         </div>
       )}
     </div>
   );
 }
 
+const tamanho = (b?: number) => (!b ? '-' : b < 1048576 ? `${Math.round(b / 1024)} KB` : `${(b / 1048576).toFixed(1)} MB`);
+
+/** Painel de informações da foto para o gestor: quem enviou, quando, de onde e de qual aparelho. */
+function DetalhesFoto({ a, i }: { a: Atendimento; i: number }) {
+  const f = a.fotos[i];
+  const aparelho = f.dispositivo ? `${f.dispositivo} · ${f.so} · ${f.navegador}` : 'Não registrado';
+  const linhas: [string, string][] = [
+    ['Paciente', a.identificador_paciente],
+    ['Enviada por', nomeLimpo(a.aluno.nome)],
+    ['Matrícula', a.aluno.matricula ?? 'Sem matrícula'],
+    ['E-mail', a.aluno.email ?? '-'],
+    ['Cidade', a.cidade],
+    ['Data e horário', fmtData(f.created_at)],
+    ['Dispositivo', aparelho],
+    ['Tamanho', tamanho(f.bytes)],
+    ['Dimensões', f.width && f.height ? `${f.width} × ${f.height} px` : '-'],
+    ['Foto', `${i + 1} de ${a.fotos.length} do atendimento #${a.id}`],
+    ['Situação', f.oculta ? 'Excluída pelo aluno' : 'Visível ao aluno'],
+  ];
+  return (
+    <aside className="max-h-[42vh] w-full shrink-0 overflow-y-auto bg-white p-5 text-ink lg:max-h-none lg:w-[340px] lg:rounded-tl-2xl" aria-label="Informações da foto">
+      <h4 className="text-[1.05rem] font-bold">Informações da foto</h4>
+      <dl className="mt-3 divide-y divide-line">
+        {linhas.map(([k, v]) => (
+          <div key={k} className="py-2.5"><dt className="text-[0.72rem] font-semibold uppercase tracking-[0.06em] text-ink/50">{k}</dt><dd className={`mt-0.5 break-words text-[0.9rem] font-medium ${k === 'Situação' && f.oculta ? 'text-[#b3261e]' : ''}`}>{v}</dd></div>
+        ))}
+      </dl>
+    </aside>
+  );
+}
+
 export default function AdminPage() {
-  const { me, sair } = useSession('ADMIN');
+  const { me, sair, recarregar } = useSession('ADMIN');
+  const [config, setConfig] = useState(false);
   if (!me) return <PageLoader />;
-  return <Painel me={me} sair={sair} />;
+  if (config) return <PerfilInicial modo="config" me={me} sair={sair} recarregar={recarregar} onVoltar={() => setConfig(false)} />;
+  return <Painel me={me} sair={sair} abrirConfig={() => setConfig(true)} />;
 }

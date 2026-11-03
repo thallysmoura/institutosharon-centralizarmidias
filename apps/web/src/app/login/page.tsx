@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Eye, EyeOff, Layers, Lock, Mail } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Emblema, Logo } from '@/components/Brand';
+import { ehToque } from '@/lib/pwa';
 import { entrarComGoogle } from '@/lib/firebase';
 import { msgLocalizacao, pedirLocalizacao } from '@/lib/geo';
 import Spinner from '@/components/Spinner';
@@ -20,7 +21,7 @@ const destaques: [string, string][] = [
 /** Medida do desktop: o layout de referência tem 1825x862 e escala com a janela (variável --u). */
 const u = (n: number) => `calc(var(--u) * ${n})`;
 const OURO = 'linear-gradient(180deg,#dcae3c 0%,#bf8a22 55%,#9e6f15 100%)';
-const CAMPO = 'h-[2.9em] w-full rounded-[0.85em] border border-[#e4d9c5] bg-white/90 pl-[3.1em] text-[1em] text-[#2b1c10] shadow-[inset_0_1px_2px_rgba(60,40,10,.05)] outline-none transition placeholder:text-[#6f665c] focus:border-[#c9a24a] focus:ring-4 focus:ring-[#c9a24a]/15';
+const CAMPO = 'h-[2.9em] w-full rounded-[0.85em] border border-[#e4d9c5] bg-white/90 pl-[3.1em] text-[1em] text-[#33240F] shadow-[inset_0_1px_2px_rgba(60,40,10,.05)] outline-none transition placeholder:text-[#6f665c] focus:border-[#c9a24a] focus:ring-4 focus:ring-[#c9a24a]/15';
 
 const msgGoogle = (code: string) =>
   ({
@@ -90,7 +91,7 @@ export default function Login() {
       e = localStorage.getItem(CHAVE_LEMBRAR);
       if (e) { setEmail(e); setLembrar(true); }
     } catch { /* armazenamento indisponível */ }
-    const t = setTimeout(() => document.querySelector<HTMLInputElement>(e ? 'input[type=password]' : 'input[type=email]')?.focus(), 150);
+    const t = ehToque() ? 0 : setTimeout(() => document.querySelector<HTMLInputElement>(e ? 'input[type=password]' : 'input[type=email]')?.focus(), 150);
     return () => clearTimeout(t);
   }, []);
 
@@ -148,7 +149,7 @@ export default function Login() {
   const formulario = (
     <>
       <div className="px-[0.5em] min-[1100px]:px-[0.72em]">
-                <h1 className="rise font-sans text-[3em] font-medium leading-[0.9] tracking-[-0.02em] text-[#2b1c10]" style={{ '--d': '140ms' } as React.CSSProperties}>
+                <h1 className="rise font-sans text-[3em] font-medium leading-[0.9] tracking-[-0.02em] text-[#33240F]" style={{ '--d': '140ms' } as React.CSSProperties}>
           Acesse o<br /><span className="font-bold italic" style={{ background: 'linear-gradient(180deg,#d6a431,#a8761a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>sistema</span>
         </h1>
               </div>
@@ -156,20 +157,20 @@ export default function Login() {
       {sucesso && <p role="status" className="rise mt-[1em] rounded-xl bg-[#e7f6ee] px-4 py-3 text-[0.9em] font-medium text-[#17794a]">{sucesso}</p>}
       <form onSubmit={entrar} noValidate className="rise mt-[1.07em]" style={{ '--d': '240ms' } as React.CSSProperties}>
         <div className="relative">
-          <Mail size="1.3em" strokeWidth={1.7} className="pointer-events-none absolute left-[1.05em] top-1/2 -translate-y-1/2 text-[#2b1c10]" aria-hidden />
-          <input type="email" autoFocus autoComplete="email" aria-label="E-mail" aria-invalid={!!errs.email} value={email} onChange={(e) => { setEmail(e.target.value); setErrs((v) => ({ ...v, email: undefined })); }} placeholder="E-mail" className={`${CAMPO} ${errs.email ? '!border-[#d9534f]' : ''}`} />
+          <Mail size="1.3em" strokeWidth={1.7} className="pointer-events-none absolute left-[1.05em] top-1/2 -translate-y-1/2 text-[#33240F]" aria-hidden />
+          <input type="email" autoFocus={!ehToque()} autoComplete="email" aria-label="E-mail" aria-invalid={!!errs.email} value={email} onChange={(e) => { setEmail(e.target.value); setErrs((v) => ({ ...v, email: undefined })); }} placeholder="E-mail" className={`${CAMPO} ${errs.email ? '!border-[#d9534f]' : ''}`} />
         </div>
         {errs.email && <p role="alert" className="mt-1.5 text-[0.82em] font-medium text-[#b3261e]">{errs.email}</p>}
         <div className="relative mt-[0.7em]">
-          <Lock size="1.3em" strokeWidth={1.7} className="pointer-events-none absolute left-[1.05em] top-1/2 -translate-y-1/2 text-[#2b1c10]" aria-hidden />
+          <Lock size="1.3em" strokeWidth={1.7} className="pointer-events-none absolute left-[1.05em] top-1/2 -translate-y-1/2 text-[#33240F]" aria-hidden />
           <input type={ver ? 'text' : 'password'} autoComplete="current-password" aria-label="Senha" aria-invalid={!!errs.senha} value={senha} onChange={(e) => { setSenha(e.target.value); setErrs((v) => ({ ...v, senha: undefined })); }} placeholder="Senha" className={`${CAMPO} pr-[3em] ${errs.senha ? '!border-[#d9534f]' : ''}`} />
-          <button type="button" onClick={() => setVer((v) => !v)} aria-label={ver ? 'Ocultar senha' : 'Mostrar senha'} className="absolute right-[0.7em] top-1/2 grid h-[2.2em] w-[2.2em] -translate-y-1/2 place-items-center text-[#2b1c10]">
+          <button type="button" onClick={() => setVer((v) => !v)} aria-label={ver ? 'Ocultar senha' : 'Mostrar senha'} className="absolute right-[0.7em] top-1/2 grid h-[2.2em] w-[2.2em] -translate-y-1/2 place-items-center text-[#33240F]">
             {ver ? <EyeOff size="1.3em" strokeWidth={1.7} /> : <Eye size="1.3em" strokeWidth={1.7} />}
           </button>
         </div>
         {errs.senha && <p role="alert" className="mt-1.5 text-[0.82em] font-medium text-[#b3261e]">{errs.senha}</p>}
-        <div className="mt-[0.95em] flex items-center justify-between gap-3">
-          <label className="flex cursor-pointer select-none items-center gap-[0.6em] whitespace-nowrap text-[0.95em] text-[#2b1c10]">
+        <div className="mt-[0.95em] flex flex-wrap items-center justify-between gap-x-3 gap-y-[0.6em]">
+          <label className="flex cursor-pointer select-none items-center gap-[0.6em] whitespace-nowrap text-[0.95em] text-[#33240F]">
             <input type="checkbox" checked={lembrar} onChange={(e) => setLembrar(e.target.checked)} className="check-gold !h-[1.25em] !w-[1.25em] !rounded-[0.3em]" />
             Mantenha-me conectado
           </label>
@@ -183,7 +184,7 @@ export default function Login() {
       <div className="rise my-[0.88em] flex items-center gap-[1em] text-[0.92em] text-[#4f453b]" style={{ '--d': '280ms' } as React.CSSProperties}>
         <span className="h-px flex-1 bg-[#e0d3ba]" />ou<span className="h-px flex-1 bg-[#e0d3ba]" />
       </div>
-      <button type="button" onClick={google} disabled={loading} className="rise flex h-[2.95em] w-full items-center justify-center gap-[0.8em] rounded-[0.75em] border border-[#e6dccb] bg-white text-[1em] font-medium text-[#2b1c10] shadow-[0_1px_2px_rgba(60,40,10,.04)] transition hover:border-[#c9a24a]/60 disabled:opacity-70" style={{ '--d': '300ms' } as React.CSSProperties}>
+      <button type="button" onClick={google} disabled={loading} className="rise flex h-[2.95em] w-full items-center justify-center gap-[0.8em] rounded-[0.75em] border border-[#e6dccb] bg-white text-[1em] font-medium text-[#33240F] shadow-[0_1px_2px_rgba(60,40,10,.04)] transition hover:border-[#c9a24a]/60 disabled:opacity-70" style={{ '--d': '300ms' } as React.CSSProperties}>
         <svg viewBox="0 0 48 48" className="h-[1.45em] w-[1.45em]" aria-hidden>
           <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z" />
           <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17z" />

@@ -1,8 +1,8 @@
 /* Service worker do app Fotos Clínicas - Instituto Sharon.
-   Estratégia: rede primeiro para tudo do mesmo domínio, com cache como reserva (funciona offline após a 1ª visita).
+   Sem cache de páginas ou dados: tudo vem da rede; só /offline.html fica guardado.
    Nunca intercepta a API nem as fotos (outro domínio/porta, dados privados de pacientes). */
-const CACHE = 'sharon-fotos-v1';
-const SHELL = ['/', '/login', '/offline.html', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/img/emblem.png'];
+const CACHE = 'sharon-fotos-v3';
+const SHELL = ['/offline.html', '/icons/icon-192.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL).catch(() => null)).then(() => self.skipWaiting()));
@@ -18,22 +18,13 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (url.origin !== self.location.origin) return; // API e fotos ficam fora do cache
-
+  if (url.origin !== self.location.origin) return; // API e fotos ficam fora
+  if (url.pathname.startsWith('/backend/') || url.pathname.startsWith('/_next/webpack-hmr')) return;
+  // Sem cache: sempre a rede. Só a página offline é servida quando não há conexão.
   e.respondWith(
-    fetch(req)
-      .then((res) => {
-        if (res.ok && res.type === 'basic') {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy));
-        }
-        return res;
-      })
-      .catch(async () => {
-        const hit = await caches.match(req);
-        if (hit) return hit;
-        if (req.mode === 'navigate') return (await caches.match('/offline.html')) || Response.error();
-        return Response.error();
-      }),
+    fetch(req, { cache: 'no-store' }).catch(async () => {
+      if (req.mode === 'navigate') return (await caches.match('/offline.html')) || Response.error();
+      return Response.error();
+    }),
   );
 });
