@@ -2,7 +2,7 @@ export const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 export type Me = { id: number; nome: string; email: string; role: 'ADMIN' | 'ALUNO'; matricula: string | null; cidade: string | null; foto_url: string | null; primeiro_acesso: boolean };
 export type Cidade = { id: number; nome: string; lat: number | null; lng: number | null };
-export type Foto = { id: number; created_at: string };
+export type Foto = { id: number; created_at: string; oculta?: boolean };
 export type Atendimento = {
   id: number;
   identificador_paciente: string;

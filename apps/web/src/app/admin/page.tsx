@@ -1,15 +1,16 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
-import { Bell, Download, Eye, GraduationCap, HardDrive, House, ImageIcon, LogOut, MapPin, ShieldCheck, Users } from 'lucide-react';
-import { api, Atendimento, fotoUrl, fmtData, Me } from '@/lib/api';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Bell, Download, Eye, GraduationCap, HardDrive, RotateCcw, Trash2, House, ImageIcon, LogOut, MapPin, ShieldCheck, Users } from 'lucide-react';
+import { API, api, Atendimento, fotoUrl, fmtData, Me } from '@/lib/api';
 import { fmtDia, nomeLimpo, useSession } from '@/lib/session';
 import { Wordmark } from '@/components/Brand';
 import Armazenamento from '@/components/Armazenamento';
 import PageLoader from '@/components/PageLoader';
 import ControleAcesso from '@/components/ControleAcesso';
 
-type Vista = 'geral' | 'fotos' | 'alunos' | 'pacientes' | 'cidades' | 'armazenamento' | 'acessos';
-type Resumo = { fotos: number; pacientes: number; alunos: number; cidades: number; pendentes: number };
+type Vista = 'geral' | 'fotos' | 'alunos' | 'pacientes' | 'cidades' | 'armazenamento' | 'acessos' | 'exclusoes';
+type Excl = { id: number; atendimento_id: number; oculta_em: string; identificador_paciente: string; cidade: string; aluno: { id: number; nome: string; matricula: string | null } };
+type Resumo = { fotos: number; pacientes: number; alunos: number; cidades: number; pendentes: number; ocultas?: number };
 type Cidade = { id: number; nome: string; alunos: number; fotos: number };
 type Aluno = { id: number; nome: string; matricula: string | null; cidade: string | null; atendimentos: number; fotos: number };
 type Paciente = { identificador: string; alunos: number; fotos: number; ultima: string };
@@ -22,6 +23,7 @@ const NAV: [Vista, string, typeof House][] = [
   ['alunos', 'Alunos', GraduationCap],
   ['pacientes', 'Pacientes', Users],
   ['cidades', 'Cidades', MapPin],
+  ['exclusoes', 'Exclusões', Trash2],
   ['acessos', 'Controle de Acesso', ShieldCheck],
   ['armazenamento', 'Armazenamento', HardDrive],
 ];
@@ -50,6 +52,15 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
   const [lista, setLista] = useState<Atendimento[]>([]);
   const [loading, setLoading] = useState(true);
   const [aberta, setAberta] = useState<{ a: Atendimento; i: number } | null>(null);
+  const [aoVivo, setAoVivo] = useState(false);
+  const [excl, setExcl] = useState<Excl[]>([]);
+  const [confirmaId, setConfirmaId] = useState<number | null>(null);
+  const [avisos, setAvisos] = useState<{ id: number; texto: string }[]>([]);
+  const [confirmaLb, setConfirmaLb] = useState(false);
+  const [novos, setNovos] = useState<Set<number>>(new Set());
+  const fRef = useRef(f);
+  fRef.current = f;
+  const tResumo = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     api<Resumo>('/admin/resumo').then(setResumo).catch(() => null);
@@ -64,6 +75,90 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
     try { setLista(await api<Atendimento[]>(`/admin/atendimentos?${qs}`)); } finally { setLoading(false); }
   }, []);
   useEffect(() => { const t = setTimeout(() => buscar(f), 200); return () => clearTimeout(t); }, [f, buscar]);
+
+  const carregarExcl = useCallback(() => api<Excl[]>('/admin/exclusoes').then(setExcl).catch(() => null), []);
+  const atualizarResumo = useCallback(() => api<Resumo>('/admin/resumo').then(setResumo).catch(() => null), []);
+  useEffect(() => { if (vista === 'exclusoes') carregarExcl(); }, [vista, carregarExcl]);
+
+  /** Exclusão definitiva (administrador): remove do armazenamento e dos painéis. */
+  async function excluirDefinitivo(fotoId: number) {
+    try {
+      await api(`/admin/fotos/${fotoId}`, { method: 'DELETE' });
+      setExcl((l) => l.filter((x) => x.id !== fotoId));
+      setLista((l) => l.map((a) => ({ ...a, fotos: a.fotos.filter((ft) => ft.id !== fotoId) })).filter((a) => a.fotos.length));
+      setConfirmaId(null);
+      setConfirmaLb(false);
+      setAberta((ab) => {
+        if (!ab) return ab;
+        const resto = ab.a.fotos.filter((ft) => ft.id !== fotoId);
+        return resto.length ? { a: { ...ab.a, fotos: resto }, i: Math.min(ab.i, resto.length - 1) } : null;
+      });
+      atualizarResumo();
+    } catch { /* mantém a foto na tela */ }
+  }
+
+  async function restaurar(fotoId: number, atendimentoId: number) {
+    try {
+      await api(`/admin/fotos/${fotoId}/restaurar`, { method: 'POST' });
+      setExcl((l) => l.filter((x) => x.id !== fotoId));
+      atualizarResumo();
+      receber([atendimentoId]);
+    } catch { /* tenta de novo */ }
+  }
+
+  /** Tempo real: o servidor avisa os ids novos (SSE); busca só esses registros (já com os filtros ativos) e os coloca no topo. */
+  const receber = useCallback(async (ids: number[]) => {
+    if (!ids.length) return;
+    const qs = new URLSearchParams(Object.entries(fRef.current).filter(([, v]) => v));
+    qs.set('ids', ids.join(','));
+    try {
+      const novosItens = await api<Atendimento[]>(`/admin/atendimentos?${qs}`);
+      if (novosItens.length) {
+        const idsNovos = new Set(novosItens.map((x) => x.id));
+        setLista((l) => [...novosItens, ...l.filter((x) => !idsNovos.has(x.id))].sort((x, y) => +new Date(y.created_at) - +new Date(x.created_at)).slice(0, 200));
+        setNovos((n) => new Set([...n, ...idsNovos]));
+        setTimeout(() => setNovos((n) => { const c = new Set(n); idsNovos.forEach((i) => c.delete(i)); return c; }), 8000);
+      }
+    } catch { /* o próximo evento ou a busca manual recompõe a lista */ }
+    if (tResumo.current) clearTimeout(tResumo.current);
+    tResumo.current = setTimeout(() => api<Resumo>('/admin/resumo').then(setResumo).catch(() => null), 2500); // contadores: no máximo 1 consulta a cada 2,5 s
+  }, []);
+
+  useEffect(() => {
+    let es: EventSource | null = null;
+    let parar = false;
+    let tentativa = 0;
+    let t: ReturnType<typeof setTimeout>;
+    const abrir = () => {
+      es = new EventSource(`${API}/admin/eventos`, { withCredentials: true });
+      es.onopen = () => { tentativa = 0; setAoVivo(true); };
+      es.addEventListener('novos', (e) => {
+        try { receber((JSON.parse((e as MessageEvent).data) as { ids: number[] }).ids); } catch { /* mensagem inválida */ }
+      });
+      es.addEventListener('exclusao', (e) => {
+        try {
+          const d = JSON.parse((e as MessageEvent).data) as { foto_id: number; atendimento_id: number; paciente: string; aluno: { nome: string } };
+          const id = Date.now() + d.foto_id;
+          setAvisos((v) => [...v.slice(-3), { id, texto: `${nomeLimpo(d.aluno.nome)} excluiu uma foto do paciente ${d.paciente}` }]);
+          setTimeout(() => setAvisos((v) => v.filter((x) => x.id !== id)), 9000);
+          api<Resumo>('/admin/resumo').then(setResumo).catch(() => null);
+          api<Excl[]>('/admin/exclusoes').then(setExcl).catch(() => null);
+          receber([d.atendimento_id]);
+        } catch { /* mensagem inválida */ }
+      });
+      es.onerror = async () => {
+        es?.close();
+        setAoVivo(false);
+        if (parar) return;
+        await api('/auth/me').catch(() => null); // renova a sessão (refresh) se o acesso expirou
+        t = setTimeout(abrir, Math.min(30_000, 1500 * 2 ** tentativa++));
+      };
+    };
+    abrir();
+    const volta = () => { if (document.visibilityState === 'visible') buscar(fRef.current); }; // ao voltar para a aba, recompõe o que passou
+    document.addEventListener('visibilitychange', volta);
+    return () => { parar = true; es?.close(); clearTimeout(t); document.removeEventListener('visibilitychange', volta); };
+  }, [receber, buscar]);
 
   useEffect(() => {
     if (!aberta) return;
@@ -87,7 +182,7 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
 
   const tabela = (
     <>
-      <h2 className="text-[1.6rem] font-bold">Fotos dos Atendimentos</h2>
+      <div className="flex items-center gap-3"><h2 className="text-[1.6rem] font-bold">Fotos dos Atendimentos</h2><span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.72rem] font-semibold ${aoVivo ? 'bg-[#e7f6ee] text-[#17794a]' : 'bg-sand text-ink/50'}`} title={aoVivo ? 'Atualização em tempo real ativa' : 'Reconectando…'}><span className={`h-2 w-2 rounded-full ${aoVivo ? 'animate-pulse bg-[#22a35a]' : 'bg-ink/30'}`} />{aoVivo ? 'Ao vivo' : 'Offline'}</span></div>
       <div className="card mt-3 grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
         <label className="text-[0.78rem] font-semibold text-ink/70">Cidade
           <select value={f.cidade} onChange={set('cidade')} className="field-plain mt-1"><option value="">Todas</option>{cidades.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select>
@@ -114,11 +209,11 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
       {!loading && lista.length === 0 && <div className="px-4 py-12 text-center"><span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><ImageIcon size={22} /></span><p className="mt-3 font-semibold">Nenhum atendimento encontrado</p><p className="text-[0.85rem] text-ink/55">Ajuste os filtros para ampliar a busca.</p></div>}
       <ul className={loading ? 'opacity-60 transition' : 'transition'}>
         {lista.map((a) => (
-          <li key={a.id} className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 border-b border-line px-4 py-3 transition last:border-b-0 hover:bg-ivory lg:grid-cols-[130px_90px_1.3fr_1fr_100px_auto]">
+          <li key={a.id} className={`${novos.has(a.id) ? 'novo-envio ' : ''}grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 border-b border-line px-4 py-3 transition last:border-b-0 hover:bg-ivory lg:grid-cols-[130px_90px_1.3fr_1fr_100px_auto]`}>
             <button type="button" onClick={() => setAberta({ a, i: 0 })} aria-label="Visualizar fotos" className="flex overflow-hidden rounded-lg bg-sand">
               {a.fotos.slice(0, 2).map((p) => (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img key={p.id} src={fotoUrl(p.id, true)} alt="" loading="lazy" className="h-14 w-14 object-cover lg:h-[52px] lg:w-[52px]" />
+                <img key={p.id} src={fotoUrl(p.id, true)} alt="" loading="lazy" title={p.oculta ? 'Excluída pelo aluno' : undefined} className={`h-14 w-14 object-cover lg:h-[52px] lg:w-[52px] ${p.oculta ? 'opacity-40 grayscale' : ''}`} />
               ))}
             </button>
             <div className="contents lg:contents">
@@ -163,6 +258,7 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
                 className={`flex shrink-0 items-center gap-3 rounded-xl px-4 py-3 text-[0.92rem] font-medium transition ${ativo ? 'text-white shadow-[0_8px_18px_-10px_rgba(0,0,0,.8)]' : 'text-white/80 hover:bg-white/5'}`}
                 style={ativo ? { background: 'linear-gradient(180deg,#c9a24a,#a67c26)' } : undefined}>
                 <Icon size={20} strokeWidth={1.7} />{l}
+                {k === 'exclusoes' && !!resumo?.ocultas && <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-[#b3261e] px-1.5 text-[0.68rem] font-bold text-white">{resumo.ocultas}</span>}
               </button>
             );
           })}
@@ -192,6 +288,39 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
 
         {vista === 'armazenamento' && <Armazenamento />}
         {vista === 'acessos' && <ControleAcesso meuId={me.id} />}
+        {vista === 'exclusoes' && (
+          <div className="mt-6">
+            <p className="max-w-[640px] text-[0.88rem] text-ink/65">Fotos que os alunos excluíram. Elas ficam ocultas para o aluno e continuam guardadas até você decidir: restaurar ou excluir em definitivo (isso remove o arquivo do armazenamento).</p>
+            {excl.length === 0 ? (
+              <div className="card mt-4 px-4 py-12 text-center"><span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><Trash2 size={22} /></span><p className="mt-3 font-semibold">Nenhuma exclusão pendente</p></div>
+            ) : (
+              <ul className="card mt-4 divide-y divide-line overflow-hidden">
+                {excl.map((x) => (
+                  <li key={x.id} className="novo-envio flex flex-wrap items-center gap-3 px-4 py-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={fotoUrl(x.id, true)} alt="" loading="lazy" className="h-14 w-14 shrink-0 rounded-lg object-cover ring-1 ring-line" />
+                    <div className="min-w-0 flex-1 leading-tight">
+                      <p className="truncate font-bold">Paciente: {x.identificador_paciente}</p>
+                      <p className="text-[0.8rem] text-ink/65">{nomeLimpo(x.aluno.nome)} ({x.aluno.matricula ?? 'sem matrícula'}) · {x.cidade}</p>
+                      <p className="text-[0.76rem] text-[#b3261e]">Excluída em {fmtData(x.oculta_em)}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => restaurar(x.id, x.atendimento_id)} className="btn btn-line !min-h-[36px] !gap-1.5 !rounded-lg !px-3 !text-[0.78rem]"><RotateCcw size={15} />Restaurar</button>
+                      {confirmaId === x.id ? (
+                        <>
+                          <button type="button" onClick={() => excluirDefinitivo(x.id)} className="rounded-lg bg-[#b3261e] px-3 py-2 text-[0.78rem] font-semibold text-white">Confirmar exclusão</button>
+                          <button type="button" onClick={() => setConfirmaId(null)} className="rounded-lg px-2 text-[0.78rem] font-semibold text-ink/60">Cancelar</button>
+                        </>
+                      ) : (
+                        <button type="button" onClick={() => setConfirmaId(x.id)} className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-[#b3261e]/40 px-3 text-[0.78rem] font-semibold text-[#b3261e] transition hover:bg-[#fdf0ee]"><Trash2 size={15} />Excluir definitivo</button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {vista === 'alunos' && (
           <ul className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -225,14 +354,33 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
         )}
       </main>
 
+      <div aria-live="polite" className="pointer-events-none fixed right-4 top-4 z-[90] flex w-[min(92vw,360px)] flex-col gap-2">
+        {avisos.map((a) => (
+          <button key={a.id} type="button" onClick={() => { setVista('exclusoes'); setAvisos((v) => v.filter((x) => x.id !== a.id)); }} className="pop pointer-events-auto flex items-start gap-3 rounded-xl border border-[#b3261e]/30 bg-white p-3 text-left shadow-[0_18px_40px_-18px_rgba(90,30,20,.5)]">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#fdf0ee] text-[#b3261e]"><Trash2 size={16} /></span>
+            <span className="text-[0.85rem] leading-snug"><b className="block">Foto excluída por aluno</b>{a.texto}</span>
+          </button>
+        ))}
+      </div>
+
       {aberta && (
         <div role="dialog" aria-modal="true" aria-label="Foto ampliada" className="fixed inset-0 z-[100] flex flex-col bg-ink/95" onClick={() => setAberta(null)}>
           <div className="flex items-center justify-between gap-4 p-4 text-white" onClick={(e) => e.stopPropagation()}>
             <div className="text-sm">
               <p className="font-semibold">{aberta.a.identificador_paciente} <span className="text-white/60">· {aberta.i + 1}/{aberta.a.fotos.length}</span></p>
-              <p className="text-white/70">Enviada por {nomeLimpo(aberta.a.aluno.nome)}{aberta.a.aluno.matricula ? ` (${aberta.a.aluno.matricula})` : ''} · {aberta.a.cidade} · {fmtData(aberta.a.fotos[aberta.i].created_at)}</p>
+              <p className="text-white/70">Enviada por {nomeLimpo(aberta.a.aluno.nome)}{aberta.a.aluno.matricula ? ` (${aberta.a.aluno.matricula})` : ''} · {aberta.a.cidade} · {fmtData(aberta.a.fotos[aberta.i].created_at)}{aberta.a.fotos[aberta.i].oculta ? ' · EXCLUÍDA PELO ALUNO' : ''}</p>
             </div>
-            <button type="button" onClick={() => setAberta(null)} aria-label="Fechar" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-2xl">×</button>
+            <div className="flex shrink-0 items-center gap-2">
+              {confirmaLb ? (
+                <>
+                  <button type="button" onClick={() => excluirDefinitivo(aberta.a.fotos[aberta.i].id)} className="rounded-full bg-[#b3261e] px-4 py-2 text-sm font-semibold text-white">Confirmar exclusão</button>
+                  <button type="button" onClick={() => setConfirmaLb(false)} className="rounded-full bg-white/10 px-3 py-2 text-sm font-semibold text-white">Cancelar</button>
+                </>
+              ) : (
+                <button type="button" onClick={() => setConfirmaLb(true)} aria-label="Excluir definitivamente" title="Excluir definitivamente" className="grid h-10 w-10 place-items-center rounded-full bg-[#b3261e]/80 text-white transition hover:bg-[#b3261e]"><Trash2 size={18} /></button>
+              )}
+              <button type="button" onClick={() => { setAberta(null); setConfirmaLb(false); }} aria-label="Fechar" className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-2xl">×</button>
+            </div>
           </div>
           <div className="relative flex min-h-0 flex-1 items-center justify-center px-2 pb-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}

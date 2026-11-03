@@ -22,6 +22,12 @@ UPDATE sistema.users SET google_email = email WHERE origem='google' AND google_e
 CREATE TABLE IF NOT EXISTS sistema.pin_senha (
   user_id INT PRIMARY KEY REFERENCES sistema.users(id) ON DELETE CASCADE, pin_hash TEXT, expira TIMESTAMPTZ, tentativas INT NOT NULL DEFAULT 0,
   enviado_em TIMESTAMPTZ NOT NULL DEFAULT now(), reset_hash TEXT, reset_expira TIMESTAMPTZ);
+ALTER TABLE sistema.fotos ADD COLUMN IF NOT EXISTS oculta_em TIMESTAMPTZ;
+ALTER TABLE sistema.fotos ADD COLUMN IF NOT EXISTS oculta_por INT;
+CREATE INDEX IF NOT EXISTS fotos_oculta_idx ON sistema.fotos (oculta_em) WHERE oculta_em IS NOT NULL;
+CREATE TABLE IF NOT EXISTS sistema.auditoria (
+  id BIGSERIAL PRIMARY KEY, quando TIMESTAMPTZ NOT NULL DEFAULT now(), ator_id INT, acao TEXT NOT NULL, foto_id INT, atendimento_id INT, detalhe JSONB);
+CREATE INDEX IF NOT EXISTS auditoria_quando_idx ON sistema.auditoria (quando DESC);
 CREATE TABLE IF NOT EXISTS sistema.refresh_tokens (
   id BIGSERIAL PRIMARY KEY, user_id INT NOT NULL REFERENCES sistema.users(id) ON DELETE CASCADE, token_hash TEXT NOT NULL UNIQUE,
   familia TEXT NOT NULL, cid INT, lembrar BOOLEAN NOT NULL DEFAULT false, expira TIMESTAMPTZ NOT NULL, revogado BOOLEAN NOT NULL DEFAULT false,

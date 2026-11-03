@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { AtendimentosModule } from './atendimentos/atendimentos.module';
 import { PerfilModule } from './perfil/perfil.module';
 import { MailModule } from './mail/mail.module';
+import { EventosModule } from './eventos/eventos.service';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { MailModule } from './mail/mail.module';
     }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]), // limite geral por IP: 120 req/min
     DbModule,
+    EventosModule,
     StorageModule,
     HealthModule,
     AuthModule,

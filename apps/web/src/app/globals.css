@@ -64,3 +64,8 @@ body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
 @keyframes fadein { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 .fade-in { animation: fadein .35s cubic-bezier(.22,.61,.36,1) both; }
 @media (prefers-reduced-motion: reduce) { .fade-in { animation: none; } }
+
+/* Linha que acabou de chegar em tempo real no painel */
+@keyframes novoenvio { 0% { background: #fbeec2; transform: translateY(-6px); opacity: .4; } 40% { opacity: 1; transform: none; } 100% { background: transparent; } }
+.novo-envio { animation: novoenvio 3.5s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .novo-envio { animation: none; } }
