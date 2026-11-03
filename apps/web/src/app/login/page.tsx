@@ -2,7 +2,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Eye, EyeOff, Layers, Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, Layers, Lock, Mail, CircleAlert } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Emblema, Logo } from '@/components/Brand';
 import { ehToque } from '@/lib/pwa';
@@ -149,7 +149,7 @@ export default function Login() {
   const formulario = (
     <>
       <div className="px-[0.5em] min-[1100px]:px-[0.72em]">
-                <h1 className="rise font-sans text-[3em] font-medium leading-[0.9] tracking-[-0.02em] text-[#33240F]" style={{ '--d': '140ms' } as React.CSSProperties}>
+                <h1 className="rise font-sans text-[2.5em] font-medium leading-[0.92] min-[1100px]:text-[3em] tracking-[-0.02em] text-[#33240F]" style={{ '--d': '140ms' } as React.CSSProperties}>
           Acesse o<br /><span className="font-bold italic" style={{ background: 'linear-gradient(180deg,#d6a431,#a8761a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>sistema</span>
         </h1>
               </div>
@@ -158,12 +158,12 @@ export default function Login() {
       <form onSubmit={entrar} noValidate className="rise mt-[1.07em]" style={{ '--d': '240ms' } as React.CSSProperties}>
         <div className="relative">
           <Mail size="1.3em" strokeWidth={1.7} className="pointer-events-none absolute left-[1.05em] top-1/2 -translate-y-1/2 text-[#33240F]" aria-hidden />
-          <input type="email" autoFocus={!ehToque()} autoComplete="email" aria-label="E-mail" aria-invalid={!!errs.email} value={email} onChange={(e) => { setEmail(e.target.value); setErrs((v) => ({ ...v, email: undefined })); }} placeholder="E-mail" className={`${CAMPO} ${errs.email ? '!border-[#d9534f]' : ''}`} />
+          <input type="email" autoFocus={!ehToque()} autoComplete="email" aria-label="E-mail" aria-invalid={!!errs.email} value={email} onChange={(e) => { setEmail(e.target.value); setErro(''); setErrs((v) => ({ ...v, email: undefined })); }} placeholder="E-mail" className={`${CAMPO} ${errs.email || erro ? '!border-[#d9534f] !bg-[#fff6f5]' : ''}`} />
         </div>
         {errs.email && <p role="alert" className="mt-1.5 text-[0.82em] font-medium text-[#b3261e]">{errs.email}</p>}
         <div className="relative mt-[0.7em]">
           <Lock size="1.3em" strokeWidth={1.7} className="pointer-events-none absolute left-[1.05em] top-1/2 -translate-y-1/2 text-[#33240F]" aria-hidden />
-          <input type={ver ? 'text' : 'password'} autoComplete="current-password" aria-label="Senha" aria-invalid={!!errs.senha} value={senha} onChange={(e) => { setSenha(e.target.value); setErrs((v) => ({ ...v, senha: undefined })); }} placeholder="Senha" className={`${CAMPO} pr-[3em] ${errs.senha ? '!border-[#d9534f]' : ''}`} />
+          <input type={ver ? 'text' : 'password'} autoComplete="current-password" aria-label="Senha" aria-invalid={!!errs.senha} value={senha} onChange={(e) => { setSenha(e.target.value); setErro(''); setErrs((v) => ({ ...v, senha: undefined })); }} placeholder="Senha" className={`${CAMPO} pr-[3em] ${errs.senha || erro ? '!border-[#d9534f] !bg-[#fff6f5]' : ''}`} />
           <button type="button" onClick={() => setVer((v) => !v)} aria-label={ver ? 'Ocultar senha' : 'Mostrar senha'} className="absolute right-[0.7em] top-1/2 grid h-[2.2em] w-[2.2em] -translate-y-1/2 place-items-center text-[#33240F]">
             {ver ? <EyeOff size="1.3em" strokeWidth={1.7} /> : <Eye size="1.3em" strokeWidth={1.7} />}
           </button>
@@ -174,12 +174,12 @@ export default function Login() {
             <input type="checkbox" checked={lembrar} onChange={(e) => setLembrar(e.target.checked)} className="check-gold !h-[1.25em] !w-[1.25em] !rounded-[0.3em]" />
             Mantenha-me conectado
           </label>
-          <button type="button" onClick={() => { setRecuperar(true); setSucesso(''); }} className="whitespace-nowrap text-[0.95em] font-bold text-[#a9771a] hover:underline">Esqueceu a senha?</button>
         </div>
-        {erro && <p role="alert" className="mt-3 rounded-xl bg-[#f6efe0] px-4 py-3 text-[0.9em] font-medium text-[#8a5f10]">{erro}</p>}
+        {erro && <p role="alert" className="mt-3 flex items-center gap-2 rounded-xl border border-[#f0c5c0] bg-[#fdf0ee] px-4 py-3 text-[0.9em] font-medium text-[#b3261e]"><CircleAlert size="1.2em" className="shrink-0" aria-hidden />{erro}</p>}
         <button type="submit" disabled={loading} className="mt-[1.2em] flex h-[3.05em] w-full items-center justify-center gap-[0.6em] rounded-[0.8em] text-[1.08em] font-semibold text-white shadow-[0_0.55em_1.1em_-0.5em_rgba(150,100,10,.65)] transition hover:brightness-105 disabled:opacity-70" style={{ background: OURO }}>
           {loading && via === 'senha' ? <><Spinner />{fase === 'local' ? 'Aguarde...' : 'Entrando…'}</> : 'Entrar'}
         </button>
+        <button type="button" onClick={() => { setRecuperar(true); setSucesso(''); }} className="mx-auto mt-[0.95em] block whitespace-nowrap text-[0.95em] font-bold text-[#a9771a] hover:underline">Esqueceu a senha?</button>
       </form>
       <div className="rise my-[0.88em] flex items-center gap-[1em] text-[0.92em] text-[#4f453b]" style={{ '--d': '280ms' } as React.CSSProperties}>
         <span className="h-px flex-1 bg-[#e0d3ba]" />ou<span className="h-px flex-1 bg-[#e0d3ba]" />
@@ -278,7 +278,7 @@ export default function Login() {
           <div className="flex w-full flex-col items-center min-[1100px]:my-auto min-[1100px]:w-[calc(var(--u)*523)] min-[1100px]:items-stretch">
         {/* ====== Cartão de login ====== */}
         <section
-          className="relative z-10 mt-[clamp(1.4rem,5.5vw,2.2rem)] w-[90%] max-w-[420px] rounded-[2em] border border-white/80 p-[1.2em] pb-[1.6em] pt-[1.9em] text-[16px] shadow-[0_2em_4.5em_-2.2em_rgba(120,80,20,.28),0_.2em_.7em_rgba(120,80,20,.06)] backdrop-blur-sm min-[1100px]:mt-0 min-[1100px]:min-h-[calc(var(--u)*714)] min-[1100px]:w-full min-[1100px]:max-w-none min-[1100px]:rounded-[2.2em] min-[1100px]:px-[3.15em] min-[1100px]:pb-[2.2em] min-[1100px]:pt-[2.72em] min-[1100px]:text-[length:calc(var(--u)*18)]"
+          className="relative z-10 mt-[clamp(1.4rem,5.5vw,2.2rem)] w-[calc(100%-0.5rem)] max-w-[600px] rounded-[1.6em] border border-white/80 p-[0.8em] pb-[1.6em] pt-[1.9em] text-[16px] shadow-[0_2em_4.5em_-2.2em_rgba(120,80,20,.28),0_.2em_.7em_rgba(120,80,20,.06)] backdrop-blur-sm min-[1100px]:mt-0 min-[1100px]:min-h-[calc(var(--u)*714)] min-[1100px]:w-full min-[1100px]:max-w-none min-[1100px]:rounded-[2.2em] min-[1100px]:px-[3.15em] min-[1100px]:pb-[2.2em] min-[1100px]:pt-[2.72em] min-[1100px]:text-[length:calc(var(--u)*18)]"
           style={{ background: 'linear-gradient(180deg,rgba(255,254,250,.96),rgba(252,248,240,.93))' }}
         >
           {cadastro ? (

@@ -190,7 +190,7 @@ function Envio({ me, sair, recarregar, abrirConfig }: { me: Me; sair: () => void
         </div>
       </nav>
 
-      <main className="order-3 mx-auto flex min-h-0 w-full max-w-[1120px] flex-1 flex-col gap-3 px-4 py-3 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-stretch lg:gap-6 lg:px-8 lg:py-5">
+      <main className="order-3 mx-auto flex min-h-0 w-full max-w-[1120px] flex-1 flex-col gap-3 px-3 py-3 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-stretch lg:gap-6 lg:px-8 lg:py-5">
         {aba === 'inicio' && painelEnvio}
         {painelEnvios}
       </main>

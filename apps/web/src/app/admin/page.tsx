@@ -402,7 +402,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 bg-page px-5 py-6 sm:px-8 lg:py-8">
+      <main className="min-w-0 flex-1 bg-page px-3 py-5 sm:px-8 sm:py-6 lg:py-8">
         <Cab t={vista === 'geral' ? 'Painel do Administrador' : NAV.find((n) => n[0] === vista)![1]} s="Gestão centralizada das fotografias clínicas" />
 
         {vista === 'geral' && <VisaoGeral key={rk} recentes={lista} irPara={(v) => setVista(v)} abrir={(a) => setAberta({ a, i: 0 })} />}
