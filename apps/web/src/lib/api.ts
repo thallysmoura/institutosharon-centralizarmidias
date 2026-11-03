@@ -8,7 +8,7 @@ export type Atendimento = {
   identificador_paciente: string;
   created_at: string;
   cidade: string;
-  aluno: { id: number; nome: string; matricula: string | null; email?: string };
+  aluno: { id: number; nome: string; matricula: string | null; email?: string; foto?: string | null };
   fotos: Foto[];
 };
 

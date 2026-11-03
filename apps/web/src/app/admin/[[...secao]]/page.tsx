@@ -13,6 +13,7 @@ import ControleAcesso from '@/components/ControleAcesso';
 import VisaoGeral from '@/components/VisaoGeral';
 import Titulo from '@/components/Titulo';
 import MostrarMais, { PASSO } from '@/components/MostrarMais';
+import CartaoAluno, { FotoPerfil } from '@/components/CartaoAluno';
 import BuscaAluno from '@/components/BuscaAluno';
 import Avatar from '@/components/Avatar';
 import PerfilInicial from '@/components/PerfilInicial';
@@ -113,6 +114,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
   const [proximo, setProximo] = useState<string | null>(null);
   const [carregandoMais, setCarregandoMais] = useState(false);
   const maisBusy = useRef(false);
+  const [cartao, setCartao] = useState<{ a: Atendimento; rect: DOMRect } | null>(null);
   const [nAlunos, setNAlunos] = useState(PASSO);
   const [nPac, setNPac] = useState(PASSO);
   const [nExcl, setNExcl] = useState(PASSO);
@@ -277,7 +279,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
 
   const tabela = (
     <>
-      <div className="flex items-center gap-3"><Titulo icone={ImageIcon}>Fotos dos Atendimentos</Titulo><button type="button" onClick={() => setFiltrosAbertos((v) => !v)} aria-expanded={filtrosAbertos} className="ml-auto inline-flex min-h-[38px] items-center gap-2 rounded-lg border border-line bg-white px-3.5 text-[0.82rem] font-semibold text-ink/80 transition hover:bg-ivory"><SlidersHorizontal size={16} />Filtros{Object.values(f).filter(Boolean).length > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-gold-600 px-1.5 text-[0.68rem] font-bold text-white">{Object.values(f).filter(Boolean).length}</span>}<ChevronDown size={15} className={`transition ${filtrosAbertos ? 'rotate-180' : ''}`} /></button></div>
+      <div className="flex items-center gap-3"><button type="button" onClick={() => setFiltrosAbertos((v) => !v)} aria-expanded={filtrosAbertos} className="ml-auto inline-flex min-h-[38px] items-center gap-2 rounded-lg border border-line bg-white px-3.5 text-[0.82rem] font-semibold text-ink/80 transition hover:bg-ivory"><SlidersHorizontal size={16} />Filtros{Object.values(f).filter(Boolean).length > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-gold-600 px-1.5 text-[0.68rem] font-bold text-white">{Object.values(f).filter(Boolean).length}</span>}<ChevronDown size={15} className={`transition ${filtrosAbertos ? 'rotate-180' : ''}`} /></button></div>
       {filtrosAbertos && <div className="card fade-in mt-3 grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
         <label className="text-[0.78rem] font-semibold text-ink/70">Cidade
           <select value={f.cidade} onChange={set('cidade')} className="field-plain mt-1"><option value="">Todas</option>{cidades.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select>
@@ -296,39 +298,6 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
         </div>
       </div>}
 
-      <div className="card mt-4 overflow-hidden !p-0">
-      <div className="hidden grid-cols-[130px_90px_1.3fr_1fr_100px_auto_70px] items-center gap-4 border-b border-line bg-[#f3efe7] px-4 py-3 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-ink/70 lg:grid">
-        <span>Prévia</span><span>Paciente</span><span>Aluno (Matrícula)</span><span>Cidade</span><span>Data</span><span className="text-right">Ações</span><span className="text-center">Excluir</span>
-      </div>
-      {loading && lista.length === 0 && <div className="space-y-3 p-4" aria-hidden>{[0, 1, 2].map((i) => <div key={i} className="h-14 animate-pulse rounded-lg bg-sand" />)}</div>}
-      {!loading && lista.length === 0 && <div className="px-4 py-12 text-center"><span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><ImageIcon size={22} /></span><p className="mt-3 font-semibold">Nenhum atendimento encontrado</p><p className="text-[0.85rem] text-ink/55">Ajuste os filtros para ampliar a busca.</p></div>}
-      <ul className={loading ? 'opacity-60 transition' : 'transition'}>
-        {lista.map((a) => (
-          <li key={a.id} className={`${novos.has(a.id) ? 'novo-envio ' : ''}grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 border-b border-line px-4 py-3 transition last:border-b-0 hover:bg-ivory lg:grid-cols-[130px_90px_1.3fr_1fr_100px_auto_70px]`}>
-            <button type="button" onClick={() => setAberta({ a, i: 0 })} aria-label="Visualizar fotos" className="flex w-[130px] overflow-hidden rounded-lg bg-sand">
-              {a.fotos.slice(0, 2).map((p) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={p.id} src={fotoUrl(p.id, true)} alt="" loading="lazy" className="h-14 min-w-0 flex-1 object-cover lg:h-[52px]" />
-              ))}
-            </button>
-            <div className="contents lg:contents">
-              <span className="font-bold">{a.identificador_paciente}</span>
-              <span className="col-span-2 text-[0.82rem] leading-tight lg:col-span-1">{nomeLimpo(a.aluno.nome)}<br /><span className="text-ink/60">({a.aluno.matricula ?? 'sem matrícula'})</span></span>
-              <span className="flex items-center gap-1.5 text-[0.85rem]"><MapPin size={15} className="text-gold-500" />{a.cidade}</span>
-              <span className="text-[0.85rem] text-ink/75">{fmtDia(a.created_at)}</span>
-              <div className="col-span-2 flex gap-2 lg:col-span-1 lg:justify-end">
-                <button type="button" onClick={() => setAberta({ a, i: 0 })} className="btn btn-line !min-h-[36px] !gap-1.5 !rounded-lg !px-3 !text-[0.78rem]"><Eye size={16} />Visualizar</button>
-                <button type="button" onClick={() => baixar(a)} className="btn btn-gold !min-h-[36px] !gap-1.5 !rounded-lg !px-3 !text-[0.78rem]"><Download size={16} />Baixar</button>
-              </div>
-              <div className="col-span-2 flex lg:col-span-1 lg:justify-center">
-                <button type="button" onClick={() => setDelAt(a)} aria-label="Excluir fotos do atendimento" title="Excluir" className="grid h-9 w-9 place-items-center rounded-lg border border-[#b3261e]/40 text-[#b3261e] transition hover:bg-[#fdf0ee]"><Trash2 size={16} /></button>
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <MostrarMais auto temMais={!!proximo} carregando={carregandoMais} onClick={carregarMais} mostrados={lista.length} />
-      </div>
     </>
   );
 
@@ -443,23 +412,29 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
         {vista === 'geral' && <VisaoGeral key={rk} recentes={lista} irPara={(v) => setVista(v)} abrir={(a) => setAberta({ a, i: 0 })} />}
 
         <div className={vista === 'fotos' && fotosAba === 'todas' ? 'mt-7' : 'hidden'}>{tabela}</div>
-        {vista === 'fotos' && fotosAba === 'todas' && lista.some((a) => a.fotos.length) && (
-          <section className="mt-8" aria-label="Galeria de fotos">
-            <Titulo nivel={3} icone={LayoutGrid}>Galeria <span className="text-[0.85rem] font-medium text-ink/55">· {lista.reduce((n, a) => n + a.fotos.length, 0)} foto(s)</span></Titulo>
-            <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {lista.flatMap((a) => a.fotos.map((p, i) => (
-                <li key={p.id}>
-                  <button type="button" onClick={() => setAberta({ a, i })} aria-label={`Ver foto de ${a.identificador_paciente}`} className="group relative block aspect-square w-full overflow-hidden rounded-xl bg-sand shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft">
+        {vista === 'fotos' && fotosAba === 'todas' && (
+          <section className="mt-4" aria-label="Fotos">
+            {loading && lista.length === 0 && <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" aria-hidden>{Array.from({ length: 10 }, (_, i) => <li key={i} className="aspect-square animate-pulse rounded-xl bg-sand" />)}</ul>}
+            {!loading && !lista.some((a) => a.fotos.some((p) => !p.oculta)) && <div className="card px-4 py-12 text-center"><span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><ImageIcon size={22} /></span><p className="mt-3 font-semibold">Nenhuma foto encontrada</p><p className="text-[0.85rem] text-ink/55">Ajuste os filtros ou aguarde novos envios.</p></div>}
+            <ul className={`grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 ${loading ? 'opacity-60 transition' : 'transition'}`}>
+              {lista.flatMap((a) => a.fotos.filter((p) => !p.oculta).map((p) => (
+                <li key={p.id} className={`group relative aspect-square overflow-hidden rounded-xl bg-sand shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${novos.has(a.id) ? 'novo-envio' : ''}`}>
+                  <button type="button" onClick={() => setAberta({ a, i: a.fotos.findIndex((x) => x.id === p.id) })} aria-label={`Ver foto de ${a.identificador_paciente}`} className="absolute inset-0 block text-left">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={fotoUrl(p.id, true)} alt="" loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
-                    <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2.5 pb-2 pt-6 text-left text-white">
+                    <img src={fotoUrl(p.id, true)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                    <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2.5 pb-2 pt-8 text-white">
                       <span className="block truncate text-[0.78rem] font-semibold">{a.identificador_paciente}</span>
-                      <span className="block truncate text-[0.68rem] text-white/80">{nomeLimpo(a.aluno.nome)} · {fmtDia(p.created_at)}</span>
+                      <span className="block truncate text-[0.68rem] text-white/80">{fmtDia(p.created_at)}</span>
                     </span>
+                  </button>
+                  <button type="button" onClick={(e) => setCartao({ a, rect: e.currentTarget.getBoundingClientRect() })} title={nomeLimpo(a.aluno.nome)} aria-label={`Dados de ${nomeLimpo(a.aluno.nome)}`}
+                    className="absolute left-2 top-2 z-10 inline-flex max-w-[calc(100%-1rem)] items-center gap-1.5 rounded-full bg-black/35 py-[3px] pl-[3px] pr-2.5 text-[0.7rem] font-semibold text-white backdrop-blur-sm transition hover:bg-black/55">
+                    <FotoPerfil aluno={a.aluno} size={22} /><span className="truncate">{a.cidade}</span>
                   </button>
                 </li>
               )))}
             </ul>
+            <MostrarMais auto temMais={!!proximo} carregando={carregandoMais} onClick={carregarMais} mostrados={lista.length} />
           </section>
         )}
 
@@ -583,6 +558,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
         </div>
       )}
 
+      {cartao && <CartaoAluno aluno={cartao.a.aluno} cidade={cartao.a.cidade} ancora={cartao.rect} onFechar={() => setCartao(null)} onVerFotos={() => { irFotos({ aluno_id: String(cartao.a.aluno.id) }); setCartao(null); }} />}
       {aberta && (
         <div role="dialog" aria-modal="true" aria-label="Foto ampliada" className="fixed inset-0 z-[100] flex flex-col bg-ink/95" onClick={() => setAberta(null)}>
           <div className="flex items-center justify-between gap-4 p-4 text-white" onClick={(e) => e.stopPropagation()}>

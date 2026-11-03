@@ -39,7 +39,7 @@ class CriarDto {
 
 const SELECT_ATEND = `
   SELECT a.id, a.identificador_paciente, a.created_at, c.nome AS cidade,
-         json_build_object('id', u.id, 'nome', u.nome, 'matricula', u.matricula, 'email', u.email) AS aluno,
+         json_build_object('id', u.id, 'nome', u.nome, 'matricula', u.matricula, 'email', u.email, 'foto', CASE WHEN u.foto_key IS NOT NULL OR u.foto_url IS NOT NULL THEN '/users/' || u.id || '/foto?v=' || u.foto_v END) AS aluno,
          COALESCE(json_agg(json_build_object('id', f.id, 'created_at', f.created_at, 'oculta', f.oculta_em IS NOT NULL, 'bytes', f.bytes, 'width', f.width, 'height', f.height, 'dispositivo', f.dispositivo, 'so', f.so, 'navegador', f.navegador) ORDER BY f.id) FILTER (WHERE f.id IS NOT NULL), '[]') AS fotos
   FROM sistema.atendimentos a
   JOIN sistema.users u ON u.id = a.aluno_id
