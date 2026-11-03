@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { useSecao } from '@/lib/rota';
 import { ChevronsUpDown, Search, Menu, X, Settings, GraduationCap, History, LogOut, MapPin, PlusCircle } from 'lucide-react';
 import { Me } from '@/lib/api';
 import { nomeLimpo, useSession } from '@/lib/session';
@@ -13,13 +14,14 @@ import Notificacoes from '@/components/Notificacoes';
 
 type Item = { file: File; url: string };
 type Aba = 'inicio' | 'historico';
+const ABAS: readonly Aba[] = ['inicio', 'historico']; // /aluno e /aluno/historico
 
 const MAX = 10;
 const MAX_BYTES = 10 * 1024 * 1024;
 const TIPOS = ['image/jpeg', 'image/png', 'image/webp'];
 
 function Envio({ me, sair, recarregar, abrirConfig }: { me: Me; sair: () => void; recarregar: () => void; abrirConfig: () => void }) {
-  const [aba, setAba] = useState<Aba>('inicio');
+  const [aba, setAba] = useSecao<Aba>('/aluno', ABAS, 'inicio');
   const envios = useRef<MeusEnviosHandle>(null);
   const [total, setTotal] = useState(0); // quantidade de envios, para o selo do Histórico
   const [menuMovel, setMenuMovel] = useState(false);

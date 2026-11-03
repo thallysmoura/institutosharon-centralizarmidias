@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSecao } from '@/lib/rota';
 import { Bell, Download, Eye, GraduationCap, HardDrive, RotateCcw, Trash2, House, ImageIcon, LogOut, MapPin, ShieldCheck, Users, Smartphone, RefreshCw, Settings, ChevronsUpDown, SlidersHorizontal, ChevronDown, LayoutGrid, Menu, X, Search, ScrollText, Megaphone, PlusCircle, History } from 'lucide-react';
 import { API, api, Atendimento, fotoUrl, fmtData, Me } from '@/lib/api';
 import { fmtDia, nomeLimpo, useSession } from '@/lib/session';
@@ -27,6 +28,8 @@ type Paciente = { identificador: string; alunos: number; fotos: number; ultima: 
 type Filtros = { cidade: string; aluno_id: string; q: string; de: string; ate: string };
 const VAZIO: Filtros = { cidade: '', aluno_id: '', q: '', de: '', ate: '' };
 
+/** Seções válidas = caminhos /admin/<seção> (a inicial fica em /admin). */
+const SECOES: readonly Vista[] = ['geral', 'fotos', 'alunos', 'pacientes', 'cidades', 'armazenamento', 'acessos', 'exclusoes', 'aplicativo', 'auditoria', 'avisos'];
 const GOV: Vista[] = ['exclusoes', 'acessos', 'auditoria', 'armazenamento'];
 const NAV: [Vista, string, typeof House][] = [
   ['geral', 'Visão Geral', House],
@@ -100,17 +103,13 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
     document.addEventListener('mousedown', fecha); document.addEventListener('keydown', esc);
     return () => { document.removeEventListener('mousedown', fecha); document.removeEventListener('keydown', esc); };
   }, [menuUsuario]);
-  const [vista, setVista] = useState<Vista>('geral');
+  const [vista, setVista] = useSecao<Vista>('/admin', SECOES, 'geral');
   const [fotosAba, setFotosAba] = useState<'todas' | 'meus'>('todas');
   const envios = useRef<MeusEnviosHandle>(null);
   const [totalEnvios, setTotalEnvios] = useState(0);
-  const [hidratado, setHidratado] = useState(false);
   const [rk, setRk] = useState(0);
   const [atualizando, setAtualizando] = useState(false);
-  // F5 permanece na mesma seção: a seção ativa fica no hash da URL.
-  useEffect(() => { const h = window.location.hash.slice(1) as Vista; if (NAV.some((n) => n[0] === h)) setVista(h); setHidratado(true); }, []);
   useEffect(() => { if (GOV.includes(vista)) setGovAberto(true); }, [vista]);
-  useEffect(() => { if (hidratado) window.history.replaceState(null, '', `#${vista}`); }, [vista, hidratado]);
   const [f, setF] = useState<Filtros>(VAZIO);
   const [resumo, setResumo] = useState<Resumo>();
   const [cidades, setCidades] = useState<Cidade[]>([]);
