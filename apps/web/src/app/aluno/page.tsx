@@ -146,7 +146,7 @@ function Envio({ me, sair, recarregar, abrirConfig }: { me: Me; sair: () => void
           const ativo = k === 'novo' ? aba === 'inicio' : aba === k;
           return (
             <button key={k} type="button" aria-current={ativo ? 'page' : undefined}
-              onClick={() => { if (k === 'novo') { setAba('inicio'); envios.current?.abrirMenu(); } else setAba(k); }}
+              onClick={() => { if (k === 'novo') { if (aba === 'inicio') envios.current?.abrirMenu(); else setAba('inicio'); } else setAba(k); }}
               className={`relative z-10 flex flex-col items-center gap-0.5 rounded-xl py-1.5 transition-colors duration-300 text-[0.7rem] font-semibold lg:flex-row lg:justify-center lg:gap-2 lg:py-2 lg:text-[0.82rem] ${ativo ? 'text-white' : 'text-ink/70'}`}
               >
               <span className="relative"><Icon size={20} strokeWidth={1.7} />{k === 'historico' && total > 0 && <span className="absolute -right-3.5 -top-2 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#b3261e] px-1 text-[0.62rem] font-bold leading-none text-white ring-2 ring-white">{total > 99 ? '99+' : total}</span>}</span>{l}
