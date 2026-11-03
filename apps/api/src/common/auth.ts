@@ -33,9 +33,12 @@ export class AuthGuard implements CanActivate {
     if (!token) throw new UnauthorizedException();
     let sub: number;
     let cid: number | null = null;
+    let sid = '';
     try {
       const p = jwt.verify(token, this.cfg.getOrThrow<string>('JWT_SECRET')) as jwt.JwtPayload;
+      if (!p.sid) throw new Error('sem sid');
       sub = Number(p.sub);
+      sid = String(p.sid);
       cid = typeof p.cid === 'number' ? p.cid : null;
     } catch {
       throw new UnauthorizedException();
@@ -46,6 +49,7 @@ export class AuthGuard implements CanActivate {
     );
     if (!r.rows[0]) throw new UnauthorizedException();
     req.user = r.rows[0];
+    req.sid = sid;
     const roles = this.reflector.get<string[]>('roles', ctx.getHandler()) ?? this.reflector.get<string[]>('roles', ctx.getClass());
     if (roles?.length && !roles.includes(req.user.role)) throw new ForbiddenException();
     if (req.user.primeiro_acesso && !this.reflector.get<boolean>('pendenteOk', ctx.getHandler()))

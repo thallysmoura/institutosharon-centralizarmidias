@@ -55,3 +55,12 @@ body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
 .btn-sheen::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 38%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.42), transparent); animation: sweep 5.5s ease-in-out 1.4s infinite; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .pop, .grow-bar, .btn-sheen::after { animation: none; } .lift { transition: none; } }
 .lift.rise { animation-fill-mode: backwards; }
+
+/* Proteção de marca e imagens (login): sem seleção, sem arrastar e sem menu de imagem no toque longo. */
+.protegido { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.protegido img, .protegido svg { -webkit-user-drag: none; user-drag: none; pointer-events: none; }
+.protegido input, .protegido textarea { -webkit-user-select: text; user-select: text; }
+
+@keyframes fadein { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+.fade-in { animation: fadein .35s cubic-bezier(.22,.61,.36,1) both; }
+@media (prefers-reduced-motion: reduce) { .fade-in { animation: none; } }

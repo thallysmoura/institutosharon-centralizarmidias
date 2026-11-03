@@ -14,9 +14,39 @@ export type Atendimento = {
 
 export const fotoUrl = (id: number, thumb = false) => `${API}/fotos/${id}/arquivo${thumb ? '?variant=thumb' : ''}`;
 
-/** Chamada à API com o cookie de sessão (httpOnly). Lança Error com a mensagem do servidor. */
-export async function api<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API}${path}`, { credentials: 'include', ...init });
+let csrf = '';
+let renovando: Promise<boolean> | null = null;
+
+/** Guarda o token CSRF quando a resposta o traz (login, cadastro, refresh, /auth/me). */
+const guardaCsrf = (d: unknown) => {
+  const t = (d as { csrf?: unknown } | null)?.csrf;
+  if (typeof t === 'string') csrf = t;
+};
+
+/** Renova a sessão com o refresh token (cookie httpOnly). Uma renovação por vez, compartilhada entre chamadas paralelas. */
+function renovarSessao() {
+  renovando ??= fetch(`${API}/auth/refresh`, { method: 'POST', credentials: 'include' })
+    .then(async (r) => {
+      if (r.ok) guardaCsrf(await r.json().catch(() => null));
+      return r.ok;
+    })
+    .catch(() => false)
+    .finally(() => { renovando = null; });
+  return renovando;
+}
+
+/** Chamada à API com cookies httpOnly, token CSRF nas escritas e renovação automática da sessão (401 -> refresh -> repete). Lança Error com a mensagem do servidor. */
+export async function api<T = unknown>(path: string, init: RequestInit = {}, tentouRenovar = false): Promise<T> {
+  const headers = new Headers(init.headers);
+  const metodo = (init.method ?? 'GET').toUpperCase();
+  if (metodo !== 'GET' && csrf) headers.set('X-CSRF-Token', csrf);
+  const res = await fetch(`${API}${path}`, { credentials: 'include', ...init, headers });
+  if (res.status === 401 && !tentouRenovar && !path.startsWith('/auth/login') && !path.startsWith('/auth/google') && !path.startsWith('/auth/refresh') && (await renovarSessao())) return api<T>(path, init, true);
+  if (res.status === 403 && !tentouRenovar && metodo !== 'GET' && !path.startsWith('/auth/')) {
+    // token CSRF ausente/desatualizado (ex.: página recarregada): busca de novo e repete uma vez
+    await api('/auth/me', {}, true).catch(() => null);
+    if (csrf) return api<T>(path, init, true);
+  }
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => null);
   if (!res.ok) {
@@ -24,6 +54,8 @@ export async function api<T = unknown>(path: string, init: RequestInit = {}): Pr
     e.status = res.status;
     throw e;
   }
+  guardaCsrf(data);
+  if (path === '/auth/logout') csrf = '';
   return data as T;
 }
 

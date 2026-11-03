@@ -8,7 +8,7 @@ const sans = Figtree({ subsets: ['latin'], weight: ['400', '500', '600', '700'],
 const roboto = Roboto({ subsets: ['latin'], weight: ['400', '500', '700'], variable: '--font-roboto', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: 'Sistema de Centralização de Fotos Clínicas | Instituto Sharon',
+  title: 'Instituto Sharon - Fotos Clínicas',
   description: 'Centralização das fotografias dos atendimentos realizados pelos alunos do Instituto Sharon.',
   robots: { index: false, follow: false },
   applicationName: 'Sharon Fotos',

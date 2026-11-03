@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { Bell, Camera, CheckCircle2, GraduationCap, History, House, ImageIcon, Info, LogOut, MapPin, PlusCircle, User } from 'lucide-react';
+import { Bell, Settings, Camera, CheckCircle2, GraduationCap, History, House, ImageIcon, Info, LogOut, MapPin, PlusCircle, User } from 'lucide-react';
 import { api, Atendimento, fotoUrl, Me } from '@/lib/api';
 import { fmtDia, nomeLimpo, useSession } from '@/lib/session';
 import PerfilInicial from '@/components/PerfilInicial';
@@ -15,7 +15,7 @@ const MAX = 10;
 const MAX_BYTES = 10 * 1024 * 1024;
 const TIPOS = ['image/jpeg', 'image/png', 'image/webp'];
 
-function Envio({ me, sair, recarregar }: { me: Me; sair: () => void; recarregar: () => void }) {
+function Envio({ me, sair, recarregar, abrirConfig }: { me: Me; sair: () => void; recarregar: () => void; abrirConfig: () => void }) {
   const [aba, setAba] = useState<Aba>('inicio');
   const [ident, setIdent] = useState('');
   const [itens, setItens] = useState<Item[]>([]);
@@ -158,6 +158,7 @@ function Envio({ me, sair, recarregar }: { me: Me; sair: () => void; recarregar:
             </div>
           </div>
           <Bell size={20} className="shrink-0 text-white/70" aria-hidden />
+          <button type="button" onClick={abrirConfig} aria-label="Configurações" title="Configurações" className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white/80 transition hover:bg-white/10"><Settings size={20} /></button>
           <button type="button" onClick={sair} aria-label="Sair" title="Sair" className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white/80 transition hover:bg-white/10"><LogOut size={20} /></button>
         </div>
         <div className="h-[3px] bg-gradient-to-r from-[#d9b655] via-[#a67c26] to-[#d9b655]" />
@@ -187,7 +188,9 @@ function Envio({ me, sair, recarregar }: { me: Me; sair: () => void; recarregar:
 
 export default function AlunoPage() {
   const { me, sair, recarregar } = useSession('ALUNO');
+  const [config, setConfig] = useState(false);
   if (!me) return <PageLoader />;
   if (me.primeiro_acesso) return <PerfilInicial me={me} sair={sair} recarregar={recarregar} />;
-  return <Envio me={me} sair={sair} recarregar={recarregar} />;
+  if (config) return <PerfilInicial modo="config" me={me} sair={sair} recarregar={recarregar} onVoltar={() => setConfig(false)} />;
+  return <Envio me={me} sair={sair} recarregar={recarregar} abrirConfig={() => setConfig(true)} />;
 }

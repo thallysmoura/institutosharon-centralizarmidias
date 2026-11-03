@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, Get, Param, Patch, ParseIntPipe, Post, Query, Res, NotFoundException, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { IsIn, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import type { Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { memoryStorage } from 'multer';
@@ -27,7 +27,7 @@ class PapelDto {
 }
 
 class CriarDto {
-  @IsString() @MinLength(2) @MaxLength(80) identificador!: string;
+  @IsString() @MinLength(2) @MaxLength(80) @Matches(/^[^<>{}`$\\]+$/, { message: 'O identificador não pode ter < > { } ` $ ou barra invertida.' }) identificador!: string;
 }
 
 const SELECT_ATEND = `

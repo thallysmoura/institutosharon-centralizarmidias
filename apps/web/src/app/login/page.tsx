@@ -1,7 +1,8 @@
 'use client';
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Camera, Eye, EyeOff, Layers, Lock, Mail, ShieldCheck } from 'lucide-react';
+import Image from 'next/image';
+import { Eye, EyeOff, Layers, Lock, Mail } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Emblema, Logo } from '@/components/Brand';
 import { entrarComGoogle } from '@/lib/firebase';
@@ -10,10 +11,10 @@ import Spinner from '@/components/Spinner';
 import RecuperarSenha from '@/components/RecuperarSenha';
 import Cadastro from '@/components/Cadastro';
 
-const destaques: [typeof Camera, string][] = [
-  [Camera, 'Envio direto\ndo celular'],
-  [ShieldCheck, 'Acesso restrito\ne privado'],
-  [Layers, 'Tudo\ncentralizado'],
+const destaques: [string, string][] = [
+  ['/img/ico-camera.png', 'Envio direto\ndo celular'],
+  ['/img/ico-seguranca.png', 'Acesso restrito\ne privado'],
+  ['/img/ico-centralizacao.png', 'Tudo\ncentralizado'],
 ];
 
 /** Medida do desktop: o layout de referência tem 1825x862 e escala com a janela (variável --u). */
@@ -73,6 +74,15 @@ export default function Login() {
       return null;
     }
   }
+
+  // Dificulta copiar/arrastar as imagens e textos da marca (menu do botão direito, arrastar, selecionar e copiar). Campos de formulário continuam normais.
+  useEffect(() => {
+    const campo = (t: EventTarget | null) => t instanceof HTMLElement && !!t.closest('input, textarea, [contenteditable="true"]');
+    const bloqueia = (e: Event) => { if (!campo(e.target)) e.preventDefault(); };
+    const eventos = ['contextmenu', 'dragstart', 'copy', 'cut', 'selectstart'];
+    eventos.forEach((n) => document.addEventListener(n, bloqueia));
+    return () => eventos.forEach((n) => document.removeEventListener(n, bloqueia));
+  }, []);
 
   useEffect(() => {
     let e: string | null = null;
@@ -138,12 +148,10 @@ export default function Login() {
   const formulario = (
     <>
       <div className="px-[0.5em] min-[1100px]:px-[0.72em]">
-        <p className="rise text-[0.85em] font-bold uppercase tracking-[0.42em] text-[#a9771a]" style={{ '--d': '100ms' } as React.CSSProperties}>Bem-vindo(a)</p>
-        <h1 className="rise mt-[0.2em] font-sans text-[3em] font-medium leading-[0.9] tracking-[-0.02em] text-[#2b1c10]" style={{ '--d': '140ms' } as React.CSSProperties}>
+                <h1 className="rise font-sans text-[3em] font-medium leading-[0.9] tracking-[-0.02em] text-[#2b1c10]" style={{ '--d': '140ms' } as React.CSSProperties}>
           Acesse o<br /><span className="font-bold italic" style={{ background: 'linear-gradient(180deg,#d6a431,#a8761a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>sistema</span>
         </h1>
-        <p className="rise mt-[0.4em] max-w-[20.2em] text-[1em] leading-[1.28] text-[#4f453b]" style={{ '--d': '180ms' } as React.CSSProperties}>Entre com o e-mail e a senha cadastrados pelo Instituto Sharon.</p>
-      </div>
+              </div>
 
       {sucesso && <p role="status" className="rise mt-[1em] rounded-xl bg-[#e7f6ee] px-4 py-3 text-[0.9em] font-medium text-[#17794a]">{sucesso}</p>}
       <form onSubmit={entrar} noValidate className="rise mt-[1.07em]" style={{ '--d': '240ms' } as React.CSSProperties}>
@@ -163,13 +171,13 @@ export default function Login() {
         <div className="mt-[0.95em] flex items-center justify-between gap-3">
           <label className="flex cursor-pointer select-none items-center gap-[0.6em] whitespace-nowrap text-[0.95em] text-[#2b1c10]">
             <input type="checkbox" checked={lembrar} onChange={(e) => setLembrar(e.target.checked)} className="check-gold !h-[1.25em] !w-[1.25em] !rounded-[0.3em]" />
-            Lembrar login
+            Mantenha-me conectado
           </label>
           <button type="button" onClick={() => { setRecuperar(true); setSucesso(''); }} className="whitespace-nowrap text-[0.95em] font-bold text-[#a9771a] hover:underline">Esqueceu a senha?</button>
         </div>
         {erro && <p role="alert" className="mt-3 rounded-xl bg-[#f6efe0] px-4 py-3 text-[0.9em] font-medium text-[#8a5f10]">{erro}</p>}
         <button type="submit" disabled={loading} className="mt-[1.2em] flex h-[3.05em] w-full items-center justify-center gap-[0.6em] rounded-[0.8em] text-[1.08em] font-semibold text-white shadow-[0_0.55em_1.1em_-0.5em_rgba(150,100,10,.65)] transition hover:brightness-105 disabled:opacity-70" style={{ background: OURO }}>
-          {loading && via === 'senha' ? <><Spinner />{fase === 'local' ? 'Aguarde...' : 'Entrando…'}</> : <>Entrar<ArrowRight size="1.2em" strokeWidth={2} /></>}
+          {loading && via === 'senha' ? <><Spinner />{fase === 'local' ? 'Aguarde...' : 'Entrando…'}</> : 'Entrar'}
         </button>
       </form>
       <div className="rise my-[0.88em] flex items-center gap-[1em] text-[0.92em] text-[#4f453b]" style={{ '--d': '280ms' } as React.CSSProperties}>
@@ -189,7 +197,7 @@ export default function Login() {
   );
 
   return (
-    <main style={{ '--u': 'clamp(0.66px, min(calc(100vw / 1500), calc(100dvh / 880)), max(0.9px, calc(100vw / 2400)))' } as React.CSSProperties} className="relative isolate flex min-h-dvh justify-center overflow-hidden bg-[#fbf6ea] min-[1100px]:bg-[#fbf3e3]">
+    <main style={{ '--u': 'clamp(0.66px, min(calc(100vw / 1500), calc(100dvh / 880)), max(0.9px, calc(100vw / 2400)))' } as React.CSSProperties} className="protegido relative isolate flex min-h-dvh justify-center overflow-hidden bg-[#fbf6ea] min-[1100px]:bg-[#fbf3e3]">
       <div className="relative flex min-h-dvh w-full flex-col items-center px-8 pb-6 pt-[clamp(2.2rem,10vw,3.4rem)] min-[1100px]:grid min-[1100px]:h-dvh min-[1100px]:min-h-[34rem] min-[1100px]:grid-cols-[58%_42%] min-[1100px]:items-stretch min-[1100px]:p-0">
         {/* ====== Fundo desktop ====== */}
         <svg aria-hidden className="pointer-events-none absolute inset-0 -z-20 hidden h-full w-full min-[1100px]:block" viewBox="0 0 1825 862" preserveAspectRatio="xMidYMid slice">
@@ -235,9 +243,9 @@ export default function Login() {
               Gerencie, organize e acompanhe os<br />atendimentos do Instituto Sharon em um só lugar.
             </p>
             <div className="flex" style={{ marginTop: u(36), gap: u(63) }}>
-              {destaques.map(([Icon, t], i) => (
-                <div key={t} className="rise flex flex-col items-center text-center text-white" style={{ width: u(120), '--d': `${360 + i * 100}ms` } as React.CSSProperties}>
-                  <span className="grid place-items-center border border-[#c9a24a]/70 bg-white/[0.04] text-[#e0a62c] shadow-[0_8px_24px_-12px_rgba(0,0,0,.6)]" style={{ width: u(72), height: u(72), borderRadius: u(18), borderWidth: u(1.5) }}><Icon style={{ width: u(34), height: u(34) }} strokeWidth={1.5} /></span>
+              {destaques.map(([src, t], i) => (
+                <div key={t} className="pop flex flex-col items-center text-center text-white" style={{ width: u(120), '--d': `${800 + i * 380}ms` } as React.CSSProperties}>
+                  <Image src={src} alt="" width={256} height={256} className="drop-shadow-[0_8px_18px_rgba(0,0,0,.45)]" style={{ width: u(78), height: u(78) }} />
                   <span className="whitespace-pre font-medium" style={{ marginTop: u(14), fontSize: u(18.5), lineHeight: 1.22 }}>{t}</span>
                 </div>
               ))}

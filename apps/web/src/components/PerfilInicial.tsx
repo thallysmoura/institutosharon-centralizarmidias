@@ -1,6 +1,6 @@
 'use client';
 import { FormEvent, useRef, useState } from 'react';
-import { ArrowRight, GraduationCap, LogOut, Mail, MapPin, Pencil, User } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, GraduationCap, LogOut, Mail, MapPin, Pencil, User } from 'lucide-react';
 import { api, Me } from '@/lib/api';
 import Avatar from './Avatar';
 import { Logo } from './Brand';
@@ -10,9 +10,11 @@ import Spinner from './Spinner';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,24}$/;
 
 /** Primeiro acesso do aluno: mostra os dados do perfil (foto do Google, e-mail, cidade) e exige a matrícula antes de liberar o envio de mídias. */
-export default function PerfilInicial({ me, sair, recarregar }: { me: Me; sair: () => void; recarregar: () => Promise<unknown> | void }) {
+export default function PerfilInicial({ me, sair, recarregar, modo = 'primeiro', onVoltar }: { me: Me; sair: () => void; recarregar: () => Promise<unknown> | void; modo?: 'primeiro' | 'config'; onVoltar?: () => void }) {
+  const config = modo === 'config';
+  const [salvo, setSalvo] = useState(false);
   const [nome, setNome] = useState(me.nome.replace(/ \(.*\)$/, ''));
-  const [matricula, setMatricula] = useState('');
+  const [matricula, setMatricula] = useState(me.matricula ?? '');
   const [erro, setErro] = useState('');
   const [busy, setBusy] = useState(false);
   const [editEmail, setEditEmail] = useState(false);
@@ -36,6 +38,11 @@ export default function PerfilInicial({ me, sair, recarregar }: { me: Me; sair: 
     try {
       await api('/perfil', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matricula: m, nome: n }) });
       await recarregar();
+      if (config) {
+        setBusy(false);
+        setSalvo(true);
+        setTimeout(() => setSalvo(false), 3500);
+      }
     } catch (err) {
       setErro((err as Error).message);
       setBusy(false);
@@ -70,7 +77,8 @@ export default function PerfilInicial({ me, sair, recarregar }: { me: Me; sair: 
     setTimeout(() => matRef.current?.focus(), 80); // segue direto para a matrícula
   }
 
-const pronto = matricula.trim().length > 0;
+const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/, '') || matricula.trim() !== (me.matricula ?? '');
+  const pronto = matricula.trim().length > 0 && (!config || alterado);
   const PILULA = 'flex items-center gap-[0.8em] rounded-[0.9em] border border-[#e4d9c5] bg-white/90 px-[1em] shadow-[inset_0_1px_2px_rgba(60,40,10,.04)]';
   const campo = (Icon: typeof Mail, rotulo: string, valor: string, dica?: string, acao?: React.ReactNode, d = 0) => (
     <div className={`${PILULA} lift rise py-[0.6em]`} style={{ '--d': `${d}ms` } as React.CSSProperties}>
@@ -117,9 +125,9 @@ const pronto = matricula.trim().length > 0;
       <div className="rise"><Logo style={{ fontSize: 'clamp(17px,5.6vw,28px)' }} /></div>
 
       <section className="rise relative z-10 mt-[clamp(1.4rem,4vw,2.2rem)] w-full max-w-[460px] rounded-[2em] border border-white/80 p-[1.4em] pt-[1.7em] text-[16px] shadow-[0_2em_4.5em_-2.2em_rgba(120,80,20,.28),0_.2em_.7em_rgba(120,80,20,.06)] backdrop-blur-sm sm:max-w-[520px] sm:rounded-[2.2em] sm:p-[2.4em] sm:text-[17px]" style={{ background: 'linear-gradient(180deg,rgba(255,254,250,.96),rgba(252,248,240,.93))', '--d': '80ms' } as React.CSSProperties}>
-        <span aria-hidden className="grow-bar block h-[0.3em] w-[3.4em] rounded-full" style={{ background: 'linear-gradient(90deg,#d9a936,#b3801f)' }} />
-        <h1 className="rise mt-[0.7em] font-sans text-[2.1em] font-bold leading-[1.05] tracking-[-0.02em] text-[#2b1c10]" style={{ '--d': '120ms' } as React.CSSProperties}>Primeiro acesso</h1>
-        <p className="rise mt-[0.35em] text-[0.95em] leading-snug text-[#5a5048]" style={{ '--d': '180ms' } as React.CSSProperties}>Complete seus dados para continuar.</p>
+        {!config && <span aria-hidden className="grow-bar block h-[0.3em] w-[3.4em] rounded-full" style={{ background: 'linear-gradient(90deg,#d9a936,#b3801f)' }} />}
+        <h1 className={`rise font-sans ${config ? '' : 'mt-[0.7em]'} text-[2.1em] font-bold leading-[1.05] tracking-[-0.02em] text-[#2b1c10]`} style={{ '--d': '120ms' } as React.CSSProperties}>{config ? 'Configurações' : 'Primeiro acesso'}</h1>
+        <p className="rise mt-[0.35em] text-[0.95em] leading-snug text-[#5a5048]" style={{ '--d': '180ms' } as React.CSSProperties}>{config ? 'Edite os seus dados sempre que precisar.' : 'Complete seus dados para continuar.'}</p>
 
         <div className="pop mt-[1.2em] flex flex-col items-center" style={{ '--d': '200ms' } as React.CSSProperties}>
           <Avatar foto={me.foto_url} size={92} editavel onMudou={() => recarregar()} />
@@ -170,11 +178,18 @@ const pronto = matricula.trim().length > 0;
             <span className="text-[1.1em] font-bold text-[#c0392b]" aria-label="obrigatório">*</span>
           </label>
           {erro && <p role="alert" className="mt-1.5 text-[0.82em] font-medium text-[#b3261e]">{erro}</p>}
-          <button type="submit" disabled={busy || !pronto} className="mt-[1.3em] flex h-[3.2em] w-full items-center justify-center gap-[0.6em] rounded-[0.85em] text-[1.05em] font-semibold text-white active:scale-[.985] transition-all duration-300 disabled:cursor-not-allowed" style={pronto || busy ? { background: 'linear-gradient(180deg,#dcae3c 0%,#bf8a22 55%,#9e6f15 100%)', boxShadow: '0 0.55em 1.1em -0.5em rgba(150,100,10,.65)' } : { background: '#d9d6d0', color: '#8d877d', boxShadow: 'none' }}>
-            {busy ? <><Spinner />Aguarde...</> : <>Continuar<ArrowRight size="1.2em" strokeWidth={2} /></>}
+          {salvo && <p role="status" className="pop mt-2 flex items-center gap-1.5 rounded-xl bg-[#e7f6ee] px-3 py-2 text-[0.85em] font-medium text-[#17794a]"><Check size="1.1em" />Dados salvos com sucesso.</p>}
+          {(!config || pronto || busy) && (
+            <button type="submit" disabled={busy || !pronto} className="fade-in mt-[1.3em] flex h-[3.2em] w-full items-center justify-center gap-[0.6em] rounded-[0.85em] text-[1.05em] font-semibold text-white active:scale-[.985] transition-all duration-300 disabled:cursor-not-allowed" style={pronto || busy ? (config ? { background: 'linear-gradient(180deg,#3bb273 0%,#25995c 55%,#1b7a48 100%)', boxShadow: '0 0.55em 1.1em -0.5em rgba(27,122,72,.6)' } : { background: 'linear-gradient(180deg,#dcae3c 0%,#bf8a22 55%,#9e6f15 100%)', boxShadow: '0 0.55em 1.1em -0.5em rgba(150,100,10,.65)' }) : { background: '#d9d6d0', color: '#8d877d', boxShadow: 'none' }}>
+            {busy ? <><Spinner />Aguarde...</> : config ? 'Salvar' : <>Continuar<ArrowRight size="1.2em" strokeWidth={2} /></>}
           </button>
+          )}
         </form>
-        <button type="button" onClick={sair} style={{ '--d': '520ms' } as React.CSSProperties} className="rise mx-auto mt-[1em] flex items-center gap-1.5 text-[0.88em] font-medium text-[#4f453b] underline underline-offset-2"><LogOut size="1.1em" />Sair</button>
+        {config ? (
+          <button type="button" onClick={onVoltar} className="mx-auto mt-[1em] flex items-center gap-1.5 text-[0.88em] font-medium text-[#4f453b] underline underline-offset-2"><ArrowLeft size="1.1em" />Voltar</button>
+        ) : (
+          <button type="button" onClick={sair} style={{ '--d': '520ms' } as React.CSSProperties} className="rise mx-auto mt-[1em] flex items-center gap-1.5 text-[0.88em] font-medium text-[#4f453b] underline underline-offset-2"><LogOut size="1.1em" />Sair</button>
+        )}
       </section>
       {pinPara && (
         <PinModal

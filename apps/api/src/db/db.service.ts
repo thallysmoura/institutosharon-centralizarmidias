@@ -22,6 +22,11 @@ UPDATE sistema.users SET google_email = email WHERE origem='google' AND google_e
 CREATE TABLE IF NOT EXISTS sistema.pin_senha (
   user_id INT PRIMARY KEY REFERENCES sistema.users(id) ON DELETE CASCADE, pin_hash TEXT, expira TIMESTAMPTZ, tentativas INT NOT NULL DEFAULT 0,
   enviado_em TIMESTAMPTZ NOT NULL DEFAULT now(), reset_hash TEXT, reset_expira TIMESTAMPTZ);
+CREATE TABLE IF NOT EXISTS sistema.refresh_tokens (
+  id BIGSERIAL PRIMARY KEY, user_id INT NOT NULL REFERENCES sistema.users(id) ON DELETE CASCADE, token_hash TEXT NOT NULL UNIQUE,
+  familia TEXT NOT NULL, cid INT, lembrar BOOLEAN NOT NULL DEFAULT false, expira TIMESTAMPTZ NOT NULL, revogado BOOLEAN NOT NULL DEFAULT false,
+  criado TIMESTAMPTZ NOT NULL DEFAULT now(), ip TEXT, ua TEXT);
+CREATE INDEX IF NOT EXISTS refresh_tokens_user_idx ON sistema.refresh_tokens (user_id);
 CREATE TABLE IF NOT EXISTS sistema.pin_cadastro (
   email TEXT PRIMARY KEY, pin_hash TEXT, expira TIMESTAMPTZ, tentativas INT NOT NULL DEFAULT 0,
   enviado_em TIMESTAMPTZ NOT NULL DEFAULT now(), token_hash TEXT, token_expira TIMESTAMPTZ);

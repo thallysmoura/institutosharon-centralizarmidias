@@ -4,12 +4,13 @@ import { IsBoolean, IsEmail, IsInt, IsNumber, IsOptional, IsString, Matches, Max
 import { Type } from 'class-transformer';
 import type { Request, Response } from 'express';
 import * as bcrypt from 'bcryptjs';
-import * as jwt from 'jsonwebtoken';
 import { DbService } from '../db/db.service';
 import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { dominioDescartavel, excedeu } from '../common/seguranca';
-import { AllowPendente, AuthGuard, COOKIE, Me, SessionUser } from '../common/auth';
+import { AllowPendente, AuthGuard, Me, SessionUser } from '../common/auth';
 import { FirebaseService } from './firebase.service';
+import { SessaoService } from './sessao.service';
+import { Throttle } from '@nestjs/throttler';
 import { MailService } from '../mail/mail.service';
 import { StorageService } from '../storage/storage.service';
 import { fotoDoUsuario } from '../common/foto';
@@ -75,6 +76,7 @@ export class AuthController {
     private readonly firebase: FirebaseService,
     private readonly mail: MailService,
     private readonly storage: StorageService,
+    private readonly sessao: SessaoService,
   ) {}
 
   private hashPin(userId: number, pin: string) {
@@ -93,6 +95,7 @@ export class AuthController {
 
   /** Cadastro, passo 1: verifica o e-mail enviando um PIN de 4 dígitos. */
   @Post('cadastro/email/solicitar')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(200)
   async solicitarEmailCadastro(@Body() dto: CadastroEmailDto, @Req() req: Request) {
     const email = dto.email.trim().toLowerCase();
@@ -114,6 +117,7 @@ export class AuthController {
 
   /** Cadastro, passo 2: confere o PIN e devolve um token (30 min) que comprova o e-mail verificado. */
   @Post('cadastro/email/confirmar')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   async confirmarEmailCadastro(@Body() dto: ConfirmarSenhaDto) {
     const email = dto.email.trim().toLowerCase();
@@ -136,6 +140,7 @@ export class AuthController {
 
   /** Cadastro, passo 3: cria a conta de aluno (e-mail já verificado). Com localização, já abre a sessão. */
   @Post('cadastro')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(201)
   async cadastrar(@Body() dto: CadastroDto, @Res({ passthrough: true }) res: Response) {
     const email = dto.email.trim().toLowerCase();
@@ -158,14 +163,15 @@ export class AuthController {
     await this.db.query('DELETE FROM sistema.pin_cadastro WHERE email=$1', [email]);
     if (dto.lat != null && dto.lng != null) {
       await this.db.query('UPDATE sistema.users SET ultimo_acesso=now() WHERE id=$1', [id]);
-      await this.iniciarSessao(res, id, { lat: dto.lat, lng: dto.lng });
-      return { role: 'ALUNO', logado: true };
+      const csrf = await this.iniciarSessao(res, id, { lat: dto.lat, lng: dto.lng });
+      return { role: 'ALUNO', logado: true, csrf };
     }
     return { role: 'ALUNO', logado: false };
   }
 
   /** Passo 1 da recuperação: envia um PIN de 4 dígitos ao e-mail cadastrado; e-mail desconhecido recebe um aviso claro. */
   @Post('senha/solicitar')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(200)
   async solicitarSenha(@Body() dto: EmailDto) {
     const r = await this.db.query('SELECT id, nome FROM sistema.users WHERE lower(email)=lower($1)', [dto.email.trim()]);
@@ -185,6 +191,7 @@ export class AuthController {
 
   /** Passo 2: confere o PIN (10 min, 5 tentativas) e devolve um token de uso único para definir a nova senha. */
   @Post('senha/confirmar')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   async confirmarSenha(@Body() dto: ConfirmarSenhaDto) {
     const erro = new BadRequestException('Código incorreto ou expirado. Peça um novo código.');
@@ -206,6 +213,7 @@ export class AuthController {
 
   /** Passo 3: com o token do passo 2, grava a nova senha (hash seguro). O token só vale uma vez. */
   @Post('senha/redefinir')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   async redefinirSenha(@Body() dto: RedefinirDto) {
     const erro = new BadRequestException('Sessão de recuperação expirada. Comece novamente.');
@@ -215,6 +223,7 @@ export class AuthController {
     if (!r || r.vencido || r.reset_hash !== createHash('sha256').update(dto.token).digest('hex')) throw erro;
     await this.db.query('UPDATE sistema.users SET password_hash=$2 WHERE id=$1', [u.id, await bcrypt.hash(dto.senha, 10)]);
     await this.db.query('DELETE FROM sistema.pin_senha WHERE user_id=$1', [u.id]);
+    await this.sessao.revogarTodas(u.id);
     tentativas.delete(dto.email.trim().toLowerCase());
     return { ok: true };
   }
@@ -233,11 +242,11 @@ export class AuthController {
 
   private async iniciarSessao(res: Response, userId: number, pos: { lat: number; lng: number; lembrar?: boolean }) {
     const cid = await this.cidadeDaPosicao(pos.lat, pos.lng);
-    const token = jwt.sign({ sub: String(userId), ...(cid ? { cid } : {}) }, this.cfg.getOrThrow<string>('JWT_SECRET'), { expiresIn: pos.lembrar ? '30d' : '1d' });
-    res.cookie(COOKIE, token, { httpOnly: true, sameSite: 'lax', secure: this.cfg.get('COOKIE_SECURE') === 'true', path: '/', ...(pos.lembrar ? { maxAge: 30 * 864e5 } : {}) }); // sem "lembrar", o cookie vale só até fechar o navegador
+    return this.sessao.criar(res, userId, cid, !!pos.lembrar);
   }
 
   @Post('login')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const k = dto.email.toLowerCase();
@@ -251,13 +260,14 @@ export class AuthController {
     }
     tentativas.delete(k);
     await this.db.query('UPDATE sistema.users SET ultimo_acesso=now() WHERE id=$1', [r.rows[0].id]);
-    await this.iniciarSessao(res, r.rows[0].id, dto);
-    return { role: r.rows[0].role };
+    const csrf = await this.iniciarSessao(res, r.rows[0].id, dto);
+    return { role: r.rows[0].role, csrf };
   }
 
   /** Login com Google: o ID token do Firebase é validado no servidor. E-mail novo entra como ALUNO com nome e foto do Google
    *  e matrícula vazia (primeiro acesso): precisa informar a matrícula antes de enviar fotos. */
   @Post('google')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   async google(@Body() dto: GoogleDto, @Res({ passthrough: true }) res: Response) {
     const { email, nome, foto } = await this.firebase.emailGoogle(dto.idToken);
@@ -273,20 +283,27 @@ export class AuthController {
       await this.db.query('UPDATE sistema.users SET foto_url=$2 WHERE id=$1 AND foto_key IS NULL AND foto_url IS DISTINCT FROM $2', [r.rows[0].id, foto]);
     }
     await this.db.query('UPDATE sistema.users SET ultimo_acesso=now() WHERE id=$1', [r.rows[0].id]);
-    await this.iniciarSessao(res, r.rows[0].id, dto);
-    return { role: r.rows[0].role };
+    const csrf = await this.iniciarSessao(res, r.rows[0].id, dto);
+    return { role: r.rows[0].role, csrf };
+  }
+
+  @Post('refresh')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    return { csrf: await this.sessao.renovar(req, res) };
   }
 
   @Post('logout')
   @HttpCode(204)
-  logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie(COOKIE, { path: '/' });
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    await this.sessao.encerrar(req, res);
   }
 
   @Get('me')
   @AllowPendente()
   @UseGuards(AuthGuard)
-  me(@Me() u: SessionUser) {
-    return u;
+  me(@Me() u: SessionUser, @Req() req: Request & { sid?: string }) {
+    return { ...u, csrf: this.sessao.csrfDe(req.sid ?? '') };
   }
 }

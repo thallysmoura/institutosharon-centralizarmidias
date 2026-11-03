@@ -21,7 +21,39 @@ function repoName(): string {
   }
 }
 
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const dev = process.env.NODE_ENV !== 'production';
+
+/** Cabeçalhos de segurança (anti-XSS, clickjacking, sniffing). O CSP libera só o necessário: API própria, Firebase/Google (login) e imagens assinadas do R2. */
+const csp = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline' https://apis.google.com${dev ? " 'unsafe-eval'" : ''}`,
+  "style-src 'self' 'unsafe-inline'",
+  `img-src 'self' data: blob: ${API} https://*.googleusercontent.com https://*.r2.cloudflarestorage.com https://*.r2.dev`,
+  "font-src 'self' data:",
+  `connect-src 'self' ${API} https://*.googleapis.com https://*.firebaseapp.com https://*.r2.cloudflarestorage.com${dev ? ' ws://localhost:* http://localhost:*' : ''}`,
+  "frame-src https://*.firebaseapp.com https://accounts.google.com",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ');
+
+const seguranca = [
+  { key: 'Content-Security-Policy', value: csp },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'geolocation=(self), camera=(self), microphone=(), payment=(), usb=()' },
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' }, // permite o popup do login com Google
+  { key: 'Strict-Transport-Security', value: 'max-age=15552000; includeSubDomains' },
+];
+
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
+  async headers() {
+    return [{ source: '/:path*', headers: seguranca }];
+  },
   output: 'standalone',
   reactStrictMode: true,
 
