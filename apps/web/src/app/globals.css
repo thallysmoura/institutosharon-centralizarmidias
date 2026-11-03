@@ -15,8 +15,8 @@
   .btn { @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-6 text-[0.95rem] font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-50; }
   .btn-gold { @apply text-white shadow-[0_8px_18px_-10px_rgba(125,95,18,.9)] enabled:hover:brightness-105; background: linear-gradient(180deg, #c9a24a 0%, #a67c26 100%); }
   .btn-line { @apply border border-line bg-white text-ink enabled:hover:border-gold-500; }
-  .field { @apply w-full rounded-xl border border-line bg-white py-3 pl-11 pr-4 text-[0.95rem] outline-none transition focus:border-gold-500; }
-  .field-plain { @apply w-full rounded-lg border border-line bg-white px-3 py-2.5 text-[0.88rem] outline-none transition focus:border-gold-500; }
+  .field { @apply w-full rounded-xl border border-line bg-white py-3 pl-11 pr-4 text-[0.95rem] outline-none transition focus:border-gold-500 focus:ring-4 focus:ring-gold-500/15; }
+  .field-plain { @apply w-full rounded-lg border border-line bg-white px-3 py-2.5 text-[0.88rem] outline-none transition focus:border-gold-500 focus:ring-4 focus:ring-gold-500/15; }
   .card { @apply rounded-2xl border border-line bg-white shadow-card; }
   .gold-text { background: linear-gradient(180deg, #d9b655, #9d7424); -webkit-background-clip: text; background-clip: text; color: transparent; }
 }
@@ -33,3 +33,12 @@
 .scroll-fino::-webkit-scrollbar { width: 6px; }
 .scroll-fino::-webkit-scrollbar-thumb { background: #c9a24a; border-radius: 999px; }
 .scroll-fino::-webkit-scrollbar-track { background: transparent; }
+
+.check-gold { appearance: none; width: 20px; height: 20px; border: 1.5px solid #cdbf9c; border-radius: 6px; background: #fff; display: grid; place-content: center; cursor: pointer; transition: all .15s; flex-shrink: 0; }
+.check-gold:checked { background: linear-gradient(180deg, #c9a24a, #a67c26); border-color: #a67c26; }
+.check-gold:checked::after { content: ''; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
+.check-gold:focus-visible { outline: 3px solid rgba(184,144,47,.35); outline-offset: 2px; }
+
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
+@media (max-width: 767px) { input, select, textarea { font-size: 16px !important; } } /* evita o zoom automático do iOS ao focar */

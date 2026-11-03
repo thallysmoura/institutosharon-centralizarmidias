@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: 'Sharon Fotos', statusBarStyle: 'default' },
   icons: { icon: '/icons/icon-192.png', apple: '/icons/apple-touch-icon.png' },
 };
-export const viewport: Viewport = { themeColor: '#171512', width: 'device-width', initialScale: 1 };
+export const viewport: Viewport = { themeColor: '#171512', width: 'device-width', initialScale: 1, maximumScale: 1, userScalable: false, viewportFit: 'cover' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

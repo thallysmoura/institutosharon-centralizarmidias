@@ -51,3 +51,23 @@ export function Ribbons() {
     </>
   );
 }
+
+/** Emblema "S" em dourado chapado (a imagem do emblema serve só de máscara). */
+export function Emblema({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
+  const m = 'url(/img/emblem.png) center / contain no-repeat';
+  return <span aria-hidden className={`inline-block shrink-0 ${className}`} style={{ aspectRatio: '958 / 1624', WebkitMask: m, mask: m, background: 'linear-gradient(155deg,#f6cf63 0%,#e0a52b 45%,#b9801a 100%)', ...style }} />;
+}
+
+/** Marca horizontal do login: emblema + INSTITUTO / SHARON / EDUCAÇÃO E SAÚDE. O tamanho vem do font-size do elemento. */
+export function Logo({ light = false, style }: { light?: boolean; style?: React.CSSProperties }) {
+  return (
+    <div className="flex items-center" style={{ gap: '0.5em', ...style }}>
+      <Emblema style={{ height: '2.2em' }} />
+      <div className="leading-none">
+        <p className={`font-sans font-semibold ${light ? 'text-white' : 'text-[#2b1c10]'}`} style={{ fontSize: '0.42em', letterSpacing: '0.55em' }}>INSTITUTO</p>
+        <p className={`font-sans font-semibold ${light ? 'text-white' : 'text-[#2b1c10]'}`} style={{ fontSize: '1em', letterSpacing: '0.2em', marginTop: '0.08em' }}>SHARON</p>
+        <p className="font-sans font-medium text-[#c18a1e]" style={{ fontSize: '0.32em', letterSpacing: '0.42em', marginTop: '0.35em' }}>EDUCAÇÃO E SAÚDE</p>
+      </div>
+    </div>
+  );
+}

@@ -1,6 +1,6 @@
 'use client';
 import { FormEvent, useState } from 'react';
-import { CircleAlert, CircleCheck, Check, Eye, EyeOff, KeyRound, Lock, Mail, X } from 'lucide-react';
+import { ArrowLeft, CircleAlert, CircleCheck, Check, Eye, EyeOff, KeyRound, Lock, Mail } from 'lucide-react';
 import { api } from '@/lib/api';
 import PinModal from './PinModal';
 import Spinner from './Spinner';
@@ -28,14 +28,12 @@ function Passos({ atual }: { atual: 1 | 2 | 3 }) {
   );
 }
 
-/** Casca de tela cheia no mobile e cartão centralizado no desktop (mesmo padrão do modal do PIN). */
+/** Casca inline (dentro do cartão do login), com atalho para voltar. */
 function Casca({ children, onFechar, rotulo }: { children: React.ReactNode; onFechar: () => void; rotulo: string }) {
   return (
-    <div role="dialog" aria-modal="true" aria-label={rotulo} className="fixed inset-0 z-[100] flex items-stretch justify-center bg-ink/60 sm:items-center sm:p-6 sm:backdrop-blur-sm">
-      <div className="relative flex h-[100dvh] w-full flex-col justify-center overflow-y-auto bg-ivory px-6 py-10 sm:h-auto sm:max-h-[92dvh] sm:max-w-[440px] sm:rounded-[24px] sm:p-9 sm:shadow-soft">
-        <button type="button" onClick={onFechar} aria-label="Fechar" className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full text-ink/60 hover:bg-sand"><X size={18} /></button>
-        {children}
-      </div>
+    <div role="group" aria-label={rotulo}>
+      <button type="button" onClick={onFechar} className="mb-3 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-[#a9771a] hover:underline"><ArrowLeft size={16} />Voltar ao login</button>
+      {children}
     </div>
   );
 }
@@ -100,8 +98,8 @@ export default function RecuperarSenha({ emailInicial, onFechar, onConcluido }: 
     }
   }
 
-  if (passo === 'pin')
-    return (
+  const pinModal =
+    passo === 'pin' ? (
       <PinModal
         email={email.trim()}
         titulo={<>Digite o <span className="italic text-gold-600">código</span></>}
@@ -115,7 +113,7 @@ export default function RecuperarSenha({ emailInicial, onFechar, onConcluido }: 
           setPasso('nova');
         }}
       />
-    );
+    ) : null;
 
   if (passo === 'nova')
     return (
@@ -148,6 +146,7 @@ export default function RecuperarSenha({ emailInicial, onFechar, onConcluido }: 
     );
 
   return (
+    <>
     <Casca onFechar={onFechar} rotulo="Recuperar acesso">
       <Passos atual={1} />
       <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><Mail size={26} /></span>
@@ -170,5 +169,7 @@ export default function RecuperarSenha({ emailInicial, onFechar, onConcluido }: 
         <button type="button" onClick={onFechar} className="mx-auto mt-4 block text-[0.85rem] font-medium text-ink/60 underline underline-offset-2">Voltar ao login</button>
       </form>
     </Casca>
+    {pinModal}
+    </>
   );
 }

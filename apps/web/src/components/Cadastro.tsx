@@ -1,6 +1,6 @@
 'use client';
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { BadgeCheck, Check, ChevronDown, CircleAlert, CircleCheck, Eye, EyeOff, IdCard, Lock, Mail, MapPin, ShieldCheck, User, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BadgeCheck, Check, ChevronDown, CircleAlert, CircleCheck, Eye, EyeOff, IdCard, Lock, Mail, MapPin, ShieldCheck, User, X } from 'lucide-react';
 import { api, Cidade } from '@/lib/api';
 import PinModal from './PinModal';
 import Spinner from './Spinner';
@@ -42,7 +42,7 @@ function Linha({ id, icone, erro, ok, dica, children, fim }: { id: string; icone
 export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => void; onConcluido: (r: { logado: boolean; email: string; role: 'ALUNO' }) => void }) {
   const [v, setV] = useState({ nome: '', sobrenome: '', email: '', matricula: '', cidade: '', senha: '', conf: '' });
   const [tocado, setTocado] = useState<Partial<Record<Campo, boolean>>>({});
-  const [tentou, setTentou] = useState(false);
+  const [passo, setPasso] = useState<1 | 2 | 3>(1);
   const [token, setToken] = useState('');
   const [verificado, setVerificado] = useState('');
   const [pinPara, setPinPara] = useState<string | null>(null);
@@ -92,7 +92,7 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
   if (!v.senha) erros.senha = 'Crie uma senha.';
   else if (!senhaOk) erros.senha = 'A senha não atende a todos os requisitos.';
   if (!regras[4][1]) erros.conf = v.conf ? 'As senhas não coincidem.' : 'Confirme a senha.';
-  const mostra = (c: Campo) => (tentou || tocado[c] ? erros[c] : undefined);
+  const mostra = (c: Campo) => (tocado[c] ? erros[c] : undefined);
   const ok = (c: Campo) => !erros[c] && !!v[c];
 
   async function pedirPin() {
@@ -115,12 +115,33 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
     }
   }
 
+  const CAMPOS: Record<1 | 2 | 3, Campo[]> = { 1: ['nome', 'sobrenome', 'email'], 2: ['matricula', 'cidade'], 3: ['senha', 'conf'] };
+
+  /** Marca os campos da etapa como tocados e devolve false (com foco no primeiro erro) se houver pendência. */
+  function validarPasso(n: 1 | 2 | 3) {
+    setTocado((t) => ({ ...t, ...Object.fromEntries(CAMPOS[n].map((c) => [c, true])) }));
+    const primeiro = CAMPOS[n].find((c) => erros[c]);
+    if (primeiro) {
+      formRef.current?.querySelector<HTMLElement>(`#cad-${primeiro}`)?.focus();
+      return false;
+    }
+    return true;
+  }
+
+  function voltar() {
+    setErro('');
+    if (passo === 1) onFechar();
+    else setPasso((passo - 1) as 1 | 2);
+  }
+
   async function enviar(e: FormEvent) {
     e.preventDefault();
-    setTentou(true);
     setErro('');
-    const primeiro = (['nome', 'sobrenome', 'email', 'matricula', 'cidade', 'senha', 'conf'] as Campo[]).find((c) => erros[c]);
-    if (primeiro) return formRef.current?.querySelector<HTMLElement>(`#cad-${primeiro}`)?.focus();
+    if (passo < 3) {
+      if (validarPasso(passo)) setPasso((passo + 1) as 2 | 3);
+      return;
+    }
+    if (!validarPasso(3)) return;
     setBusy(true);
     try {
       const r = await api<{ logado: boolean; role: 'ALUNO' }>('/auth/cadastro', {
@@ -138,111 +159,125 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
   const cls = (c: Campo) => `field ${mostra(c) ? '!border-[#d9534f]' : ok(c) ? '!border-[#3aa56b]' : ''}`;
   const pad = { paddingLeft: '2.8rem' };
   const a11y = (c: Campo) => ({ 'aria-invalid': !!mostra(c), 'aria-describedby': `cad-${c}-msg` });
-  const secao = (t: string) => <p className="eyebrow !mb-0 pt-2 text-[0.68rem]">{t}</p>;
+
+  const titulos = ['Seus dados', 'Matrícula e unidade', 'Crie sua senha'];
 
   return (
     <>
-      <div role="dialog" aria-modal="true" aria-label="Criar conta" className="fixed inset-0 z-[100] flex items-stretch justify-center bg-ink/60 sm:items-center sm:p-6 sm:backdrop-blur-sm">
-        <div className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-ivory sm:h-auto sm:max-h-[94dvh] sm:max-w-[500px] sm:rounded-[24px] sm:shadow-soft">
-          <button type="button" onClick={onFechar} aria-label="Fechar" className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full text-ink/60 hover:bg-sand"><X size={18} /></button>
-          <header className="shrink-0 border-b border-line/70 px-6 pb-4 pt-6 sm:px-10 sm:pt-9">
-            <div className="flex items-center gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><ShieldCheck size={21} /></span>
-              <h2 className="text-[1.7rem] font-bold sm:text-[2rem]">Criar <span className="italic text-gold-600">conta</span></h2>
-            </div>
-            <p className="mt-2 pr-8 text-[0.85rem] leading-relaxed text-ink/65">Cadastro de aluno. Seus dados são protegidos e o e-mail é confirmado por código.</p>
-          </header>
+      <div>
+        <button type="button" onClick={voltar} className="mb-3 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-[#a9771a] hover:underline"><ArrowLeft size={16} />{passo === 1 ? 'Voltar ao login' : 'Voltar'}</button>
+        <header>
+          <h2 className="font-sans text-[2.3rem] font-medium leading-[0.95] tracking-[-0.02em] text-[#2b1c10]">Criar <span className="font-bold italic text-gold-600">conta</span></h2>
+        </header>
 
-          <form ref={formRef} onSubmit={enviar} noValidate className="flex min-h-0 flex-1 flex-col">
-          <div className="scroll-fino min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-6 py-5 sm:px-10">
-            {secao('Dados pessoais')}
-            <div className="grid gap-4 min-[420px]:grid-cols-2">
-              <div>
-                <Rotulo id="cad-nome">Nome</Rotulo>
-                <Linha id="cad-nome" icone={<User size={18} />} erro={mostra('nome')} ok={ok('nome')}>
-                  <input id="cad-nome" autoComplete="given-name" value={v.nome} onChange={set('nome')} onBlur={() => { setV((x) => ({ ...x, nome: capitaliza(x.nome) })); blur('nome')(); }} placeholder="Maria" className={`${cls('nome')} pr-10`} style={pad} {...a11y('nome')} />
-                </Linha>
-              </div>
-              <div>
-                <Rotulo id="cad-sobrenome">Sobrenome</Rotulo>
-                <Linha id="cad-sobrenome" icone={<User size={18} />} erro={mostra('sobrenome')} ok={ok('sobrenome')}>
-                  <input id="cad-sobrenome" autoComplete="family-name" value={v.sobrenome} onChange={set('sobrenome')} onBlur={() => { setV((x) => ({ ...x, sobrenome: capitaliza(x.sobrenome) })); blur('sobrenome')(); }} placeholder="Souza" className={`${cls('sobrenome')} pr-10`} style={pad} {...a11y('sobrenome')} />
-                </Linha>
-              </div>
-            </div>
+        <ol aria-label="Etapas do cadastro" className="mt-4 flex items-center gap-2">
+          {titulos.map((t, i) => {
+            const n = i + 1;
+            const ativo = n === passo;
+            const feito = n < passo;
+            return (
+              <li key={t} className={`flex items-center gap-2 ${n < 3 ? 'flex-1' : ''}`} aria-current={ativo ? 'step' : undefined}>
+                <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[0.75rem] font-bold transition ${ativo ? 'text-white shadow-[0_6px_14px_-6px_rgba(150,100,10,.7)]' : feito ? 'bg-[#e7f6ee] text-[#17794a]' : 'bg-[#f1e9d6] text-ink/45'}`} style={ativo ? { background: 'linear-gradient(180deg,#dcae3c,#a8761a)' } : undefined}>{feito ? <Check size={14} /> : n}</span>
+                {n < 3 && <span className={`h-[2px] flex-1 rounded-full transition ${feito ? 'bg-[#3aa56b]' : 'bg-[#e8dcc3]'}`} />}
+              </li>
+            );
+          })}
+        </ol>
+        <p className="mt-2.5 text-[0.85rem] font-semibold text-[#2b1c10]">Etapa {passo} de 3 <span className="font-normal text-ink/55">· {titulos[passo - 1]}</span></p>
 
-            {secao('Contato e unidade')}
-            <div>
-              <Rotulo id="cad-email">E-mail</Rotulo>
-              <div className="flex items-start gap-2">
-                <div className="min-w-0 flex-1">
-                  <Linha id="cad-email" icone={<Mail size={18} />} erro={erroEmail || (emailVerificado ? undefined : mostra('email'))} ok={emailVerificado} dica={emailVerificado ? undefined : 'Enviaremos um código de 4 números para confirmar.'}>
-                    <input id="cad-email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} value={v.email} onChange={set('email')} onBlur={blur('email')} placeholder="voce@email.com" readOnly={emailVerificado && busy} className={`${cls('email')} pr-10 ${emailVerificado ? '!border-[#3aa56b]' : ''}`} style={pad} {...a11y('email')} />
+        <form ref={formRef} onSubmit={enviar} noValidate className="mt-4">
+          <div className="space-y-4">
+            {passo === 1 && (
+              <>
+                <div className="grid gap-4 min-[420px]:grid-cols-2">
+                  <div>
+                    <Rotulo id="cad-nome">Nome</Rotulo>
+                    <Linha id="cad-nome" icone={<User size={18} />} erro={mostra('nome')} ok={ok('nome')}>
+                      <input id="cad-nome" autoFocus autoComplete="given-name" value={v.nome} onChange={set('nome')} onBlur={() => { setV((x) => ({ ...x, nome: capitaliza(x.nome) })); blur('nome')(); }} placeholder="Maria" className={`${cls('nome')} pr-10`} style={pad} {...a11y('nome')} />
+                    </Linha>
+                  </div>
+                  <div>
+                    <Rotulo id="cad-sobrenome">Sobrenome</Rotulo>
+                    <Linha id="cad-sobrenome" icone={<User size={18} />} erro={mostra('sobrenome')} ok={ok('sobrenome')}>
+                      <input id="cad-sobrenome" autoComplete="family-name" value={v.sobrenome} onChange={set('sobrenome')} onBlur={() => { setV((x) => ({ ...x, sobrenome: capitaliza(x.sobrenome) })); blur('sobrenome')(); }} placeholder="Souza" className={`${cls('sobrenome')} pr-10`} style={pad} {...a11y('sobrenome')} />
+                    </Linha>
+                  </div>
+                </div>
+                <div>
+                  <Rotulo id="cad-email">E-mail</Rotulo>
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <Linha id="cad-email" icone={<Mail size={18} />} erro={erroEmail || (emailVerificado ? undefined : mostra('email'))} ok={emailVerificado} dica={emailVerificado ? undefined : 'Enviaremos um código de 4 números para confirmar.'}>
+                        <input id="cad-email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} value={v.email} onChange={set('email')} onBlur={blur('email')} placeholder="voce@email.com" className={`${cls('email')} pr-10 ${emailVerificado ? '!border-[#3aa56b]' : ''}`} style={pad} {...a11y('email')} />
+                      </Linha>
+                    </div>
+                    {emailVerificado ? (
+                      <span className="inline-flex min-h-[52px] shrink-0 items-center gap-1.5 rounded-xl bg-[#e7f6ee] px-3 text-[0.8rem] font-semibold text-[#17794a]"><BadgeCheck size={17} />Verificado</span>
+                    ) : (
+                      <button type="button" onClick={verificar} disabled={enviando || !EMAIL_RE.test(email)} className="btn btn-gold !min-h-[52px] shrink-0 !px-4 !text-[0.85rem] disabled:!opacity-50">{enviando ? <Spinner /> : 'Verificar'}</button>
+                    )}
+                  </div>
+                  {sugestao && !emailVerificado && (
+                    <p className="mt-1.5 text-[0.8rem] text-ink/70">Você quis dizer <button type="button" onClick={() => setV((x) => ({ ...x, email: `${email.split('@')[0]}@${sugestao}` }))} className="font-semibold text-gold-700 underline underline-offset-2">{email.split('@')[0]}@{sugestao}</button>?</p>
+                  )}
+                  {emailVerificado && <p className="mt-1.5 text-[0.78rem] text-[#17794a]">E-mail confirmado. Se alterá-lo, será preciso verificar novamente.</p>}
+                </div>
+              </>
+            )}
+
+            {passo === 2 && (
+              <>
+                <div>
+                  <Rotulo id="cad-matricula">Matrícula</Rotulo>
+                  <Linha id="cad-matricula" icone={<IdCard size={18} />} erro={mostra('matricula')} ok={ok('matricula')}>
+                    <input id="cad-matricula" autoFocus autoComplete="off" autoCapitalize="characters" value={v.matricula} onChange={set('matricula')} onBlur={blur('matricula')} placeholder="A0001" className={`${cls('matricula')} pr-10 uppercase`} style={pad} {...a11y('matricula')} />
                   </Linha>
                 </div>
-                {emailVerificado ? (
-                  <span className="inline-flex min-h-[52px] shrink-0 items-center gap-1.5 rounded-xl bg-[#e7f6ee] px-3 text-[0.8rem] font-semibold text-[#17794a]"><BadgeCheck size={17} />Verificado</span>
-                ) : (
-                  <button type="button" onClick={verificar} disabled={enviando || !EMAIL_RE.test(email)} className="btn btn-gold !min-h-[52px] shrink-0 !px-4 !text-[0.85rem] disabled:!opacity-50">{enviando ? <Spinner /> : 'Verificar'}</button>
-                )}
-              </div>
-              {sugestao && !emailVerificado && (
-                <p className="mt-1.5 text-[0.8rem] text-ink/70">Você quis dizer <button type="button" onClick={() => setV((x) => ({ ...x, email: `${email.split('@')[0]}@${sugestao}` }))} className="font-semibold text-gold-700 underline underline-offset-2">{email.split('@')[0]}@{sugestao}</button>?</p>
-              )}
-              {emailVerificado && <p className="mt-1.5 text-[0.78rem] text-[#17794a]">E-mail confirmado. Se alterá-lo, será preciso verificar novamente.</p>}
-            </div>
+                <div>
+                  <Rotulo id="cad-cidade">Unidade</Rotulo>
+                  <Linha id="cad-cidade" icone={<MapPin size={18} />} erro={mostra('cidade')} fim={<ChevronDown size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink/55" aria-hidden />}>
+                    <select id="cad-cidade" value={v.cidade} onChange={set('cidade')} onBlur={blur('cidade')} className={`${cls('cidade')} cursor-pointer appearance-none pr-10 ${v.cidade ? '' : '!text-ink/45'}`} style={pad} {...a11y('cidade')}>
+                      <option value="">Selecione a unidade</option>
+                      {cidades.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                    </select>
+                  </Linha>
+                </div>
+              </>
+            )}
 
-            <fieldset disabled={!emailVerificado} className={`min-w-0 space-y-4 border-0 p-0 transition-opacity ${emailVerificado ? '' : 'opacity-45'}`}>
-              {!emailVerificado && <p className="flex items-center gap-2 rounded-xl bg-sand px-3.5 py-2.5 text-[0.8rem] font-medium text-ink/70"><Lock size={15} className="shrink-0" />Verifique o e-mail para liberar os demais campos.</p>}
-            <div className="grid gap-4 min-[420px]:grid-cols-2">
-              <div>
-                <Rotulo id="cad-matricula">Matrícula</Rotulo>
-                <Linha id="cad-matricula" icone={<IdCard size={18} />} erro={mostra('matricula')} ok={ok('matricula')}>
-                  <input id="cad-matricula" autoComplete="off" autoCapitalize="characters" value={v.matricula} onChange={set('matricula')} onBlur={blur('matricula')} placeholder="A0001" className={`${cls('matricula')} pr-10 uppercase`} style={pad} {...a11y('matricula')} />
-                </Linha>
-              </div>
-              <div>
-                <Rotulo id="cad-cidade">Unidade</Rotulo>
-                <Linha id="cad-cidade" icone={<MapPin size={18} />} erro={mostra('cidade')} fim={<ChevronDown size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink/55" aria-hidden />}>
-                  <select id="cad-cidade" value={v.cidade} onChange={set('cidade')} onBlur={blur('cidade')} className={`${cls('cidade')} cursor-pointer appearance-none pr-10 ${v.cidade ? '' : '!text-ink/45'}`} style={pad} {...a11y('cidade')}>
-                    <option value="">Selecione</option>
-                    {cidades.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                  </select>
-                </Linha>
-              </div>
-            </div>
-
-            {secao('Segurança')}
-            <div>
-              <Rotulo id="cad-senha">Senha</Rotulo>
-              <Linha id="cad-senha" icone={<Lock size={18} />} erro={mostra('senha')} fim={<button type="button" onClick={() => setVer((x) => !x)} aria-label={ver ? 'Ocultar senhas' : 'Mostrar senhas'} className="absolute right-2 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center text-ink/70">{ver ? <EyeOff size={19} /> : <Eye size={19} />}</button>}>
-                <input id="cad-senha" type={ver ? 'text' : 'password'} autoComplete="new-password" value={v.senha} onChange={set('senha')} onBlur={blur('senha')} onKeyUp={(e) => setCaps(e.getModifierState('CapsLock'))} placeholder="Crie uma senha" className={`${cls('senha')} pr-12`} style={pad} {...a11y('senha')} />
-              </Linha>
-              {caps && <p className="mt-1.5 text-[0.78rem] font-medium text-[#8a6a1c]">Caps Lock está ativado.</p>}
-            </div>
-            <div>
-              <Rotulo id="cad-conf">Confirmar senha</Rotulo>
-              <Linha id="cad-conf" icone={<Lock size={18} />} erro={mostra('conf')} ok={ok('conf')}>
-                <input id="cad-conf" type={ver ? 'text' : 'password'} autoComplete="new-password" value={v.conf} onChange={set('conf')} onBlur={blur('conf')} placeholder="Repita a senha" className={`${cls('conf')} pr-10`} style={pad} {...a11y('conf')} />
-              </Linha>
-            </div>
-            <ul className="space-y-1.5" aria-label="Requisitos da senha">
-              {regras.map(([t, certo]) => (
-                <li key={t} className={`flex items-center gap-2 text-[0.8rem] transition ${certo ? 'font-medium text-[#17794a]' : 'text-ink/55'}`}>
-                  <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full ${certo ? 'bg-[#e7f6ee]' : 'bg-sand'}`}>{certo && <Check size={13} />}</span>{t}
-                </li>
-              ))}
-            </ul>
-            </fieldset>
-
+            {passo === 3 && (
+              <>
+                <div>
+                  <Rotulo id="cad-senha">Senha</Rotulo>
+                  <Linha id="cad-senha" icone={<Lock size={18} />} erro={mostra('senha')} fim={<button type="button" onClick={() => setVer((x) => !x)} aria-label={ver ? 'Ocultar senhas' : 'Mostrar senhas'} className="absolute right-2 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center text-ink/70">{ver ? <EyeOff size={19} /> : <Eye size={19} />}</button>}>
+                    <input id="cad-senha" autoFocus type={ver ? 'text' : 'password'} autoComplete="new-password" value={v.senha} onChange={set('senha')} onBlur={blur('senha')} onKeyUp={(e) => setCaps(e.getModifierState('CapsLock'))} placeholder="Crie uma senha" className={`${cls('senha')} pr-12`} style={pad} {...a11y('senha')} />
+                  </Linha>
+                  {caps && <p className="mt-1.5 text-[0.78rem] font-medium text-[#8a6a1c]">Caps Lock está ativado.</p>}
+                </div>
+                <div>
+                  <Rotulo id="cad-conf">Confirmar senha</Rotulo>
+                  <Linha id="cad-conf" icone={<Lock size={18} />} erro={mostra('conf')} ok={ok('conf')}>
+                    <input id="cad-conf" type={ver ? 'text' : 'password'} autoComplete="new-password" value={v.conf} onChange={set('conf')} onBlur={blur('conf')} placeholder="Repita a senha" className={`${cls('conf')} pr-10`} style={pad} {...a11y('conf')} />
+                  </Linha>
+                </div>
+                <ul className="space-y-1.5" aria-label="Requisitos da senha">
+                  {regras.map(([t, certo]) => (
+                    <li key={t} className={`flex items-center gap-2 text-[0.8rem] transition ${certo ? 'font-medium text-[#17794a]' : 'text-ink/55'}`}>
+                      <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full ${certo ? 'bg-[#e7f6ee]' : 'bg-sand'}`}>{certo && <Check size={13} />}</span>{t}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
-          <footer className="shrink-0 space-y-2.5 border-t border-line/70 bg-ivory px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-10 sm:pb-7">
+          <footer className="mt-5 space-y-2.5">
             {erro && <p role="alert" className="flex items-start gap-2 rounded-xl bg-[#fdf0ee] px-4 py-2.5 text-[0.82rem] font-medium text-[#b3261e]"><CircleAlert size={16} className="mt-0.5 shrink-0" />{erro}</p>}
-            <button type="submit" disabled={busy || !emailVerificado} className="btn btn-gold w-full !min-h-[52px] disabled:!opacity-50 !text-[1.02rem]">{busy ? <><Spinner />Cadastrando...</> : 'Criar conta'}</button>
-            <p className="text-center text-[0.8rem] text-ink/60">Já tem conta? <button type="button" onClick={onFechar} className="font-semibold text-gold-700 underline underline-offset-2">Entrar</button></p>
+            <button type="submit" disabled={busy || (passo === 1 && !emailVerificado)} className="btn btn-gold w-full !min-h-[52px] !text-[1.02rem] disabled:!opacity-50">
+              {busy ? <><Spinner />Cadastrando...</> : passo < 3 ? <>Continuar<ArrowRight size={18} /></> : 'Criar conta'}
+            </button>
+            {passo === 1 && <p className="text-center text-[0.8rem] text-ink/60">Já tem conta? <button type="button" onClick={onFechar} className="font-semibold text-gold-700 underline underline-offset-2">Entrar</button></p>}
           </footer>
-          </form>
-        </div>
+        </form>
       </div>
 
       {pinPara && (

@@ -1,21 +1,25 @@
 'use client';
-import { FormEvent, useState } from 'react';
-import Image from 'next/image';
+import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Camera, Eye, EyeOff, Layers, Lock, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Camera, Eye, EyeOff, Layers, Lock, Mail, ShieldCheck } from 'lucide-react';
 import { api } from '@/lib/api';
-import { Ribbons, Wordmark } from '@/components/Brand';
+import { Emblema, Logo } from '@/components/Brand';
 import { entrarComGoogle } from '@/lib/firebase';
 import { msgLocalizacao, pedirLocalizacao } from '@/lib/geo';
 import Spinner from '@/components/Spinner';
 import RecuperarSenha from '@/components/RecuperarSenha';
 import Cadastro from '@/components/Cadastro';
 
-const destaques: [typeof Camera, string, string][] = [
-  [Camera, 'Envio direto do celular', 'Fotografe ou selecione imagens e envie em segundos.'],
-  [ShieldCheck, 'Acesso restrito e privado', 'Somente alunos e administração autorizados visualizam as fotos.'],
-  [Layers, 'Tudo centralizado', 'Todos os atendimentos organizados por paciente, aluno e cidade.'],
+const destaques: [typeof Camera, string][] = [
+  [Camera, 'Envio direto\ndo celular'],
+  [ShieldCheck, 'Acesso restrito\ne privado'],
+  [Layers, 'Tudo\ncentralizado'],
 ];
+
+/** Medida do desktop: o layout de referência tem 1825x862 e escala com a janela (variável --u). */
+const u = (n: number) => `calc(var(--u) * ${n})`;
+const OURO = 'linear-gradient(180deg,#dcae3c 0%,#bf8a22 55%,#9e6f15 100%)';
+const CAMPO = 'h-[2.9em] w-full rounded-[0.85em] border border-[#e4d9c5] bg-white/90 pl-[3.1em] text-[1em] text-[#2b1c10] shadow-[inset_0_1px_2px_rgba(60,40,10,.05)] outline-none transition placeholder:text-[#6f665c] focus:border-[#c9a24a] focus:ring-4 focus:ring-[#c9a24a]/15';
 
 const msgGoogle = (code: string) =>
   ({
@@ -26,10 +30,13 @@ const msgGoogle = (code: string) =>
     'auth/network-request-failed': 'Sem conexão com a internet. Tente novamente.',
   } as Record<string, string>)[code] ?? `Não foi possível entrar com o Google (${code}). Tente novamente.`;
 
+const CHAVE_LEMBRAR = 'sharon_lembrar_email';
+
 export default function Login() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [lembrar, setLembrar] = useState(false);
   const [ver, setVer] = useState(false);
   const [erro, setErro] = useState('');
   const [recuperar, setRecuperar] = useState(false);
@@ -67,6 +74,20 @@ export default function Login() {
     }
   }
 
+  useEffect(() => {
+    let e: string | null = null;
+    try {
+      e = localStorage.getItem(CHAVE_LEMBRAR);
+      if (e) { setEmail(e); setLembrar(true); }
+    } catch { /* armazenamento indisponível */ }
+    const t = setTimeout(() => document.querySelector<HTMLInputElement>(e ? 'input[type=password]' : 'input[type=email]')?.focus(), 150);
+    return () => clearTimeout(t);
+  }, []);
+
+  function guardarLembrete() {
+    try { if (lembrar) localStorage.setItem(CHAVE_LEMBRAR, email.trim()); else localStorage.removeItem(CHAVE_LEMBRAR); } catch { /* ignora */ }
+  }
+
   async function entrar(e: FormEvent) {
     e.preventDefault();
     setErro('');
@@ -80,8 +101,9 @@ export default function Login() {
       const { role } = await api<{ role: 'ADMIN' | 'ALUNO' }>('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), senha, lat: pos[0], lng: pos[1] }),
+        body: JSON.stringify({ email: email.trim(), senha, lat: pos[0], lng: pos[1], lembrar }),
       });
+      guardarLembrete();
       concluir(role);
     } catch (err) {
       setErro((err as Error).message);
@@ -103,7 +125,7 @@ export default function Login() {
       const { role } = await api<{ role: 'ADMIN' | 'ALUNO' }>('/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken, lat: pos[0], lng: pos[1] }),
+        body: JSON.stringify({ idToken, lat: pos[0], lng: pos[1], lembrar }),
       });
       concluir(role);
     } catch (err) {
@@ -113,100 +135,163 @@ export default function Login() {
     }
   }
 
+  const formulario = (
+    <>
+      <div className="px-[0.5em] min-[1100px]:px-[0.72em]">
+        <p className="rise text-[0.85em] font-bold uppercase tracking-[0.42em] text-[#a9771a]" style={{ '--d': '100ms' } as React.CSSProperties}>Bem-vindo(a)</p>
+        <h1 className="rise mt-[0.2em] font-sans text-[3em] font-medium leading-[0.9] tracking-[-0.02em] text-[#2b1c10]" style={{ '--d': '140ms' } as React.CSSProperties}>
+          Acesse o<br /><span className="font-bold italic" style={{ background: 'linear-gradient(180deg,#d6a431,#a8761a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>sistema</span>
+        </h1>
+        <p className="rise mt-[0.4em] max-w-[20.2em] text-[1em] leading-[1.28] text-[#4f453b]" style={{ '--d': '180ms' } as React.CSSProperties}>Entre com o e-mail e a senha cadastrados pelo Instituto Sharon.</p>
+      </div>
+
+      {sucesso && <p role="status" className="rise mt-[1em] rounded-xl bg-[#e7f6ee] px-4 py-3 text-[0.9em] font-medium text-[#17794a]">{sucesso}</p>}
+      <form onSubmit={entrar} noValidate className="rise mt-[1.07em]" style={{ '--d': '240ms' } as React.CSSProperties}>
+        <div className="relative">
+          <Mail size="1.3em" strokeWidth={1.7} className="pointer-events-none absolute left-[1.05em] top-1/2 -translate-y-1/2 text-[#2b1c10]" aria-hidden />
+          <input type="email" autoFocus autoComplete="email" aria-label="E-mail" aria-invalid={!!errs.email} value={email} onChange={(e) => { setEmail(e.target.value); setErrs((v) => ({ ...v, email: undefined })); }} placeholder="E-mail" className={`${CAMPO} ${errs.email ? '!border-[#d9534f]' : ''}`} />
+        </div>
+        {errs.email && <p role="alert" className="mt-1.5 text-[0.82em] font-medium text-[#b3261e]">{errs.email}</p>}
+        <div className="relative mt-[0.7em]">
+          <Lock size="1.3em" strokeWidth={1.7} className="pointer-events-none absolute left-[1.05em] top-1/2 -translate-y-1/2 text-[#2b1c10]" aria-hidden />
+          <input type={ver ? 'text' : 'password'} autoComplete="current-password" aria-label="Senha" aria-invalid={!!errs.senha} value={senha} onChange={(e) => { setSenha(e.target.value); setErrs((v) => ({ ...v, senha: undefined })); }} placeholder="Senha" className={`${CAMPO} pr-[3em] ${errs.senha ? '!border-[#d9534f]' : ''}`} />
+          <button type="button" onClick={() => setVer((v) => !v)} aria-label={ver ? 'Ocultar senha' : 'Mostrar senha'} className="absolute right-[0.7em] top-1/2 grid h-[2.2em] w-[2.2em] -translate-y-1/2 place-items-center text-[#2b1c10]">
+            {ver ? <EyeOff size="1.3em" strokeWidth={1.7} /> : <Eye size="1.3em" strokeWidth={1.7} />}
+          </button>
+        </div>
+        {errs.senha && <p role="alert" className="mt-1.5 text-[0.82em] font-medium text-[#b3261e]">{errs.senha}</p>}
+        <div className="mt-[0.95em] flex items-center justify-between gap-3">
+          <label className="flex cursor-pointer select-none items-center gap-[0.6em] whitespace-nowrap text-[0.95em] text-[#2b1c10]">
+            <input type="checkbox" checked={lembrar} onChange={(e) => setLembrar(e.target.checked)} className="check-gold !h-[1.25em] !w-[1.25em] !rounded-[0.3em]" />
+            Lembrar login
+          </label>
+          <button type="button" onClick={() => { setRecuperar(true); setSucesso(''); }} className="whitespace-nowrap text-[0.95em] font-bold text-[#a9771a] hover:underline">Esqueceu a senha?</button>
+        </div>
+        {erro && <p role="alert" className="mt-3 rounded-xl bg-[#f6efe0] px-4 py-3 text-[0.9em] font-medium text-[#8a5f10]">{erro}</p>}
+        <button type="submit" disabled={loading} className="mt-[1.2em] flex h-[3.05em] w-full items-center justify-center gap-[0.6em] rounded-[0.8em] text-[1.08em] font-semibold text-white shadow-[0_0.55em_1.1em_-0.5em_rgba(150,100,10,.65)] transition hover:brightness-105 disabled:opacity-70" style={{ background: OURO }}>
+          {loading && via === 'senha' ? <><Spinner />{fase === 'local' ? 'Aguarde...' : 'Entrando…'}</> : <>Entrar<ArrowRight size="1.2em" strokeWidth={2} /></>}
+        </button>
+      </form>
+      <div className="rise my-[0.88em] flex items-center gap-[1em] text-[0.92em] text-[#4f453b]" style={{ '--d': '280ms' } as React.CSSProperties}>
+        <span className="h-px flex-1 bg-[#e0d3ba]" />ou<span className="h-px flex-1 bg-[#e0d3ba]" />
+      </div>
+      <button type="button" onClick={google} disabled={loading} className="rise flex h-[2.95em] w-full items-center justify-center gap-[0.8em] rounded-[0.75em] border border-[#e6dccb] bg-white text-[1em] font-medium text-[#2b1c10] shadow-[0_1px_2px_rgba(60,40,10,.04)] transition hover:border-[#c9a24a]/60 disabled:opacity-70" style={{ '--d': '300ms' } as React.CSSProperties}>
+        <svg viewBox="0 0 48 48" className="h-[1.45em] w-[1.45em]" aria-hidden>
+          <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z" />
+          <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17z" />
+          <path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 0 1 0-9.4l-7.9-6.1a24 24 0 0 0 0 21.6l7.9-6.1z" />
+          <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z" />
+        </svg>
+        {loading && via === 'google' ? <><Spinner />{fase === 'local' ? 'Aguarde...' : 'Entrando…'}</> : 'Entrar com Google'}
+      </button>
+      <button type="button" onClick={() => { setCadastro(true); setSucesso(''); }} className="rise mt-[1.1em] h-[2.95em] w-full rounded-[0.75em] border-[1.5px] border-[#c9a24a] bg-white text-[1em] font-semibold text-[#9a6b12] transition hover:bg-[#fbf5e6]" style={{ '--d': '340ms' } as React.CSSProperties}>Criar minha conta</button>
+    </>
+  );
+
   return (
-    <main className="grid min-h-dvh lg:grid-cols-[1.05fr_1fr]">
-      {/* Painel de marca - só em telas largas */}
-      <aside className="relative isolate hidden overflow-hidden bg-side text-white lg:flex lg:flex-col lg:justify-between lg:p-14">
-        <Image src="/img/banner-experiencias.webp" alt="" fill priority sizes="55vw" quality={80} className="-z-20 object-cover object-[70%_40%] opacity-60" />
-        <span aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-br from-side via-side/85 to-side/60" />
-        <Image src="/img/emblem.png" alt="" width={958} height={1624} aria-hidden className="floaty pointer-events-none absolute -right-10 top-[11%] -z-10 h-[78%] w-auto opacity-[0.09]" />
-        <div className="rise"><Wordmark light /></div>
-        <div className="max-w-[480px]">
-          <p className="rise text-[0.72rem] font-semibold uppercase tracking-[0.3em] text-gold-300" style={{ '--d': '120ms' } as React.CSSProperties}>Sistema de Centralização</p>
-          <h2 className="rise mt-3 text-[2.6rem] font-bold leading-[1.1]" style={{ '--d': '220ms' } as React.CSSProperties}>
-            Fotos clínicas, <span className="gold-text">organizadas</span> e seguras.
-          </h2>
-          <ul className="mt-9 space-y-5">
-            {destaques.map(([Icon, t, d], i) => (
-              <li key={t} className="rise flex items-start gap-4" style={{ '--d': `${380 + i * 120}ms` } as React.CSSProperties}>
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-gold-500/40 bg-white/5 text-gold-300"><Icon size={20} strokeWidth={1.6} /></span>
-                <div className="leading-snug"><p className="font-semibold">{t}</p><p className="text-[0.88rem] text-white/65">{d}</p></div>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <p className="text-[0.78rem] text-white/50">Instituto Sharon · Educação e Saúde</p>
-      </aside>
+    <main style={{ '--u': 'clamp(0.66px, min(calc(100vw / 1500), calc(100dvh / 880)), max(0.9px, calc(100vw / 2400)))' } as React.CSSProperties} className="relative isolate flex min-h-dvh justify-center overflow-hidden bg-[#fbf6ea] min-[1100px]:bg-[#fbf3e3]">
+      <div className="relative flex min-h-dvh w-full flex-col items-center px-8 pb-6 pt-[clamp(2.2rem,10vw,3.4rem)] min-[1100px]:grid min-[1100px]:h-dvh min-[1100px]:min-h-[34rem] min-[1100px]:grid-cols-[58%_42%] min-[1100px]:items-stretch min-[1100px]:p-0">
+        {/* ====== Fundo desktop ====== */}
+        <svg aria-hidden className="pointer-events-none absolute inset-0 -z-20 hidden h-full w-full min-[1100px]:block" viewBox="0 0 1825 862" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <linearGradient id="cr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#fffdf8" /><stop offset=".55" stopColor="#f9f0de" /><stop offset="1" stopColor="#f1e1c2" /></linearGradient>
+            <linearGradient id="dk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#150d06" /><stop offset=".5" stopColor="#2e1c0b" /><stop offset="1" stopColor="#5d3a12" /></linearGradient>
+            <radialGradient id="gl" cx="830" cy="360" r="560" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#d89a38" stopOpacity=".42" /><stop offset="1" stopColor="#d89a38" stopOpacity="0" /></radialGradient>
+            <linearGradient id="sw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#f4dc94" stopOpacity=".05" /><stop offset=".5" stopColor="#dcb24f" stopOpacity=".42" /><stop offset="1" stopColor="#f2d58a" stopOpacity=".12" /></linearGradient>
+          </defs>
+          <rect width="1825" height="862" fill="url(#cr)" />
+          <path d="M1825 500C1700 620 1560 760 1430 862H1825Z" fill="url(#sw)" />
+          <path d="M1825 330C1750 430 1660 560 1560 700C1520 760 1480 815 1450 862H1580C1650 780 1740 650 1825 560Z" fill="url(#sw)" opacity=".7" />
+          <path d="M1825 250C1740 350 1650 470 1580 580" fill="none" stroke="#dcb24f" strokeOpacity=".35" strokeWidth="1.5" />
+          <path d="M1825 420C1730 540 1630 680 1540 862" fill="none" stroke="#dcb24f" strokeOpacity=".3" strokeWidth="1.2" />
+          <path d="M1150 0C1190 60 1230 60 1300 0Z" fill="#e9c97b" opacity=".18" />
+          <path d="M0 0H1112C1030 38 955 110 953 205C951 305 1030 385 1024 520C1018 640 900 745 742 862H0Z" fill="url(#dk)" />
+          <path d="M0 0H1112C1030 38 955 110 953 205C951 305 1030 385 1024 520C1018 640 900 745 742 862H0Z" fill="url(#gl)" />
+          <path d="M0 842C260 800 520 800 760 862" fill="none" stroke="#e0b04a" strokeOpacity=".28" strokeWidth="1.5" />
+        </svg>
+        <Emblema className="pointer-events-none absolute left-[32.5%] top-[12%] -z-10 hidden h-[77%] min-[1100px]:block" style={{ background: 'linear-gradient(160deg,#d29a3c,#8d5a1a)', opacity: 0.34 }} />
+        <svg aria-hidden className="pointer-events-none absolute inset-0 -z-[5] hidden h-full w-full min-[1100px]:block" viewBox="0 0 1825 862" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <linearGradient id="rb" x1="0" y1="0" x2="1" y2="0.6"><stop offset="0" stopColor="#f6e2a0" /><stop offset=".35" stopColor="#d9a93e" /><stop offset=".7" stopColor="#b7801c" /><stop offset="1" stopColor="#ecc968" /></linearGradient>
+            <linearGradient id="rb2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff3c6" stopOpacity=".95" /><stop offset="1" stopColor="#d9a93e" stopOpacity=".5" /></linearGradient>
+          </defs>
+          <path d="M1112 0C1030 38 955 110 953 205C951 305 1030 385 1024 520C1018 640 900 745 742 862H812C945 770 1068 655 1076 520C1083 385 1005 315 1008 205C1010 125 1062 55 1156 0Z" fill="url(#rb)" />
+          <path d="M1156 0C1062 55 1010 125 1008 205C1005 315 1083 385 1076 520C1068 655 945 770 812 862H830C960 778 1090 660 1098 520C1105 380 1030 310 1032 205C1034 130 1085 60 1180 0Z" fill="url(#rb2)" opacity=".55" />
+          <path d="M1112 0C1030 38 955 110 953 205C951 305 1030 385 1024 520C1018 640 900 745 742 862" fill="none" stroke="#fff1bd" strokeOpacity=".8" strokeWidth="1.6" />
+        </svg>
 
-      {/* Formulário */}
-      <section className="relative isolate flex min-h-dvh flex-col overflow-hidden bg-gradient-to-b from-white to-[#f7f3ea]">
-        <Ribbons />
-        <span aria-hidden className="floaty pointer-events-none absolute -left-16 top-1/3 -z-10 h-56 w-56 rounded-full bg-gold-300/25 blur-3xl" />
-        <span aria-hidden className="floaty pointer-events-none absolute -right-10 top-10 -z-10 h-44 w-44 rounded-full bg-gold-500/15 blur-3xl [animation-delay:-4s]" />
-
-        <div className="relative z-10 flex flex-1 items-center justify-center px-6 py-12">
-          <div className="w-full max-w-[380px] lg:rounded-[28px] lg:border lg:border-line lg:bg-white/80 lg:p-10 lg:shadow-soft lg:backdrop-blur-sm">
-            <div className="rise lg:hidden"><Wordmark stacked /></div>
-            <div className="rise hidden lg:block" style={{ '--d': '100ms' } as React.CSSProperties}>
-              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.3em] text-gold-600">Bem-vindo(a)</p>
+        {/* ====== Painel de marca (desktop) ====== */}
+        <div className="relative z-10 hidden flex-col justify-between min-[1100px]:flex" style={{ padding: `${u(50)} 0 ${u(50)} ${u(120)}` }}>
+          <Logo light style={{ fontSize: u(37.5), marginLeft: u(8) }} />
+          <div>
+            <div className="rise inline-flex items-center border border-[#c9a24a]/70 bg-black/20 text-white" style={{ height: u(49), padding: `0 ${u(26)}`, borderRadius: u(30), gap: u(14), fontSize: u(22), borderWidth: u(1.5) }}>
+              <Layers style={{ width: u(26), height: u(26) }} className="text-[#e0a62c]" strokeWidth={1.6} />Sistema de Centralização
             </div>
-            <h1 className="rise mt-9 text-center text-[1.7rem] font-bold lg:mt-2 lg:text-left lg:text-[2.3rem]" style={{ '--d': '120ms' } as React.CSSProperties}>Acesse o sistema</h1>
-            <p className="rise mt-1 hidden text-sm text-ink/60 lg:block" style={{ '--d': '180ms' } as React.CSSProperties}>Entre com o e-mail e a senha cadastrados pelo Instituto.</p>
-
-            {sucesso && <p role="status" className="rise mt-4 rounded-xl bg-[#e7f6ee] px-4 py-3 text-sm font-medium text-[#17794a]">{sucesso}</p>}
-            <form onSubmit={entrar} noValidate className="rise mt-5" style={{ '--d': '240ms' } as React.CSSProperties}>
-              <div className="relative">
-                <Mail size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink/60" aria-hidden />
-                <input type="email" autoComplete="email" aria-label="E-mail" aria-invalid={!!errs.email} value={email} onChange={(e) => { setEmail(e.target.value); setErrs((v) => ({ ...v, email: undefined })); }} placeholder="E-mail" className={`field ${errs.email ? '!border-[#d9534f]' : ''}`} />
-              </div>
-              {errs.email && <p role="alert" className="mt-1.5 text-[0.78rem] font-medium text-[#b3261e]">{errs.email}</p>}
-              <div className="relative mt-3">
-                <Lock size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink/60" aria-hidden />
-                <input type={ver ? 'text' : 'password'} autoComplete="current-password" aria-label="Senha" aria-invalid={!!errs.senha} value={senha} onChange={(e) => { setSenha(e.target.value); setErrs((v) => ({ ...v, senha: undefined })); }} placeholder="Senha" className={`field pr-12 ${errs.senha ? '!border-[#d9534f]' : ''}`} />
-                <button type="button" onClick={() => setVer((v) => !v)} aria-label={ver ? 'Ocultar senha' : 'Mostrar senha'} className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center text-ink/70">
-                  {ver ? <EyeOff size={19} /> : <Eye size={19} />}
-                </button>
-              </div>
-              {errs.senha && <p role="alert" className="mt-1.5 text-[0.78rem] font-medium text-[#b3261e]">{errs.senha}</p>}
-              {erro && <p role="alert" className="mt-3 rounded-xl bg-sand px-4 py-3 text-sm font-medium text-gold-700">{erro}</p>}
-              <button type="submit" disabled={loading} className="btn btn-gold mt-5 w-full !min-h-[52px] !text-[1.05rem]">
-                {loading && via === 'senha' ? <><Spinner />{fase === 'local' ? 'Aguarde...' : 'Entrando…'}</> : 'Entrar'}
-              </button>
-            </form>
-            <div className="rise mt-4 flex items-center gap-3 text-[0.72rem] uppercase tracking-[0.2em] text-ink/40" style={{ '--d': '280ms' } as React.CSSProperties}>
-              <span className="h-px flex-1 bg-line" />ou<span className="h-px flex-1 bg-line" />
+            <h2 className="rise font-sans font-medium text-white" style={{ marginTop: u(22), fontSize: u(70.5), lineHeight: 0.9, letterSpacing: '-0.025em', '--d': '120ms' } as React.CSSProperties}>
+              Fotos clínicas,<br /><span className="font-bold italic" style={{ background: 'linear-gradient(180deg,#f0be4a,#cf9420)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>organizadas</span> e<br />seguras.
+            </h2>
+            <span aria-hidden className="block bg-[#d4a23a]" style={{ marginTop: u(30), width: u(106), height: u(3) }} />
+            <p className="rise text-white/85" style={{ marginTop: u(26), fontSize: u(21.5), lineHeight: 1.34, whiteSpace: 'nowrap', '--d': '260ms' } as React.CSSProperties}>
+              Gerencie, organize e acompanhe os<br />atendimentos do Instituto Sharon em um só lugar.
+            </p>
+            <div className="flex" style={{ marginTop: u(36), gap: u(63) }}>
+              {destaques.map(([Icon, t], i) => (
+                <div key={t} className="rise flex flex-col items-center text-center text-white" style={{ width: u(120), '--d': `${360 + i * 100}ms` } as React.CSSProperties}>
+                  <span className="grid place-items-center border border-[#c9a24a]/70 bg-white/[0.04] text-[#e0a62c] shadow-[0_8px_24px_-12px_rgba(0,0,0,.6)]" style={{ width: u(72), height: u(72), borderRadius: u(18), borderWidth: u(1.5) }}><Icon style={{ width: u(34), height: u(34) }} strokeWidth={1.5} /></span>
+                  <span className="whitespace-pre font-medium" style={{ marginTop: u(14), fontSize: u(18.5), lineHeight: 1.22 }}>{t}</span>
+                </div>
+              ))}
             </div>
-            <button type="button" onClick={google} disabled={loading} className="rise btn btn-line mt-4 w-full !min-h-[52px] !gap-3" style={{ '--d': '300ms' } as React.CSSProperties}>
-              <svg viewBox="0 0 48 48" className="h-5 w-5" aria-hidden>
-                <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z" />
-                <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17z" />
-                <path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 0 1 0-9.4l-7.9-6.1a24 24 0 0 0 0 21.6l7.9-6.1z" />
-                <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z" />
-              </svg>
-              {loading && via === 'google' ? <><Spinner />{fase === 'local' ? 'Aguarde...' : 'Entrando…'}</> : 'Entrar com Google'}
-            </button>
-            <button type="button" onClick={() => { setRecuperar(true); setSucesso(''); }} className="rise mx-auto mt-5 block text-sm font-medium underline underline-offset-2 lg:mx-0" style={{ '--d': '320ms' } as React.CSSProperties}>Esqueceu sua senha?</button>
-            <p className="rise mt-3 text-center text-sm text-ink/70 lg:text-left" style={{ '--d': '360ms' } as React.CSSProperties}>Ainda não tem conta? <button type="button" onClick={() => { setCadastro(true); setSucesso(''); }} className="font-semibold text-gold-700 underline underline-offset-2">Criar conta</button></p>
           </div>
+          <span aria-hidden />
         </div>
 
-        <footer className="relative z-10 px-6 pb-5 pt-2 text-center text-[0.75rem] text-ink/55">
+        {/* ====== Fundo mobile ====== */}
+        <svg aria-hidden className="pointer-events-none absolute inset-0 -z-20 h-full w-full min-[1100px]:hidden" viewBox="0 0 1024 1536" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <linearGradient id="m1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#e6bf62" /><stop offset=".6" stopColor="#f1d890" stopOpacity=".75" /><stop offset="1" stopColor="#f7e7b9" stopOpacity=".2" /></linearGradient>
+            <linearGradient id="m2" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#f8ecc6" stopOpacity=".1" /><stop offset=".6" stopColor="#dfb85a" stopOpacity=".7" /><stop offset="1" stopColor="#c8962b" stopOpacity=".85" /></linearGradient>
+          </defs>
+          <rect width="1024" height="1536" fill="#fbf6ea" />
+          <path d="M0 0H330C220 70 90 160 0 330Z" fill="url(#m1)" />
+          <path d="M0 120C70 100 190 40 250 0H310C220 70 90 160 0 330Z" fill="#fff" opacity=".28" />
+          <path d="M0 330C110 190 240 100 360 0" fill="none" stroke="#e1bd63" strokeOpacity=".6" strokeWidth="2" />
+          <path d="M1024 1010C930 1110 840 1230 760 1380" fill="none" stroke="#e1bd63" strokeOpacity=".45" strokeWidth="2" />
+          <path d="M1024 760C960 860 900 960 850 1060" fill="none" stroke="#e1bd63" strokeOpacity=".35" strokeWidth="2" />
+          <path d="M1024 1180C900 1290 780 1420 690 1536H1024Z" fill="url(#m2)" opacity=".55" />
+          <path d="M1024 1330C940 1400 850 1470 800 1536H1024Z" fill="url(#m2)" />
+        </svg>
+
+        <div className="flex w-full flex-col items-center min-[1100px]:max-h-dvh min-[1100px]:overflow-y-auto min-[1100px]:py-[calc(var(--u)*28)]">
+        {/* Logo (mobile) */}
+        <div className="rise relative z-10 min-[1100px]:hidden"><Logo style={{ fontSize: 'min(6.3vw, 30px)' }} /></div>
+
+          <div className="flex w-full flex-col items-center min-[1100px]:my-auto min-[1100px]:w-[calc(var(--u)*523)] min-[1100px]:items-stretch">
+        {/* ====== Cartão de login ====== */}
+        <section
+          className="relative z-10 mt-[clamp(1.4rem,5.5vw,2.2rem)] w-[90%] max-w-[420px] rounded-[2em] border border-white/80 p-[1.2em] pb-[1.6em] pt-[1.9em] text-[16px] shadow-[0_2em_4.5em_-2.2em_rgba(120,80,20,.28),0_.2em_.7em_rgba(120,80,20,.06)] backdrop-blur-sm min-[1100px]:mt-0 min-[1100px]:min-h-[calc(var(--u)*714)] min-[1100px]:w-full min-[1100px]:max-w-none min-[1100px]:rounded-[2.2em] min-[1100px]:px-[3.15em] min-[1100px]:pb-[2.2em] min-[1100px]:pt-[2.72em] min-[1100px]:text-[length:calc(var(--u)*18)]"
+          style={{ background: 'linear-gradient(180deg,rgba(255,254,250,.96),rgba(252,248,240,.93))' }}
+        >
+          {cadastro ? (
+            <Cadastro
+              onFechar={() => setCadastro(false)}
+              onConcluido={(r) => { setCadastro(false); if (r.logado) return concluir(r.role); setEmail(r.email); setSenha(''); setErrs({}); setErro(''); setSucesso('Cadastro concluído. Entre com o seu e-mail e senha.'); }}
+            />
+          ) : recuperar ? (
+            <RecuperarSenha
+              emailInicial={email}
+              onFechar={() => setRecuperar(false)}
+              onConcluido={(e) => { setRecuperar(false); setEmail(e); setSenha(''); setErrs({}); setErro(''); setSucesso('Senha alterada com sucesso. Entre com a nova senha.'); }}
+            />
+          ) : formulario}
+        </section>
+        <footer className="relative z-10 mt-5 text-center text-[0.78rem] text-[#4f453b] min-[1100px]:mt-[calc(var(--u)*28)] min-[1100px]:pl-[calc(var(--u)*70)] min-[1100px]:text-left min-[1100px]:text-[length:calc(var(--u)*15)]">
           © {new Date().getFullYear()} Instituto Sharon. Todos os direitos reservados.
         </footer>
-      </section>
-      {cadastro && (
-        <Cadastro
-          onFechar={() => setCadastro(false)}
-          onConcluido={(r) => { setCadastro(false); if (r.logado) return concluir(r.role); setEmail(r.email); setSenha(''); setErrs({}); setErro(''); setSucesso('Cadastro concluído. Entre com o seu e-mail e senha.'); }}
-        />
-      )}
-      {recuperar && (
-        <RecuperarSenha
-          emailInicial={email}
-          onFechar={() => setRecuperar(false)}
-          onConcluido={(e) => { setRecuperar(false); setEmail(e); setSenha(''); setErrs({}); setErro(''); setSucesso('Senha alterada com sucesso. Entre com a nova senha.'); }}
-        />
-      )}
+          </div>
+        </div>
+      </div>
+
     </main>
   );
 }

@@ -1,6 +1,6 @@
 import { BadRequestException, Body, ConflictException, Controller, Get, HttpException, NotFoundException, HttpCode, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { IsEmail, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import type { Request, Response } from 'express';
 import * as bcrypt from 'bcryptjs';
@@ -18,6 +18,7 @@ import { fotoDoUsuario } from '../common/foto';
 class Posicao {
   @IsNumber() @Min(-90) @Max(90) lat!: number;
   @IsNumber() @Min(-180) @Max(180) lng!: number;
+  @IsOptional() @IsBoolean() lembrar?: boolean;
 }
 
 class LoginDto extends Posicao {
@@ -230,10 +231,10 @@ export class AuthController {
     return melhor && melhor.d <= 150 ? melhor.id : null;
   }
 
-  private async iniciarSessao(res: Response, userId: number, pos: Posicao) {
+  private async iniciarSessao(res: Response, userId: number, pos: { lat: number; lng: number; lembrar?: boolean }) {
     const cid = await this.cidadeDaPosicao(pos.lat, pos.lng);
-    const token = jwt.sign({ sub: String(userId), ...(cid ? { cid } : {}) }, this.cfg.getOrThrow<string>('JWT_SECRET'), { expiresIn: '7d' });
-    res.cookie(COOKIE, token, { httpOnly: true, sameSite: 'lax', secure: this.cfg.get('COOKIE_SECURE') === 'true', maxAge: 7 * 864e5, path: '/' });
+    const token = jwt.sign({ sub: String(userId), ...(cid ? { cid } : {}) }, this.cfg.getOrThrow<string>('JWT_SECRET'), { expiresIn: pos.lembrar ? '30d' : '1d' });
+    res.cookie(COOKIE, token, { httpOnly: true, sameSite: 'lax', secure: this.cfg.get('COOKIE_SECURE') === 'true', path: '/', ...(pos.lembrar ? { maxAge: 30 * 864e5 } : {}) }); // sem "lembrar", o cookie vale só até fechar o navegador
   }
 
   @Post('login')
