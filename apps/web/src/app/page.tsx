@@ -9,7 +9,7 @@ export default function Home() {
   const router = useRouter();
   useEffect(() => {
     api<Me>('/auth/me')
-      .then((me) => router.replace(me.role === 'ADMIN' ? '/admin' : '/aluno'))
+      .then((me) => router.replace((me.role === 'ADMIN' ? '/admin' : '/aluno') + window.location.search))
       .catch(() => router.replace('/login'));
   }, [router]);
   return <PageLoader />;

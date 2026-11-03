@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Bell, BellRing, X } from 'lucide-react';
+import { FotoPerfil } from '@/components/CartaoAluno';
 import { API } from '@/lib/api';
 import AvisoAnexos from '@/components/AvisoAnexos';
 import { haTempo, marcarLida, marcarTodasLidas, pedirPermissaoNotificacoes, pushSuportado, sincronizarPush, useNotificacoes } from '@/lib/notificacoes';
@@ -18,7 +19,8 @@ export default function Notificacoes({ lugar }: { lugar: 'menu' | 'topo' }) {
   const { itens, naoLidas } = useNotificacoes();
   const [aberto, setAberto] = useState(false);
   const [aba, setAba] = useState<'todas' | 'nao'>('todas');
-  const [expandida, setExpandida] = useState<number | null>(null);
+  const [aviso, setAviso] = useState<number | null>(null); // aviso aberto em tela própria
+  const [pedido, setPedido] = useState<number | null>(null); // id vindo de push/URL, aguardando a lista carregar
   const [celular, setCelular] = useState(false);
   const [convite, setConvite] = useState(false);
   const [permissao, setPermissao] = useState<NotificationPermission | 'indisponivel'>('indisponivel');
@@ -34,6 +36,25 @@ export default function Notificacoes({ lugar }: { lugar: 'menu' | 'topo' }) {
 
   const meu = lugar === 'topo' ? celular : !celular; // esta instância é a visível agora
 
+  // Abertura por link (?aviso=ID, vindo do toque numa notificação push com o app fechado).
+  useEffect(() => {
+    if (!meu) return;
+    const id = Number(new URLSearchParams(window.location.search).get('aviso'));
+    if (id > 0) {
+      setPedido(id);
+      const u = new URL(window.location.href);
+      u.searchParams.delete('aviso');
+      window.history.replaceState(null, '', u.pathname + u.search + u.hash);
+    }
+  }, [meu]);
+  // Abre o aviso pedido assim que ele aparece na lista.
+  useEffect(() => {
+    if (!pedido || !meu) return;
+    if (itens.some((n) => n.id === pedido)) { setAviso(pedido); setPedido(null); marcarLida(pedido); }
+    else { const t = setTimeout(() => setPedido(null), 15000); return () => clearTimeout(t); }
+    return undefined;
+  }, [pedido, itens, meu]);
+
   // Permissão: concedida -> mantém a inscrição em dia; pendente -> convida (uma vez a cada 3 dias).
   useEffect(() => {
     if (!meu) return;
@@ -47,7 +68,11 @@ export default function Notificacoes({ lugar }: { lugar: 'menu' | 'topo' }) {
   // Toque numa notificação push com o app aberto: abre o painel.
   useEffect(() => {
     if (!meu) return;
-    const f = (e: MessageEvent) => { if ((e.data as { tipo?: string })?.tipo === 'abrir-notificacoes') setAberto(true); };
+    const f = (e: MessageEvent) => {
+      const d = e.data as { tipo?: string; id?: number | null };
+      if (d?.tipo === 'abrir-aviso' && d.id) setPedido(d.id);
+      else if (d?.tipo === 'abrir-notificacoes' || d?.tipo === 'abrir-aviso') setAberto(true);
+    };
     navigator.serviceWorker?.addEventListener('message', f);
     return () => navigator.serviceWorker?.removeEventListener('message', f);
   }, [meu]);
@@ -62,9 +87,11 @@ export default function Notificacoes({ lugar }: { lugar: 'menu' | 'topo' }) {
   }, [aberto, celular]);
 
   const lista = aba === 'nao' ? itens.filter((n) => !n.lida) : itens;
+  const itemAberto = aviso ? itens.find((n) => n.id === aviso) ?? null : null;
 
   function abrirItem(id: number) {
-    setExpandida((v) => (v === id ? null : id));
+    setAviso(id);
+    setAberto(false);
     marcarLida(id);
   }
   async function ativar() {
@@ -102,18 +129,17 @@ export default function Notificacoes({ lugar }: { lugar: 'menu' | 'topo' }) {
           </li>
         )}
         {lista.map((n) => {
-          const aberta = expandida === n.id;
           return (
             <li key={n.id} className="border-b border-line/70 last:border-0">
-              <button type="button" onClick={() => abrirItem(n.id)} aria-expanded={aberta} className={`flex w-full items-start gap-3 px-5 py-3.5 text-left transition hover:bg-ivory ${n.lida ? '' : 'bg-[#fffaf0]'}`}>
+              <button type="button" onClick={() => abrirItem(n.id)} className={`flex w-full items-start gap-3 px-5 py-3.5 text-left transition hover:bg-ivory ${n.lida ? '' : 'bg-[#fffaf0]'}`}>
                 <span className="relative mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#f6efe0] text-gold-600">{n.autor_foto ? <img src={`${API}${n.autor_foto}`} alt="" referrerPolicy="no-referrer" className="h-full w-full rounded-full object-cover" /> : <Bell size={18} strokeWidth={1.7} />}{!n.lida && <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white bg-[#b3261e]" aria-label="Não lida" />}</span>
                 <span className="min-w-0 flex-1">
                   <span className={`block text-[0.92rem] leading-snug ${n.lida ? 'font-semibold' : 'font-bold'}`}>{n.titulo}</span>
-                  <span className={`aviso-html mt-0.5 block text-[0.84rem] leading-snug text-ink/70 ${aberta ? '' : 'line-clamp-2'}`} dangerouslySetInnerHTML={{ __html: n.corpo }} />
+                  <span className="aviso-html mt-0.5 line-clamp-2 block text-[0.84rem] leading-snug text-ink/70" dangerouslySetInnerHTML={{ __html: n.corpo }} />
                   <span className="mt-1 block text-[0.72rem] text-ink/45">{n.autor ? `${n.autor.split(' ')[0]} · ` : ''}{haTempo(n.created_at)}{n.editado_em ? ' · editado' : ''}</span>
                 </span>
               </button>
-              {n.anexos?.length > 0 && (aberta ? <div className="px-5 pb-3.5 pl-[4.5rem]"><AvisoAnexos anexos={n.anexos} /></div> : <p className="px-5 pb-3 pl-[4.5rem] text-[0.72rem] font-medium text-gold-700">{n.anexos.length} anexo(s)</p>)}
+              {n.anexos?.length > 0 && <p className="px-5 pb-3 pl-[4.5rem] text-[0.72rem] font-medium text-gold-700">{n.anexos.length} anexo(s)</p>}
             </li>
           );
         })}
@@ -138,6 +164,28 @@ export default function Notificacoes({ lugar }: { lugar: 'menu' | 'topo' }) {
             <div role="dialog" aria-label="Notificações" className="pop fixed left-[272px] top-4 z-[90]">{painel}</div>
           </>
         ),
+        document.body,
+      )}
+
+      {meu && itemAberto && createPortal(
+        <div role="dialog" aria-modal="true" aria-label={itemAberto.titulo} className="fade-in fixed inset-0 z-[96] flex items-end justify-center bg-black/55 sm:items-center sm:p-6" onClick={() => setAviso(null)}>
+          <div className="pop flex max-h-[96dvh] w-full max-w-[600px] flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5 pt-[max(0.875rem,env(safe-area-inset-top))]">
+              <p className="inline-flex items-center gap-2 text-[0.78rem] font-semibold uppercase tracking-wide text-gold-700"><Bell size={15} />Aviso</p>
+              <button type="button" onClick={() => setAviso(null)} aria-label="Fechar aviso" className="grid h-9 w-9 place-items-center rounded-full text-ink/60 hover:bg-sand"><X size={20} /></button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+              <h2 className="text-[1.35rem] font-bold leading-snug">{itemAberto.titulo}</h2>
+              <div className="mt-2.5 flex items-center gap-2.5">
+                <FotoPerfil aluno={{ nome: itemAberto.autor ?? '?', foto: itemAberto.autor_foto }} size={34} />
+                <p className="text-[0.8rem] leading-tight text-ink/60"><b className="block text-[0.86rem] text-ink">{itemAberto.autor ?? 'Instituto Sharon'}</b>{haTempo(itemAberto.created_at)}{itemAberto.editado_em ? ' · editado' : ''}</p>
+              </div>
+              <div className="aviso-html mt-4 text-[0.95rem] leading-relaxed text-ink/85" dangerouslySetInnerHTML={{ __html: itemAberto.corpo }} />
+              <AvisoAnexos anexos={itemAberto.anexos ?? []} />
+            </div>
+            <div className="border-t border-line px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"><button type="button" onClick={() => setAviso(null)} className="btn btn-gold !min-h-[46px] w-full">Entendi</button></div>
+          </div>
+        </div>,
         document.body,
       )}
 

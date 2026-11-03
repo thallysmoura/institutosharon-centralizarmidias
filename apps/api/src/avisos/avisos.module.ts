@@ -87,7 +87,7 @@ export class AvisosService implements OnModuleInit {
   async enviarPush(avisoId: number, titulo: string, corpoHtml: string, destinos: number[] | null) {
     if (!this.push) return;
     const subs = (await this.db.query(destinos ? 'SELECT id, endpoint, p256dh, auth FROM sistema.push_subs WHERE user_id = ANY($1::int[])' : 'SELECT id, endpoint, p256dh, auth FROM sistema.push_subs', destinos ? [destinos] : [])).rows;
-    const carga = JSON.stringify({ title: titulo, body: this.texto(corpoHtml).slice(0, 160), url: '/', tag: `aviso-${avisoId}` });
+    const carga = JSON.stringify({ title: titulo, body: this.texto(corpoHtml).slice(0, 160), url: `/?aviso=${avisoId}`, aviso: avisoId, tag: `aviso-${avisoId}` });
     await Promise.all(subs.map(async (s) => {
       try { await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, carga, { TTL: 86400 }); }
       catch (e) {

@@ -1,7 +1,7 @@
 /* Service worker do app Fotos Clínicas - Instituto Sharon.
    Sem cache de páginas ou dados: tudo vem da rede; só /offline.html fica guardado.
    Nunca intercepta a API nem as fotos (outro domínio/porta, dados privados de pacientes). */
-const CACHE = 'sharon-fotos-v4';
+const CACHE = 'sharon-fotos-v5';
 const SHELL = ['/offline.html', '/icons/icon-192.png'];
 
 self.addEventListener('install', (e) => {
@@ -35,7 +35,7 @@ self.addEventListener('push', (e) => {
   try { d = e.data ? e.data.json() : {}; } catch { d = { title: 'Instituto Sharon', body: e.data ? e.data.text() : '' }; }
   e.waitUntil((async () => {
     await self.registration.showNotification(d.title || 'Instituto Sharon', {
-      body: d.body || '', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: d.tag || 'aviso', renotify: true, data: { url: d.url || '/' },
+      body: d.body || '', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: d.tag || 'aviso', renotify: true, data: { url: d.url || '/', aviso: d.aviso || null },
     });
     const abertos = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     abertos.forEach((c) => c.postMessage({ tipo: 'notificacao' })); // quem está com o app aberto atualiza o sino
@@ -47,7 +47,7 @@ self.addEventListener('notificationclick', (e) => {
   const url = (e.notification.data && e.notification.data.url) || '/';
   e.waitUntil((async () => {
     const abertos = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const c of abertos) { if ('focus' in c) { await c.focus(); c.postMessage({ tipo: 'abrir-notificacoes' }); return; } }
+    for (const c of abertos) { if ('focus' in c) { await c.focus(); c.postMessage({ tipo: 'abrir-aviso', id: e.notification.data && e.notification.data.aviso }); return; } }
     await self.clients.openWindow(url);
   })());
 });
