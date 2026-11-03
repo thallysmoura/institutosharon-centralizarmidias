@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { DbService } from '../db/db.service';
 
@@ -59,6 +59,16 @@ export class StorageService {
     const p = this.path(key);
     await mkdir(dirname(p), { recursive: true });
     await writeFile(p, body);
+  }
+
+  /** Remove um único arquivo (best effort: falha de limpeza não quebra a operação). */
+  async remove(key: string) {
+    try {
+      if (this.s3) await this.s3.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: this.prefix + key }));
+      else await unlink(this.path(key));
+    } catch {
+      /* já removido ou indisponível */
+    }
   }
 
   async get(key: string): Promise<Buffer> {

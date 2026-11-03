@@ -1,6 +1,7 @@
-import { BadRequestException, Body, ConflictException, HttpCode, HttpException, Controller, ForbiddenException, Get, NotFoundException, Param, ParseIntPipe, Patch, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, ConflictException, HttpCode, HttpException, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, ParseIntPipe, Patch, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { IsEmail, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import type { Response } from 'express';
 import { createHmac, randomInt, randomUUID } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
@@ -13,6 +14,7 @@ import { AllowPendente, AuthGuard, Me, SessionUser } from '../common/auth';
 import { fotoDoUsuario } from '../common/foto';
 
 class MatriculaDto {
+  @IsOptional() @Transform(({ value }) => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : value)) @IsString() @MinLength(2, { message: 'Informe o nome completo.' }) @MaxLength(100) @Matches(/^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ' .()-]*$/, { message: 'O nome deve ter apenas letras.' }) nome?: string;
   @IsString() @MinLength(3) @MaxLength(30) @Matches(/^[A-Za-z0-9._\-/]+$/, { message: 'Use apenas letras, números e - . _ /' }) matricula!: string;
 }
 
@@ -94,7 +96,7 @@ export class PerfilController {
   async matricula(@Me() u: SessionUser, @Body() dto: MatriculaDto) {
     if (u.role !== 'ALUNO') throw new ForbiddenException();
     try {
-      await this.db.query('UPDATE sistema.users SET matricula=$2 WHERE id=$1', [u.id, dto.matricula.trim()]);
+      await this.db.query('UPDATE sistema.users SET matricula=$2, nome=COALESCE(NULLIF($3, \'\'), nome) WHERE id=$1', [u.id, dto.matricula.trim(), dto.nome?.replace(/\s+/g, ' ').trim() ?? '']);
     } catch (e) {
       if ((e as { code?: string }).code === '23505') throw new ConflictException('Esta matrícula já está em uso por outro aluno.');
       throw e;
@@ -112,6 +114,16 @@ export class PerfilController {
     const key = `perfil/${u.id}-${randomUUID()}.webp`;
     await this.storage.put(key, out, 'image/webp');
     await this.db.query('UPDATE sistema.users SET foto_key=$2, foto_v=foto_v+1 WHERE id=$1', [u.id, key]);
+    return { ok: true };
+  }
+
+  @Delete('perfil/foto')
+  @AllowPendente()
+  @HttpCode(200)
+  async removerFoto(@Me() u: SessionUser) {
+    const r = (await this.db.query('SELECT foto_key FROM sistema.users WHERE id=$1', [u.id])).rows[0];
+    await this.db.query('UPDATE sistema.users SET foto_key=NULL, foto_url=NULL, foto_v=foto_v+1 WHERE id=$1', [u.id]);
+    if (r?.foto_key) await this.storage.remove(r.foto_key);
     return { ok: true };
   }
 
