@@ -15,6 +15,19 @@ CREATE TABLE IF NOT EXISTS sistema.users (
 ALTER TABLE sistema.users ADD COLUMN IF NOT EXISTS autorizado BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE sistema.users ADD COLUMN IF NOT EXISTS origem TEXT NOT NULL DEFAULT 'senha';
 ALTER TABLE sistema.users ADD COLUMN IF NOT EXISTS foto_url TEXT;
+ALTER TABLE sistema.users ADD COLUMN IF NOT EXISTS foto_key TEXT;
+ALTER TABLE sistema.users ADD COLUMN IF NOT EXISTS foto_v INT NOT NULL DEFAULT 0;
+ALTER TABLE sistema.users ADD COLUMN IF NOT EXISTS google_email TEXT;
+UPDATE sistema.users SET google_email = email WHERE origem='google' AND google_email IS NULL;
+CREATE TABLE IF NOT EXISTS sistema.pin_senha (
+  user_id INT PRIMARY KEY REFERENCES sistema.users(id) ON DELETE CASCADE, pin_hash TEXT, expira TIMESTAMPTZ, tentativas INT NOT NULL DEFAULT 0,
+  enviado_em TIMESTAMPTZ NOT NULL DEFAULT now(), reset_hash TEXT, reset_expira TIMESTAMPTZ);
+CREATE TABLE IF NOT EXISTS sistema.pin_cadastro (
+  email TEXT PRIMARY KEY, pin_hash TEXT, expira TIMESTAMPTZ, tentativas INT NOT NULL DEFAULT 0,
+  enviado_em TIMESTAMPTZ NOT NULL DEFAULT now(), token_hash TEXT, token_expira TIMESTAMPTZ);
+CREATE TABLE IF NOT EXISTS sistema.pin_email (
+  user_id INT PRIMARY KEY REFERENCES sistema.users(id) ON DELETE CASCADE, novo_email TEXT NOT NULL, pin_hash TEXT NOT NULL,
+  expira TIMESTAMPTZ NOT NULL, tentativas INT NOT NULL DEFAULT 0, enviado_em TIMESTAMPTZ NOT NULL DEFAULT now());
 ALTER TABLE sistema.users ADD COLUMN IF NOT EXISTS ultimo_acesso TIMESTAMPTZ;
 CREATE UNIQUE INDEX IF NOT EXISTS users_matricula_uq ON sistema.users (lower(matricula)) WHERE matricula IS NOT NULL AND matricula <> '';
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_uq ON sistema.users (lower(email));
@@ -49,6 +62,7 @@ export class DbService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     await this.pool.query(MIGRATION);
+    await this.pool.query('UPDATE sistema.users SET autorizado=true WHERE NOT autorizado'); // não há mais fila de autorização
     for (const [n, lat, lng] of [['Manaus', -3.119, -60.0217], ['Porto Velho', -8.7612, -63.9004], ['São Paulo', -23.5505, -46.6333]] as const)
       await this.pool.query('INSERT INTO sistema.cidades (nome,lat,lng) VALUES ($1,$2,$3) ON CONFLICT (nome) DO UPDATE SET lat=EXCLUDED.lat, lng=EXCLUDED.lng', [n, lat, lng]);
     await this.pool.query(

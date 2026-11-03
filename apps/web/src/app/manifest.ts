@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Fotos Clínicas — Instituto Sharon',
+    name: 'Fotos Clínicas - Instituto Sharon',
     short_name: 'Sharon Fotos',
     description: 'Centralização das fotografias dos atendimentos do Instituto Sharon.',
     start_url: '/',

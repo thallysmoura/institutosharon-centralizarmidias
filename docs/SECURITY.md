@@ -38,7 +38,7 @@ Quando precisar, instale: `pnpm --filter @app/api add helmet`.
 
 ## SQL / DB
 
-- Use ORM/Query builder (Prisma, Drizzle, TypeORM) — nunca string-concat de SQL.
+- Use ORM/Query builder (Prisma, Drizzle, TypeORM) - nunca string-concat de SQL.
 - Migrations versionadas no repo.
 - Backup automatizado configurado no Coolify (databases têm setting próprio).
 

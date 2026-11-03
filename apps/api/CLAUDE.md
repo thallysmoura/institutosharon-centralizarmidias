@@ -1,4 +1,4 @@
-# CLAUDE.md — apps/api (NestJS)
+# CLAUDE.md - apps/api (NestJS)
 
 > Contexto específico do backend. Use junto com o `CLAUDE.md` raiz.
 
@@ -15,7 +15,7 @@
 ```
 src/
 ├── main.ts            # Bootstrap (CORS, ValidationPipe, listen)
-├── app.module.ts      # Módulo raiz — importa os feature modules
+├── app.module.ts      # Módulo raiz - importa os feature modules
 ├── health/            # Módulo de exemplo (GET /health)
 │   ├── health.module.ts
 │   ├── health.controller.ts
@@ -30,7 +30,7 @@ src/
 - **Use `ConfigService`** para ler variáveis de ambiente. Nunca `process.env.X` espalhado pelo código (exceção: `main.ts` no bootstrap).
 - **Tipagem de resposta** vem do `@app/shared-types` quando o tipo cruza a fronteira HTTP.
 - **CORS** é controlado pela env `CORS_ORIGINS` (vírgula separa).
-- **Healthcheck `GET /health`** já existe — Coolify e Docker dependem dele. Não quebre o contrato.
+- **Healthcheck `GET /health`** já existe - Coolify e Docker dependem dele. Não quebre o contrato.
 - **Toda nova feature** vira um módulo importado em `AppModule`.
 
 ## Variáveis de ambiente (api)

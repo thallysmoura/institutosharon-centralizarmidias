@@ -13,12 +13,12 @@ export type SessionUser = {
   matricula: string | null;
   cidade_id: number | null;
   cidade: string | null;
-  autorizado: boolean;
   foto_url: string | null;
+  primeiro_acesso: boolean;
 };
 
 export const Roles = (...roles: SessionUser['role'][]) => SetMetadata('roles', roles);
-/** Rotas que um aluno ainda sem autorização pode acessar (ex.: ver o próprio status e sair). */
+/** Rotas liberadas ao aluno que ainda não informou a matrícula (primeiro acesso): ver o perfil, informar a matrícula e a foto. */
 export const AllowPendente = () => SetMetadata('pendenteOk', true);
 export const Me = createParamDecorator((_: unknown, ctx: ExecutionContext): SessionUser => ctx.switchToHttp().getRequest().user);
 
@@ -41,15 +41,15 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
     const r = await this.db.query<SessionUser>(
-      'SELECT u.id,u.nome,u.email,u.role,u.matricula,COALESCE($2::int, u.cidade_id) AS cidade_id,c.nome AS cidade,u.autorizado,u.foto_url FROM sistema.users u LEFT JOIN sistema.cidades c ON c.id=COALESCE($2::int, u.cidade_id) WHERE u.id=$1',
+      `SELECT u.id,u.nome,u.email,u.role,u.matricula,COALESCE($2::int, u.cidade_id) AS cidade_id,c.nome AS cidade,CASE WHEN u.foto_key IS NOT NULL OR u.foto_url IS NOT NULL THEN '/users/' || u.id || '/foto?v=' || u.foto_v END AS foto_url,(u.role='ALUNO' AND COALESCE(u.matricula,'')='') AS primeiro_acesso FROM sistema.users u LEFT JOIN sistema.cidades c ON c.id=COALESCE($2::int, u.cidade_id) WHERE u.id=$1`,
       [sub, cid],
     );
     if (!r.rows[0]) throw new UnauthorizedException();
     req.user = r.rows[0];
     const roles = this.reflector.get<string[]>('roles', ctx.getHandler()) ?? this.reflector.get<string[]>('roles', ctx.getClass());
     if (roles?.length && !roles.includes(req.user.role)) throw new ForbiddenException();
-    if (req.user.role === 'ALUNO' && !req.user.autorizado && !this.reflector.get<boolean>('pendenteOk', ctx.getHandler()))
-      throw new ForbiddenException('Seu acesso aguarda autorização da administração do Instituto.');
+    if (req.user.primeiro_acesso && !this.reflector.get<boolean>('pendenteOk', ctx.getHandler()))
+      throw new ForbiddenException('Complete o seu perfil informando a matrícula para continuar.');
     return true;
   }
 }

@@ -16,7 +16,7 @@ Claude Code e peça para criar seu projeto:
 > "Clona esse repositório e cria um projeto novo pra mim."
 
 O Claude vai perguntar o **nome do projeto**, criar uma pasta nova, criar o **repositório privado
-na organização** e publicar na branch **`staging`** — tudo guiado.
+na organização** e publicar na branch **`staging`** - tudo guiado.
 
 👉 Antes, siga o **[`docs/PRE_REQUISITOS.md`](./docs/PRE_REQUISITOS.md)** (o que instalar e como
 autenticar no GitHub). Quem preferir o comando explícito pode usar `/novo-projeto` no Claude Code.
@@ -47,7 +47,7 @@ docs/          → documentação detalhada
 
 ## Por onde começar (humano)
 
-👉 **Primeira vez? Siga o [`IMPLEMENTACAO.md`](./IMPLEMENTACAO.md)** — passo-a-passo do zero até deploy no Coolify.
+👉 **Primeira vez? Siga o [`IMPLEMENTACAO.md`](./IMPLEMENTACAO.md)** - passo-a-passo do zero até deploy no Coolify.
 
 Para referência rápida:
 1. Leia `CLAUDE.md` na raiz.
@@ -89,4 +89,4 @@ Detalhes completos em [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
 
 ## Licença
 
-Uso interno — Hospital Adventista de Manaus.
+Uso interno - Hospital Adventista de Manaus.

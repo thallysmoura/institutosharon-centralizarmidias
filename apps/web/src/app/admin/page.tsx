@@ -5,6 +5,7 @@ import { api, Atendimento, fotoUrl, fmtData, Me } from '@/lib/api';
 import { fmtDia, nomeLimpo, useSession } from '@/lib/session';
 import { Wordmark } from '@/components/Brand';
 import Armazenamento from '@/components/Armazenamento';
+import PageLoader from '@/components/PageLoader';
 import ControleAcesso from '@/components/ControleAcesso';
 
 type Vista = 'geral' | 'fotos' | 'alunos' | 'pacientes' | 'cidades' | 'armazenamento' | 'acessos';
@@ -105,13 +106,15 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
         </div>
       </div>
 
-      <div className="mt-4 hidden grid-cols-[130px_90px_1.3fr_1fr_100px_auto] items-center gap-4 rounded-xl bg-[#f3efe7] px-4 py-2.5 text-[0.78rem] font-bold lg:grid">
+      <div className="card mt-4 overflow-hidden !p-0">
+      <div className="hidden grid-cols-[130px_90px_1.3fr_1fr_100px_auto] items-center gap-4 border-b border-line bg-[#f3efe7] px-4 py-3 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-ink/70 lg:grid">
         <span>Prévia</span><span>Paciente</span><span>Aluno (Matrícula)</span><span>Cidade</span><span>Data</span><span className="text-right">Ações</span>
       </div>
-      {!loading && lista.length === 0 && <p className="mt-8 text-center text-ink/55">Nenhum atendimento encontrado.</p>}
-      <ul className="mt-2">
+      {loading && lista.length === 0 && <div className="space-y-3 p-4" aria-hidden>{[0, 1, 2].map((i) => <div key={i} className="h-14 animate-pulse rounded-lg bg-sand" />)}</div>}
+      {!loading && lista.length === 0 && <div className="px-4 py-12 text-center"><span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><ImageIcon size={22} /></span><p className="mt-3 font-semibold">Nenhum atendimento encontrado</p><p className="text-[0.85rem] text-ink/55">Ajuste os filtros para ampliar a busca.</p></div>}
+      <ul className={loading ? 'opacity-60 transition' : 'transition'}>
         {lista.map((a) => (
-          <li key={a.id} className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 border-b border-line px-1 py-3 lg:grid-cols-[130px_90px_1.3fr_1fr_100px_auto] lg:px-4">
+          <li key={a.id} className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 border-b border-line px-4 py-3 transition last:border-b-0 hover:bg-ivory lg:grid-cols-[130px_90px_1.3fr_1fr_100px_auto]">
             <button type="button" onClick={() => setAberta({ a, i: 0 })} aria-label="Visualizar fotos" className="flex overflow-hidden rounded-lg bg-sand">
               {a.fotos.slice(0, 2).map((p) => (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -120,7 +123,7 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
             </button>
             <div className="contents lg:contents">
               <span className="font-bold">{a.identificador_paciente}</span>
-              <span className="col-span-2 text-[0.82rem] leading-tight lg:col-span-1">{nomeLimpo(a.aluno.nome)}<br /><span className="text-ink/60">({a.aluno.matricula ?? '—'})</span></span>
+              <span className="col-span-2 text-[0.82rem] leading-tight lg:col-span-1">{nomeLimpo(a.aluno.nome)}<br /><span className="text-ink/60">({a.aluno.matricula ?? 'sem matrícula'})</span></span>
               <span className="flex items-center gap-1.5 text-[0.85rem]"><MapPin size={15} className="text-gold-500" />{a.cidade}</span>
               <span className="text-[0.85rem] text-ink/75">{fmtDia(a.created_at)}</span>
               <div className="col-span-2 flex gap-2 lg:col-span-1 lg:justify-end">
@@ -131,6 +134,7 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
           </li>
         ))}
       </ul>
+      </div>
     </>
   );
 
@@ -159,7 +163,6 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
                 className={`flex shrink-0 items-center gap-3 rounded-xl px-4 py-3 text-[0.92rem] font-medium transition ${ativo ? 'text-white shadow-[0_8px_18px_-10px_rgba(0,0,0,.8)]' : 'text-white/80 hover:bg-white/5'}`}
                 style={ativo ? { background: 'linear-gradient(180deg,#c9a24a,#a67c26)' } : undefined}>
                 <Icon size={20} strokeWidth={1.7} />{l}
-                {k === 'acessos' && (resumo?.pendentes ?? 0) > 0 && <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-white px-1.5 text-[0.68rem] font-bold text-gold-700">{resumo?.pendentes}</span>}
               </button>
             );
           })}
@@ -177,7 +180,7 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
         {vista === 'geral' && (
           <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
             {stats.map(([l, v, Icon]) => (
-              <div key={l} className="card flex items-center gap-3 p-4">
+              <div key={l} className="card flex items-center gap-3 p-4 transition hover:-translate-y-0.5 hover:shadow-soft">
                 <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><Icon size={22} strokeWidth={1.6} /></span>
                 <div className="leading-tight"><p className="text-[1.3rem] font-bold">{num(v)}</p><p className="text-[0.78rem] text-ink/65">{l}</p></div>
               </div>
@@ -188,13 +191,13 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
         <div className={vista === 'geral' || vista === 'fotos' ? 'mt-7' : 'hidden'}>{tabela}</div>
 
         {vista === 'armazenamento' && <Armazenamento />}
-        {vista === 'acessos' && <ControleAcesso onMudou={() => api<Resumo>('/admin/resumo').then(setResumo).catch(() => null)} />}
+        {vista === 'acessos' && <ControleAcesso meuId={me.id} />}
 
         {vista === 'alunos' && (
           <ul className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {alunos.map((a) => (
               <li key={a.id}><button type="button" onClick={() => irFotos({ aluno_id: String(a.id) })} className="card w-full p-4 text-left transition hover:border-gold-500">
-                <p className="font-bold">{nomeLimpo(a.nome)}</p><p className="text-[0.82rem] text-ink/60">{a.matricula ?? '—'} · {a.cidade ?? '—'}</p>
+                <p className="font-bold">{nomeLimpo(a.nome)}</p><p className="text-[0.82rem] text-ink/60">{a.matricula ?? 'Sem matrícula'} · {a.cidade ?? 'Sem cidade'}</p>
                 <p className="mt-2 text-[0.82rem] text-gold-700">{a.atendimentos} atendimento(s) · {a.fotos} foto(s)</p>
               </button></li>
             ))}
@@ -249,6 +252,6 @@ function Painel({ me, sair }: { me: Me; sair: () => void }) {
 
 export default function AdminPage() {
   const { me, sair } = useSession('ADMIN');
-  if (!me) return <div className="grid min-h-dvh place-items-center text-sm text-ink/50">Carregando…</div>;
+  if (!me) return <PageLoader />;
   return <Painel me={me} sair={sair} />;
 }

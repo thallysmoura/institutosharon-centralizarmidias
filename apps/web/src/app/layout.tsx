@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from 'next';
-import { Cormorant_Garamond, Montserrat } from 'next/font/google';
+import { Figtree, Poppins, Roboto } from 'next/font/google';
 import './globals.css';
 import PwaRegister from '@/components/PwaRegister';
 
-const display = Cormorant_Garamond({ subsets: ['latin'], weight: ['500', '600', '700'], style: ['normal', 'italic'], variable: '--font-display', display: 'swap' });
-const sans = Montserrat({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-sans', display: 'swap' });
+const display = Poppins({ subsets: ['latin'], weight: ['500', '600', '700'], style: ['normal', 'italic'], variable: '--font-display', display: 'swap' });
+const sans = Figtree({ subsets: ['latin'], weight: ['400', '500', '600', '700'], style: ['normal', 'italic'], variable: '--font-sans', display: 'swap' });
+const roboto = Roboto({ subsets: ['latin'], weight: ['400', '500', '700'], variable: '--font-roboto', display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'Sistema de Centralização de Fotos Clínicas | Instituto Sharon',
@@ -18,7 +19,7 @@ export const viewport: Viewport = { themeColor: '#171512', width: 'device-width'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${display.variable} ${sans.variable}`}>
+    <html lang="pt-BR" className={`${display.variable} ${sans.variable} ${roboto.variable}`}>
       <body className="min-h-dvh">
         {children}
         <PwaRegister />

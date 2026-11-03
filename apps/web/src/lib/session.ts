@@ -19,7 +19,9 @@ export function useSession(role: Me['role']) {
     router.replace('/login');
   }, [router]);
 
-  return { me, sair };
+  const recarregar = useCallback(() => api<Me>('/auth/me').then(setMe).catch(() => null), []);
+
+  return { me, sair, recarregar };
 }
 
 export const fmtDia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');

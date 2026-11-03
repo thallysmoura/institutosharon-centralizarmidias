@@ -2,7 +2,7 @@
 
 ## Pré-requisitos
 
-- Node.js 24.16.0 (use `nvm use` na raiz — `.nvmrc` fixa a versão)
+- Node.js 24.16.0 (use `nvm use` na raiz - `.nvmrc` fixa a versão)
 - pnpm 9.12+ (`corepack enable && corepack prepare pnpm@9.12.0 --activate`)
 - Docker + Docker Compose (opcional, para subir o stack inteiro)
 
@@ -17,7 +17,7 @@ pnpm install
 
 ## Rodando
 
-### Opção A — Tudo nativo (recomendado para dev iterativo)
+### Opção A - Tudo nativo (recomendado para dev iterativo)
 
 ```bash
 pnpm dev
@@ -25,13 +25,13 @@ pnpm dev
 
 Sobe web (:3000) e api (:3001) em paralelo via Turborepo.
 
-### Opção B — Containers (mais próximo do prod)
+### Opção B - Containers (mais próximo do prod)
 
 ```bash
 pnpm docker:up
 ```
 
-### Opção C — Um app por vez
+### Opção C - Um app por vez
 
 ```bash
 pnpm --filter @app/web dev
@@ -55,11 +55,11 @@ Os três passam? Pode commitar.
 pnpm --filter @app/web add zod
 pnpm --filter @app/api add @nestjs/jwt
 
-# Dependência da raiz (raro — só ferramentas globais):
+# Dependência da raiz (raro - só ferramentas globais):
 pnpm add -D -w prettier
 ```
 
-❌ Não rode `pnpm add` dentro de `apps/web/` — sempre use `--filter` da raiz para manter o lockfile coerente.
+❌ Não rode `pnpm add` dentro de `apps/web/` - sempre use `--filter` da raiz para manter o lockfile coerente.
 
 ## Tipos compartilhados
 
@@ -74,7 +74,7 @@ export interface User {
 }
 ```
 
-E re-exporte em `packages/shared-types/src/index.ts`. Os apps já dependem do package — basta importar:
+E re-exporte em `packages/shared-types/src/index.ts`. Os apps já dependem do package - basta importar:
 
 ```ts
 import type { User } from '@app/shared-types';

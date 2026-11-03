@@ -28,7 +28,7 @@
 
 - Um módulo por domínio (`users/`, `appointments/`, …).
 - Controller fino, Service grosso.
-- DTOs com `class-validator` (`@IsString()`, `@IsEmail()`, …) — sempre validar input de fora.
+- DTOs com `class-validator` (`@IsString()`, `@IsEmail()`, …) - sempre validar input de fora.
 - Sem lógica de negócio em controllers.
 - Erros: lance `HttpException` do Nest (ou subclasses como `BadRequestException`).
 - Logs: `Logger` injetado, com contexto (`new Logger(MyService.name)`).
@@ -44,7 +44,7 @@
 
 - Crie só quando necessário. Reaproveite padrões existentes.
 - Evite `index.ts` barrel se for só re-exportar um arquivo.
-- Não crie `utils.ts` genérico — coloque o helper perto do uso, ou em `lib/<dominio>.ts`.
+- Não crie `utils.ts` genérico - coloque o helper perto do uso, ou em `lib/<dominio>.ts`.
 
 ## Quando estiver tentado a fazer um "refactor de oportunidade"
 

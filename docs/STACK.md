@@ -33,7 +33,7 @@
 
 ## Shared (`packages/shared-types`)
 
-Pacote sem dependências externas — só TypeScript. Sai do build do app via `transpilePackages` (Next) e `module-alias` / `paths` (Nest).
+Pacote sem dependências externas - só TypeScript. Sai do build do app via `transpilePackages` (Next) e `module-alias` / `paths` (Nest).
 
 ## Quando atualizar
 
@@ -43,5 +43,5 @@ Pacote sem dependências externas — só TypeScript. Sai do build do app via `t
 ## O que evitar
 
 - Adicionar runtime alternativo (Bun, Deno) sem revisar Dockerfiles.
-- Trocar Express por Fastify na API "porque é mais rápido" — só se houver gargalo medido.
+- Trocar Express por Fastify na API "porque é mais rápido" - só se houver gargalo medido.
 - Pacotes com manutenção parada (>1 ano sem release) sem justificativa.

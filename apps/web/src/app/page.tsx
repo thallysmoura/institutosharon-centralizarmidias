@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, Me } from '@/lib/api';
+import PageLoader from '@/components/PageLoader';
 
 /** Direciona pelo perfil vindo do banco: ADMIN → painel geral, ALUNO → área de envio. */
 export default function Home() {
@@ -11,5 +12,5 @@ export default function Home() {
       .then((me) => router.replace(me.role === 'ADMIN' ? '/admin' : '/aluno'))
       .catch(() => router.replace('/login'));
   }, [router]);
-  return <div className="grid min-h-dvh place-items-center text-sm text-ink/50">Carregando…</div>;
+  return <PageLoader />;
 }

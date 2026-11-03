@@ -1,4 +1,4 @@
-/* Service worker do app Fotos Clínicas — Instituto Sharon.
+/* Service worker do app Fotos Clínicas - Instituto Sharon.
    Estratégia: rede primeiro para tudo do mesmo domínio, com cache como reserva (funciona offline após a 1ª visita).
    Nunca intercepta a API nem as fotos (outro domínio/porta, dados privados de pacientes). */
 const CACHE = 'sharon-fotos-v1';

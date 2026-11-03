@@ -8,6 +8,8 @@ import { Ribbons, Wordmark } from '@/components/Brand';
 import { entrarComGoogle } from '@/lib/firebase';
 import { msgLocalizacao, pedirLocalizacao } from '@/lib/geo';
 import Spinner from '@/components/Spinner';
+import RecuperarSenha from '@/components/RecuperarSenha';
+import Cadastro from '@/components/Cadastro';
 
 const destaques: [typeof Camera, string, string][] = [
   [Camera, 'Envio direto do celular', 'Fotografe ou selecione imagens e envie em segundos.'],
@@ -30,7 +32,9 @@ export default function Login() {
   const [senha, setSenha] = useState('');
   const [ver, setVer] = useState(false);
   const [erro, setErro] = useState('');
-  const [aviso, setAviso] = useState(false);
+  const [recuperar, setRecuperar] = useState(false);
+  const [cadastro, setCadastro] = useState(false);
+  const [sucesso, setSucesso] = useState('');
   const [loading, setLoading] = useState(false);
   const [via, setVia] = useState<'senha' | 'google'>('senha');
   const [fase, setFase] = useState<'login' | 'local'>('login');
@@ -39,7 +43,7 @@ export default function Login() {
   function validar() {
     const e: { email?: string; senha?: string } = {};
     if (!email.trim()) e.email = 'Informe o e-mail.';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) e.email = 'Digite um e-mail válido.';
+    else if (!/^[^\s@]+@[^\s@]+\.[A-Za-z]{2,24}$/.test(email.trim())) e.email = 'Digite um e-mail válido, como nome@dominio.com.';
     if (!senha) e.senha = 'Informe a senha.';
     else if (senha.length < 4) e.senha = 'A senha deve ter ao menos 4 caracteres.';
     setErrs(e);
@@ -111,7 +115,7 @@ export default function Login() {
 
   return (
     <main className="grid min-h-dvh lg:grid-cols-[1.05fr_1fr]">
-      {/* Painel de marca — só em telas largas */}
+      {/* Painel de marca - só em telas largas */}
       <aside className="relative isolate hidden overflow-hidden bg-side text-white lg:flex lg:flex-col lg:justify-between lg:p-14">
         <Image src="/img/banner-experiencias.webp" alt="" fill priority sizes="55vw" quality={80} className="-z-20 object-cover object-[70%_40%] opacity-60" />
         <span aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-br from-side via-side/85 to-side/60" />
@@ -149,6 +153,7 @@ export default function Login() {
             <h1 className="rise mt-9 text-center text-[1.7rem] font-bold lg:mt-2 lg:text-left lg:text-[2.3rem]" style={{ '--d': '120ms' } as React.CSSProperties}>Acesse o sistema</h1>
             <p className="rise mt-1 hidden text-sm text-ink/60 lg:block" style={{ '--d': '180ms' } as React.CSSProperties}>Entre com o e-mail e a senha cadastrados pelo Instituto.</p>
 
+            {sucesso && <p role="status" className="rise mt-4 rounded-xl bg-[#e7f6ee] px-4 py-3 text-sm font-medium text-[#17794a]">{sucesso}</p>}
             <form onSubmit={entrar} noValidate className="rise mt-5" style={{ '--d': '240ms' } as React.CSSProperties}>
               <div className="relative">
                 <Mail size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink/60" aria-hidden />
@@ -180,8 +185,8 @@ export default function Login() {
               </svg>
               {loading && via === 'google' ? <><Spinner />{fase === 'local' ? 'Aguarde...' : 'Entrando…'}</> : 'Entrar com Google'}
             </button>
-            <button type="button" onClick={() => setAviso(true)} className="rise mx-auto mt-5 block text-sm font-medium underline underline-offset-2 lg:mx-0" style={{ '--d': '320ms' } as React.CSSProperties}>Esqueceu sua senha?</button>
-            {aviso && <p role="status" className="mt-3 text-center text-xs text-ink/60 lg:text-left">Procure a administração do Instituto para redefinir sua senha.</p>}
+            <button type="button" onClick={() => { setRecuperar(true); setSucesso(''); }} className="rise mx-auto mt-5 block text-sm font-medium underline underline-offset-2 lg:mx-0" style={{ '--d': '320ms' } as React.CSSProperties}>Esqueceu sua senha?</button>
+            <p className="rise mt-3 text-center text-sm text-ink/70 lg:text-left" style={{ '--d': '360ms' } as React.CSSProperties}>Ainda não tem conta? <button type="button" onClick={() => { setCadastro(true); setSucesso(''); }} className="font-semibold text-gold-700 underline underline-offset-2">Criar conta</button></p>
           </div>
         </div>
 
@@ -189,6 +194,19 @@ export default function Login() {
           © {new Date().getFullYear()} Instituto Sharon. Todos os direitos reservados.
         </footer>
       </section>
+      {cadastro && (
+        <Cadastro
+          onFechar={() => setCadastro(false)}
+          onConcluido={(r) => { setCadastro(false); if (r.logado) return concluir(r.role); setEmail(r.email); setSenha(''); setErrs({}); setErro(''); setSucesso('Cadastro concluído. Entre com o seu e-mail e senha.'); }}
+        />
+      )}
+      {recuperar && (
+        <RecuperarSenha
+          emailInicial={email}
+          onFechar={() => setRecuperar(false)}
+          onConcluido={(e) => { setRecuperar(false); setEmail(e); setSenha(''); setErrs({}); setErro(''); setSucesso('Senha alterada com sucesso. Entre com a nova senha.'); }}
+        />
+      )}
     </main>
   );
 }

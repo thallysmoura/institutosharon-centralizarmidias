@@ -14,8 +14,8 @@ const config: Config = {
         gold: { 300: '#e6cc7a', 400: '#d4af37', 500: '#b8902f', 600: '#9a7721', 700: '#7d5f12' },
       },
       fontFamily: {
-        display: ['var(--font-display)', 'Georgia', 'serif'],
-        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'var(--font-roboto)', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-sans)', 'var(--font-roboto)', 'system-ui', 'sans-serif'],
       },
       boxShadow: { soft: '0 18px 44px -28px rgba(20,17,10,.35)', card: '0 2px 14px -6px rgba(20,17,10,.12)' },
     },

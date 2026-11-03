@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Cloud, Database, ImageIcon, PenLine, Eye, TriangleAlert, CircleCheck } from 'lucide-react';
 import { api } from '@/lib/api';
+import PageLoader from '@/components/PageLoader';
 
 type Resumo = {
   driver: 'local' | 's3';
@@ -49,7 +50,7 @@ export default function Armazenamento() {
   useEffect(() => { api<Resumo>('/admin/armazenamento').then(setD).catch((e) => setErro((e as Error).message)); }, []);
 
   if (erro) return <p className="mt-6 text-sm text-ink/60">{erro}</p>;
-  if (!d) return <p className="mt-6 text-sm text-ink/55">Carregando…</p>;
+  if (!d) return <PageLoader inline />;
 
   const faltaBytes = Math.max(0, d.limites.bytes - d.bytes);
   const fotosRestantes = d.mediaBytes > 0 ? Math.floor(faltaBytes / (d.mediaBytes * 1.06)) : null; // ~6% de miniatura por foto
@@ -67,7 +68,7 @@ export default function Armazenamento() {
       <div className={`flex items-start gap-3 rounded-2xl border p-4 ${gratis ? 'border-[#cfe8d8] bg-[#eef8f2]' : 'border-[#f0cfc9] bg-[#fdf0ee]'}`}>
         {gratis ? <CircleCheck size={22} className="mt-0.5 shrink-0 text-[#17794a]" /> : <TriangleAlert size={22} className="mt-0.5 shrink-0 text-[#b3261e]" />}
         <div className="text-[0.88rem] leading-snug">
-          <p className="font-bold">{gratis ? 'Dentro do limite gratuito da Cloudflare' : `Acima do limite gratuito — estimativa de ${usd(custo)} neste mês`}</p>
+          <p className="font-bold">{gratis ? 'Dentro do limite gratuito da Cloudflare' : `Acima do limite gratuito - estimativa de ${usd(custo)} neste mês`}</p>
           <p className="text-ink/70">
             {d.driver === 's3'
               ? `Armazenando no Cloudflare R2 · bucket ${d.bucket} · pasta ${d.prefixo ?? '/'}`

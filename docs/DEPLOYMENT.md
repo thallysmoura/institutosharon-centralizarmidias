@@ -12,7 +12,7 @@
 
 O monorepo expõe duas apps independentes. Cada uma vira uma **Application** separada no Coolify, apontando para o mesmo repositório mas com Dockerfiles diferentes.
 
-### Aplicação 1 — Web (Next.js)
+### Aplicação 1 - Web (Next.js)
 
 | Campo | Valor |
 |---|---|
@@ -33,7 +33,7 @@ INTERNAL_API_URL=http://<nome-do-serviço-api-no-coolify>:3001
 
 > `INTERNAL_API_URL` resolve via rede interna do Coolify. Use o **nome do serviço/container** da app api, não o domínio público (evita hop extra e funciona mesmo sem internet).
 
-### Aplicação 2 — API (NestJS)
+### Aplicação 2 - API (NestJS)
 
 | Campo | Valor |
 |---|---|
@@ -79,8 +79,8 @@ Coolify guarda histórico de deploys. No painel da application: **Deployments** 
 
 | Sintoma | Provável causa |
 |---|---|
-| `web` 502 no `/` | API down — verifique healthcheck do container `api` |
-| Build cresce indefinidamente | `.dockerignore` não está respeitado — confira se o arquivo está na raiz |
+| `web` 502 no `/` | API down - verifique healthcheck do container `api` |
+| Build cresce indefinidamente | `.dockerignore` não está respeitado - confira se o arquivo está na raiz |
 | `CORS error` no browser | `CORS_ORIGINS` da api não inclui o domínio do web |
 | `INTERNAL_API_URL` não resolve | Use o **service name**, não o domínio público |
 | Healthcheck `/health` falha em produção | Veja logs com `docker logs <container>` no servidor |

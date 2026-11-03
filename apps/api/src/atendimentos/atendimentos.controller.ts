@@ -1,7 +1,6 @@
-import { BadRequestException, Body, ConflictException, Controller, Get, Param, Patch, ParseIntPipe, Post, Query, Res, NotFoundException, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Patch, ParseIntPipe, Post, Query, Res, NotFoundException, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { IsBoolean, IsInt, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsIn, IsString, MaxLength, MinLength } from 'class-validator';
 import type { Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { memoryStorage } from 'multer';
@@ -23,10 +22,8 @@ function formatoValido(b: Buffer) {
   return jpeg || png || webp;
 }
 
-class AcessoDto {
-  @IsOptional() @IsString() @MaxLength(30) matricula?: string;
-  @IsOptional() @IsBoolean() autorizado?: boolean;
-  @IsOptional() @Type(() => Number) @IsInt() cidade_id?: number;
+class PapelDto {
+  @IsIn(['ALUNO', 'ADMIN']) role!: 'ALUNO' | 'ADMIN';
 }
 
 class CriarDto {
@@ -129,7 +126,7 @@ export class AdminController {
       mediaBytes: t.media,
       mes: { classeA: mes.classe_a, classeB: mes.classe_b },
       porCidade: porCidade.map((c) => ({ ...c, bytes: Number(c.bytes) })),
-      // Limites gratuitos mensais do Cloudflare R2 (Standard) e preços excedentes (USD) — referência pública da Cloudflare
+      // Limites gratuitos mensais do Cloudflare R2 (Standard) e preços excedentes (USD) - referência pública da Cloudflare
       limites: { bytes: 10 * 1024 ** 3, classeA: 1_000_000, classeB: 10_000_000 },
       precos: { gbMes: 0.015, classeA: 4.5 / 1_000_000, classeB: 0.36 / 1_000_000 },
     };
@@ -145,40 +142,28 @@ export class AdminController {
   @Get('resumo')
   async resumo() {
     return (await this.db.query(
-      "SELECT (SELECT count(*)::int FROM sistema.users WHERE role='ALUNO' AND NOT autorizado) AS pendentes, (SELECT count(*)::int FROM sistema.fotos) AS fotos, (SELECT count(DISTINCT lower(identificador_paciente))::int FROM sistema.atendimentos) AS pacientes, (SELECT count(*)::int FROM sistema.users WHERE role='ALUNO') AS alunos, (SELECT count(*)::int FROM sistema.cidades) AS cidades",
+      "SELECT (SELECT count(*)::int FROM sistema.fotos) AS fotos, (SELECT count(DISTINCT lower(identificador_paciente))::int FROM sistema.atendimentos) AS pacientes, (SELECT count(*)::int FROM sistema.users WHERE role='ALUNO') AS alunos, (SELECT count(*)::int FROM sistema.cidades) AS cidades",
     )).rows[0];
   }
 
-  /** Controle de acesso: todos que já entraram (senha ou Google), com status de autorização. */
+  /** Controle de acesso: todos os usuários e o papel de cada um (aluno ou administrador). */
   @Get('acessos')
   async acessos() {
     return (await this.db.query(
-      `SELECT u.id, u.nome, u.email, u.matricula, u.autorizado, u.origem, u.foto_url, u.created_at, u.ultimo_acesso, u.cidade_id, c.nome AS cidade,
+      `SELECT u.id, u.nome, u.email, u.role, u.matricula, u.origem, u.created_at, u.ultimo_acesso, c.nome AS cidade,
+              CASE WHEN u.foto_key IS NOT NULL OR u.foto_url IS NOT NULL THEN '/users/' || u.id || '/foto?v=' || u.foto_v END AS foto_url,
               (SELECT count(*)::int FROM sistema.fotos f JOIN sistema.atendimentos a ON a.id=f.atendimento_id WHERE a.aluno_id=u.id) AS fotos
        FROM sistema.users u LEFT JOIN sistema.cidades c ON c.id=u.cidade_id
-       WHERE u.role='ALUNO' ORDER BY u.autorizado ASC, u.ultimo_acesso DESC NULLS LAST, u.created_at DESC`,
+       ORDER BY (u.role='ADMIN') DESC, u.nome`,
     )).rows;
   }
 
-  /** Preenche matrícula/cidade de cadastro e libera (ou revoga) o acesso de um aluno. */
+  /** Define se o usuário é aluno ou administrador. Não é possível alterar o próprio papel. */
   @Patch('acessos/:id')
-  async atualizarAcesso(@Param('id', ParseIntPipe) id: number, @Body() dto: AcessoDto) {
-    const sets: string[] = [];
-    const p: unknown[] = [id];
-    if (dto.matricula !== undefined) { p.push(dto.matricula.trim() || null); sets.push(`matricula=$${p.length}`); }
-    if (dto.autorizado !== undefined) { p.push(dto.autorizado); sets.push(`autorizado=$${p.length}`); }
-    if (dto.cidade_id !== undefined) {
-      if (!(await this.db.query('SELECT 1 FROM sistema.cidades WHERE id=$1', [dto.cidade_id])).rowCount) throw new BadRequestException('Cidade inválida.');
-      p.push(dto.cidade_id); sets.push(`cidade_id=$${p.length}`);
-    }
-    if (!sets.length) throw new BadRequestException('Nada para atualizar.');
-    try {
-      const r = await this.db.query(`UPDATE sistema.users SET ${sets.join(', ')} WHERE id=$1 AND role='ALUNO' RETURNING id`, p);
-      if (!r.rowCount) throw new NotFoundException();
-    } catch (e) {
-      if ((e as { code?: string }).code === '23505') throw new ConflictException('Esta matrícula já está em uso por outro aluno.');
-      throw e;
-    }
+  async definirPapel(@Me() eu: SessionUser, @Param('id', ParseIntPipe) id: number, @Body() dto: PapelDto) {
+    if (id === eu.id) throw new BadRequestException('Você não pode alterar o seu próprio papel.');
+    const r = await this.db.query('UPDATE sistema.users SET role=$2 WHERE id=$1 RETURNING id', [id, dto.role]);
+    if (!r.rowCount) throw new NotFoundException();
     return { ok: true };
   }
 

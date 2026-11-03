@@ -23,7 +23,7 @@ Crie `apps/api/test/` com testes que sobem a app inteira via `INestApplication` 
 
 ## Frontend (Next.js)
 
-Por padrão **não vem configurado** — adicione conforme a necessidade:
+Por padrão **não vem configurado** - adicione conforme a necessidade:
 
 - **Unit/integração de componentes:** Vitest + React Testing Library.
 - **E2E navegador:** Playwright.

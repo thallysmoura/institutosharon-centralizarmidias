@@ -5,12 +5,13 @@
 @layer base {
   html { -webkit-text-size-adjust: 100%; }
   body { @apply bg-page font-sans text-ink antialiased; font-size: 0.95rem; line-height: 1.5; }
-  h1, h2, h3 { @apply font-display; letter-spacing: -0.01em; line-height: 1.1; }
+  h1, h2, h3 { @apply font-display; letter-spacing: -0.02em; line-height: 1.15; }
   ::selection { background: #e6cc7a; color: #14110a; }
   :focus-visible { outline: 2px solid #b8902f; outline-offset: 2px; border-radius: 6px; }
 }
 
 @layer components {
+  .eyebrow { @apply inline-flex items-center gap-3 text-[0.7rem] font-semibold uppercase tracking-[0.26em] text-gold-600; }
   .btn { @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-6 text-[0.95rem] font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-50; }
   .btn-gold { @apply text-white shadow-[0_8px_18px_-10px_rgba(125,95,18,.9)] enabled:hover:brightness-105; background: linear-gradient(180deg, #c9a24a 0%, #a67c26 100%); }
   .btn-line { @apply border border-line bg-white text-ink enabled:hover:border-gold-500; }
@@ -27,3 +28,8 @@
 .floaty { animation: floaty 9s ease-in-out infinite; }
 .sheen { background: linear-gradient(110deg, #c9a24a 0%, #e9cf85 45%, #c9a24a 60%, #a67c26 100%); background-size: 300% 100%; animation: sheen 6s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .rise, .floaty, .sheen { animation: none; } }
+
+.scroll-fino { scrollbar-width: thin; scrollbar-color: #c9a24a transparent; scrollbar-gutter: stable; }
+.scroll-fino::-webkit-scrollbar { width: 6px; }
+.scroll-fino::-webkit-scrollbar-thumb { background: #c9a24a; border-radius: 999px; }
+.scroll-fino::-webkit-scrollbar-track { background: transparent; }

@@ -5,7 +5,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-/** Valida o ID token do Firebase (login com Google) usando a conta de serviço — a chave fica só no servidor, fora do repositório. */
+/** Valida o ID token do Firebase (login com Google) usando a conta de serviço - a chave fica só no servidor, fora do repositório. */
 @Injectable()
 export class FirebaseService {
   private readonly log = new Logger('Firebase');

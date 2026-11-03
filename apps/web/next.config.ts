@@ -1,7 +1,7 @@
 import { execSync } from 'node:child_process';
 import type { NextConfig } from 'next';
 
-/** Nome do repositório (git remote origin) — identifica o projeto no selo de verificação do gestão-td.
+/** Nome do repositório (git remote origin) - identifica o projeto no selo de verificação do gestão-td.
  * Sem .git (build Docker), cai no `name` do package.json raiz. */
 function repoName(): string {
   try {
