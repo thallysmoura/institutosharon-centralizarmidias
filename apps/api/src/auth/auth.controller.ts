@@ -270,6 +270,19 @@ export class AuthController {
     return { role: r.rows[0].role, csrf };
   }
 
+  /** ATALHO DE DESENVOLVIMENTO: só existe com DEV_LOGIN=1 (nunca definido no Docker/produção) e só aceita chamadas da própria máquina. */
+  @Post('dev-login')
+  @HttpCode(200)
+  async devLogin(@Body() dto: { perfil?: string }, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
+    const local = /^(::1|127\.0\.0\.1|::ffff:127\.0\.0\.1)$/.test(req.socket.remoteAddress ?? '');
+    if (process.env.DEV_LOGIN !== '1' || !local) throw new NotFoundException();
+    const role = dto?.perfil === 'ADMIN' ? 'ADMIN' : 'ALUNO';
+    const r = await this.db.query("SELECT id,role,cidade_id FROM sistema.users WHERE role=$1 ORDER BY (email LIKE 'aluno.acesso%') DESC, id LIMIT 1", [role]);
+    if (!r.rows[0]) throw new NotFoundException('Sem usuário desse perfil.');
+    const csrf = await this.sessao.criar(res, r.rows[0].id, r.rows[0].cidade_id ?? null, true);
+    return { role: r.rows[0].role, csrf };
+  }
+
   /** Login com Google: o ID token do Firebase é validado no servidor. E-mail novo entra como ALUNO com nome e foto do Google
    *  e matrícula vazia (primeiro acesso): precisa informar a matrícula antes de enviar fotos. */
   @Post('google')
