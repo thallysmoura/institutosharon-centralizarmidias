@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, Download, Eye, GraduationCap, HardDrive, RotateCcw, Trash2, House, ImageIcon, LogOut, MapPin, ShieldCheck, Users, Smartphone, RefreshCw, Settings, ChevronsUpDown, SlidersHorizontal, ChevronDown, LayoutGrid, Menu, X, Search, ScrollText, Megaphone } from 'lucide-react';
+import { Bell, Download, Eye, GraduationCap, HardDrive, RotateCcw, Trash2, House, ImageIcon, LogOut, MapPin, ShieldCheck, Users, Smartphone, RefreshCw, Settings, ChevronsUpDown, SlidersHorizontal, ChevronDown, LayoutGrid, Menu, X, Search, ScrollText, Megaphone, PlusCircle, History } from 'lucide-react';
 import { API, api, Atendimento, fotoUrl, fmtData, Me } from '@/lib/api';
 import { fmtDia, nomeLimpo, useSession } from '@/lib/session';
 import { Wordmark } from '@/components/Brand';
@@ -16,6 +16,7 @@ import Aplicativo from '@/components/Aplicativo';
 import Auditoria from '@/components/Auditoria';
 import MuralAvisos from '@/components/MuralAvisos';
 import Notificacoes from '@/components/Notificacoes';
+import MeusEnvios, { MeusEnviosHandle } from '@/components/MeusEnvios';
 
 type Vista = 'geral' | 'fotos' | 'alunos' | 'pacientes' | 'cidades' | 'armazenamento' | 'acessos' | 'exclusoes' | 'aplicativo' | 'auditoria' | 'avisos';
 type Excl = { id: number; atendimento_id: number; oculta_em: string; identificador_paciente: string; cidade: string; aluno: { id: number; nome: string; matricula: string | null } };
@@ -100,6 +101,9 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
     return () => { document.removeEventListener('mousedown', fecha); document.removeEventListener('keydown', esc); };
   }, [menuUsuario]);
   const [vista, setVista] = useState<Vista>('geral');
+  const [fotosAba, setFotosAba] = useState<'todas' | 'meus'>('todas');
+  const envios = useRef<MeusEnviosHandle>(null);
+  const [totalEnvios, setTotalEnvios] = useState(0);
   const [hidratado, setHidratado] = useState(false);
   const [rk, setRk] = useState(0);
   const [atualizando, setAtualizando] = useState(false);
@@ -410,13 +414,13 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 bg-page px-3 py-5 sm:px-8 sm:py-6 lg:py-8">
+      <main className={`min-w-0 flex-1 bg-page px-3 py-5 sm:px-8 sm:py-6 lg:py-8 ${vista === 'fotos' ? 'pb-28 sm:pb-28 lg:pb-28' : ''}`}>
         <Cab t={vista === 'geral' ? 'Painel do Administrador' : NAV.find((n) => n[0] === vista)![1]} s="Gestão centralizada das fotografias clínicas" />
 
         {vista === 'geral' && <VisaoGeral key={rk} recentes={lista} irPara={(v) => setVista(v)} abrir={(a) => setAberta({ a, i: 0 })} />}
 
-        <div className={vista === 'fotos' ? 'mt-7' : 'hidden'}>{tabela}</div>
-        {vista === 'fotos' && lista.some((a) => a.fotos.length) && (
+        <div className={vista === 'fotos' && fotosAba === 'todas' ? 'mt-7' : 'hidden'}>{tabela}</div>
+        {vista === 'fotos' && fotosAba === 'todas' && lista.some((a) => a.fotos.length) && (
           <section className="mt-8" aria-label="Galeria de fotos">
             <Titulo nivel={3} icone={LayoutGrid}>Galeria <span className="text-[0.85rem] font-medium text-ink/55">· {lista.reduce((n, a) => n + a.fotos.length, 0)} foto(s)</span></Titulo>
             <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -439,6 +443,29 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
         {vista === 'armazenamento' && <Armazenamento key={rk} />}
         {vista === 'aplicativo' && <Aplicativo key={rk} />}
         {vista === 'auditoria' && <Auditoria key={rk} />}
+        {vista === 'fotos' && (
+          <>
+            <MeusEnvios ref={envios} modo="historico" semLista={fotosAba !== 'meus'} onTotal={setTotalEnvios} />
+            <nav aria-label="Fotos" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 lg:left-[256px]">
+              <div className="mx-auto grid max-w-[560px] grid-cols-3 items-end">
+                {([['todas', 'Todas as fotos', ImageIcon], ['novo', 'Novo envio', PlusCircle], ['meus', 'Meus envios', History]] as const).map(([k, l, Icone]) => {
+                  const ativo = k !== 'novo' && fotosAba === k;
+                  return (
+                    <button key={k} type="button" aria-current={ativo ? 'page' : undefined} onClick={() => (k === 'novo' ? envios.current?.abrirMenu() : setFotosAba(k))}
+                      className={`relative flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[0.7rem] font-semibold transition lg:text-[0.78rem] ${ativo ? 'text-gold-700' : 'text-ink/65 hover:text-ink'}`}>
+                      <span className={`relative grid place-items-center ${k === 'novo' ? 'h-9 w-12 rounded-xl text-white shadow-[0_8px_18px_-10px_rgba(150,100,10,.8)]' : 'h-9 w-9'}`} style={k === 'novo' ? { background: 'linear-gradient(180deg,#c9a24a,#a67c26)' } : undefined}>
+                        <Icone size={k === 'novo' ? 22 : 21} strokeWidth={1.7} />
+                        {k === 'meus' && totalEnvios > 0 && <span className="absolute -right-1.5 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#b3261e] px-1 text-[0.62rem] font-bold leading-none text-white ring-2 ring-white">{totalEnvios > 99 ? '99+' : totalEnvios}</span>}
+                      </span>
+                      {l}
+                      {ativo && <span aria-hidden className="absolute inset-x-6 top-0 h-[3px] rounded-b-full bg-gold-600" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          </>
+        )}
         {vista === 'avisos' && <MuralAvisos key={rk} />}
         {vista === 'acessos' && <ControleAcesso key={rk} meuId={me.id} />}
         {vista === 'exclusoes' && (

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict PbcGzxR6Q0Br84z8boz2NIW4nGe88V6v6lNDqb1xBqFvEQWhEfy4T7K5BiSBr0D
+\restrict aFznLxORbaGicI5gz3ArrN3fiyCe5afKmzwITcJIkkCiK2eYAW6Dbyc6IwuxL2f
 
 -- Dumped from database version 16.15
 -- Dumped by pg_dump version 16.15
@@ -73,7 +73,10 @@ CREATE TABLE sistema.auditoria (
     acao text NOT NULL,
     foto_id integer,
     atendimento_id integer,
-    detalhe jsonb
+    detalhe jsonb,
+    ator_email text,
+    ip text,
+    user_agent text
 );
 
 
@@ -94,6 +97,62 @@ CREATE SEQUENCE sistema.auditoria_id_seq
 --
 
 ALTER SEQUENCE sistema.auditoria_id_seq OWNED BY sistema.auditoria.id;
+
+
+--
+-- Name: aviso_destinos; Type: TABLE; Schema: sistema; Owner: -
+--
+
+CREATE TABLE sistema.aviso_destinos (
+    aviso_id integer NOT NULL,
+    user_id integer NOT NULL
+);
+
+
+--
+-- Name: aviso_leituras; Type: TABLE; Schema: sistema; Owner: -
+--
+
+CREATE TABLE sistema.aviso_leituras (
+    aviso_id integer NOT NULL,
+    user_id integer NOT NULL,
+    lido_em timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: avisos; Type: TABLE; Schema: sistema; Owner: -
+--
+
+CREATE TABLE sistema.avisos (
+    id integer NOT NULL,
+    titulo text NOT NULL,
+    corpo text NOT NULL,
+    para_todos boolean DEFAULT true NOT NULL,
+    criado_por integer,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    editado_em timestamp with time zone
+);
+
+
+--
+-- Name: avisos_id_seq; Type: SEQUENCE; Schema: sistema; Owner: -
+--
+
+CREATE SEQUENCE sistema.avisos_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: avisos_id_seq; Type: SEQUENCE OWNED BY; Schema: sistema; Owner: -
+--
+
+ALTER SEQUENCE sistema.avisos_id_seq OWNED BY sistema.avisos.id;
 
 
 --
@@ -215,6 +274,41 @@ CREATE TABLE sistema.pin_senha (
 
 
 --
+-- Name: push_subs; Type: TABLE; Schema: sistema; Owner: -
+--
+
+CREATE TABLE sistema.push_subs (
+    id integer NOT NULL,
+    user_id integer NOT NULL,
+    endpoint text NOT NULL,
+    p256dh text NOT NULL,
+    auth text NOT NULL,
+    ua text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: push_subs_id_seq; Type: SEQUENCE; Schema: sistema; Owner: -
+--
+
+CREATE SEQUENCE sistema.push_subs_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: push_subs_id_seq; Type: SEQUENCE OWNED BY; Schema: sistema; Owner: -
+--
+
+ALTER SEQUENCE sistema.push_subs_id_seq OWNED BY sistema.push_subs.id;
+
+
+--
 -- Name: r2_uso; Type: TABLE; Schema: sistema; Owner: -
 --
 
@@ -322,6 +416,13 @@ ALTER TABLE ONLY sistema.auditoria ALTER COLUMN id SET DEFAULT nextval('sistema.
 
 
 --
+-- Name: avisos id; Type: DEFAULT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.avisos ALTER COLUMN id SET DEFAULT nextval('sistema.avisos_id_seq'::regclass);
+
+
+--
 -- Name: cidades id; Type: DEFAULT; Schema: sistema; Owner: -
 --
 
@@ -333,6 +434,13 @@ ALTER TABLE ONLY sistema.cidades ALTER COLUMN id SET DEFAULT nextval('sistema.ci
 --
 
 ALTER TABLE ONLY sistema.fotos ALTER COLUMN id SET DEFAULT nextval('sistema.fotos_id_seq'::regclass);
+
+
+--
+-- Name: push_subs id; Type: DEFAULT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.push_subs ALTER COLUMN id SET DEFAULT nextval('sistema.push_subs_id_seq'::regclass);
 
 
 --
@@ -363,6 +471,30 @@ ALTER TABLE ONLY sistema.atendimentos
 
 ALTER TABLE ONLY sistema.auditoria
     ADD CONSTRAINT auditoria_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: aviso_destinos aviso_destinos_pkey; Type: CONSTRAINT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.aviso_destinos
+    ADD CONSTRAINT aviso_destinos_pkey PRIMARY KEY (aviso_id, user_id);
+
+
+--
+-- Name: aviso_leituras aviso_leituras_pkey; Type: CONSTRAINT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.aviso_leituras
+    ADD CONSTRAINT aviso_leituras_pkey PRIMARY KEY (aviso_id, user_id);
+
+
+--
+-- Name: avisos avisos_pkey; Type: CONSTRAINT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.avisos
+    ADD CONSTRAINT avisos_pkey PRIMARY KEY (id);
 
 
 --
@@ -422,6 +554,22 @@ ALTER TABLE ONLY sistema.pin_senha
 
 
 --
+-- Name: push_subs push_subs_endpoint_key; Type: CONSTRAINT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.push_subs
+    ADD CONSTRAINT push_subs_endpoint_key UNIQUE (endpoint);
+
+
+--
+-- Name: push_subs push_subs_pkey; Type: CONSTRAINT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.push_subs
+    ADD CONSTRAINT push_subs_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: r2_uso r2_uso_pkey; Type: CONSTRAINT; Schema: sistema; Owner: -
 --
 
@@ -461,6 +609,20 @@ CREATE INDEX atend_aluno_idx ON sistema.atendimentos USING btree (aluno_id, crea
 
 
 --
+-- Name: auditoria_acao_idx; Type: INDEX; Schema: sistema; Owner: -
+--
+
+CREATE INDEX auditoria_acao_idx ON sistema.auditoria USING btree (acao, quando DESC);
+
+
+--
+-- Name: auditoria_ator_idx; Type: INDEX; Schema: sistema; Owner: -
+--
+
+CREATE INDEX auditoria_ator_idx ON sistema.auditoria USING btree (ator_id, quando DESC);
+
+
+--
 -- Name: auditoria_quando_idx; Type: INDEX; Schema: sistema; Owner: -
 --
 
@@ -468,10 +630,24 @@ CREATE INDEX auditoria_quando_idx ON sistema.auditoria USING btree (quando DESC)
 
 
 --
+-- Name: avisos_created_idx; Type: INDEX; Schema: sistema; Owner: -
+--
+
+CREATE INDEX avisos_created_idx ON sistema.avisos USING btree (created_at DESC);
+
+
+--
 -- Name: fotos_oculta_idx; Type: INDEX; Schema: sistema; Owner: -
 --
 
 CREATE INDEX fotos_oculta_idx ON sistema.fotos USING btree (oculta_em) WHERE (oculta_em IS NOT NULL);
+
+
+--
+-- Name: push_subs_user_idx; Type: INDEX; Schema: sistema; Owner: -
+--
+
+CREATE INDEX push_subs_user_idx ON sistema.push_subs USING btree (user_id);
 
 
 --
@@ -512,6 +688,46 @@ ALTER TABLE ONLY sistema.atendimentos
 
 
 --
+-- Name: aviso_destinos aviso_destinos_aviso_id_fkey; Type: FK CONSTRAINT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.aviso_destinos
+    ADD CONSTRAINT aviso_destinos_aviso_id_fkey FOREIGN KEY (aviso_id) REFERENCES sistema.avisos(id) ON DELETE CASCADE;
+
+
+--
+-- Name: aviso_destinos aviso_destinos_user_id_fkey; Type: FK CONSTRAINT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.aviso_destinos
+    ADD CONSTRAINT aviso_destinos_user_id_fkey FOREIGN KEY (user_id) REFERENCES sistema.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: aviso_leituras aviso_leituras_aviso_id_fkey; Type: FK CONSTRAINT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.aviso_leituras
+    ADD CONSTRAINT aviso_leituras_aviso_id_fkey FOREIGN KEY (aviso_id) REFERENCES sistema.avisos(id) ON DELETE CASCADE;
+
+
+--
+-- Name: aviso_leituras aviso_leituras_user_id_fkey; Type: FK CONSTRAINT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.aviso_leituras
+    ADD CONSTRAINT aviso_leituras_user_id_fkey FOREIGN KEY (user_id) REFERENCES sistema.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: avisos avisos_criado_por_fkey; Type: FK CONSTRAINT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.avisos
+    ADD CONSTRAINT avisos_criado_por_fkey FOREIGN KEY (criado_por) REFERENCES sistema.users(id) ON DELETE SET NULL;
+
+
+--
 -- Name: fotos fotos_atendimento_id_fkey; Type: FK CONSTRAINT; Schema: sistema; Owner: -
 --
 
@@ -536,6 +752,14 @@ ALTER TABLE ONLY sistema.pin_senha
 
 
 --
+-- Name: push_subs push_subs_user_id_fkey; Type: FK CONSTRAINT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.push_subs
+    ADD CONSTRAINT push_subs_user_id_fkey FOREIGN KEY (user_id) REFERENCES sistema.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: refresh_tokens refresh_tokens_user_id_fkey; Type: FK CONSTRAINT; Schema: sistema; Owner: -
 --
 
@@ -555,5 +779,5 @@ ALTER TABLE ONLY sistema.users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict PbcGzxR6Q0Br84z8boz2NIW4nGe88V6v6lNDqb1xBqFvEQWhEfy4T7K5BiSBr0D
+\unrestrict aFznLxORbaGicI5gz3ArrN3fiyCe5afKmzwITcJIkkCiK2eYAW6Dbyc6IwuxL2f
 

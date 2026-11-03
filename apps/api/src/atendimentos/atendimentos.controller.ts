@@ -63,7 +63,7 @@ export class CidadesController {
 
 @Controller('atendimentos')
 @UseGuards(AuthGuard)
-@Roles('ALUNO')
+@Roles('ALUNO', 'ADMIN')
 export class AtendimentosController {
   constructor(private readonly db: DbService, private readonly storage: StorageService, private readonly eventos: EventosService, private readonly aud: AuditoriaService) {}
 
@@ -73,7 +73,11 @@ export class AtendimentosController {
     const disp = dispositivoDe(req.headers['user-agent'] ?? '');
     if (!files?.length) throw new BadRequestException('Envie ao menos uma foto.');
     // A cidade vem da sessão (localização do login) e não pode ser escolhida no envio.
-    const cidadeId = u.cidade_id;
+    let cidadeId = u.cidade_id;
+    if (!cidadeId && u.role === 'ADMIN') {
+      // administrador fora de uma localidade cadastrada: usa a cidade do cadastro ou a primeira da lista
+      cidadeId = (await this.db.query('SELECT COALESCE((SELECT cidade_id FROM sistema.users WHERE id=$1), (SELECT id FROM sistema.cidades ORDER BY id LIMIT 1)) AS id', [u.id])).rows[0]?.id ?? null;
+    }
     if (!cidadeId) throw new BadRequestException('Sua localização não corresponde a uma localidade cadastrada. Procure a administração.');
     if (files.some((f) => !formatoValido(f.buffer))) throw new BadRequestException('Formato inválido. Use JPEG, PNG ou WebP.');
 
