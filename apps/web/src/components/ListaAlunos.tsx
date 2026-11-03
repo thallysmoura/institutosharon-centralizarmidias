@@ -4,6 +4,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, IdCard, Images, Mail, MapPin, 
 import { api } from '@/lib/api';
 import { fmtDia, nomeLimpo } from '@/lib/session';
 import { FotoPerfil } from '@/components/CartaoAluno';
+import FotosAluno from '@/components/FotosAluno';
 
 type Linha = { id: number; nome: string; email: string; matricula: string | null; cidade: string | null; foto: string | null; created_at: string; atendimentos: number; fotos: number };
 type Resposta = { itens: Linha[]; total: number; porPagina: number };
@@ -13,7 +14,8 @@ type Cid = { id: number; nome: string };
  * Alunos: busca, filtro por cidade e ordenação no servidor, com paginação (30 por página).
  * Só a página aberta trafega, então continua leve com muitos alunos; mantém a página anterior na tela enquanto carrega a próxima.
  */
-export default function ListaAlunos({ cidades, onVerFotos }: { cidades: Cid[]; onVerFotos: (a: Linha) => void }) {
+export default function ListaAlunos({ cidades }: { cidades: Cid[] }) {
+  const [ver, setVer] = useState<Linha | null>(null); // aluno cujas fotos estão abertas na janela
   const [q, setQ] = useState('');
   const [cidade, setCidade] = useState('');
   const [ordem, setOrdem] = useState<'nome' | 'recentes' | 'antigos'>('nome');
@@ -92,7 +94,7 @@ export default function ListaAlunos({ cidades, onVerFotos }: { cidades: Cid[]; o
             </div>
             <div className="flex items-center gap-3 sm:ml-auto">
               <p className="text-right text-[0.78rem] leading-tight text-gold-700"><b className="block text-[1rem]">{a.fotos.toLocaleString('pt-BR')}</b>foto(s) · {a.atendimentos} atend.</p>
-              <button type="button" onClick={() => onVerFotos(a)} className="btn btn-line !min-h-[40px] !gap-1.5 !rounded-lg !px-3 !text-[0.8rem]"><Images size={15} />Ver fotos</button>
+              <button type="button" onClick={() => setVer(a)} className="btn btn-line !min-h-[40px] !gap-1.5 !rounded-lg !px-3 !text-[0.8rem]"><Images size={15} />Ver fotos</button>
             </div>
           </li>
         ))}
@@ -105,6 +107,7 @@ export default function ListaAlunos({ cidades, onVerFotos }: { cidades: Cid[]; o
           <button type="button" onClick={() => irPagina(pagina + 1)} disabled={pagina + 1 >= paginas || carregando} className="btn btn-line !min-h-[40px] !gap-1 !px-3.5 !text-[0.82rem]">Próxima<ChevronRight size={16} /></button>
         </nav>
       )}
+      {ver && <FotosAluno aluno={ver} onFechar={() => setVer(null)} />}
     </section>
   );
 }

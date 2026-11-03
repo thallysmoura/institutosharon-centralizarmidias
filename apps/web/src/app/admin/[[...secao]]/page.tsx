@@ -498,7 +498,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
           </div>
         )}
 
-        {vista === 'alunos' && <ListaAlunos key={rk} cidades={cidades} onVerFotos={(a) => irFotos({ aluno_id: String(a.id) }, `${nomeLimpo(a.nome)}${a.matricula ? ` (${a.matricula})` : ''}`)} />}
+        {vista === 'alunos' && <ListaAlunos key={rk} cidades={cidades} />}
         {vista === 'pacientes' && (
           <ul className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {pacientes.slice(0, nPac).map((p) => (
