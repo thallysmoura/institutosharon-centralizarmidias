@@ -136,9 +136,9 @@ export class PerfilController {
   @Get('users/:id/foto')
   @AllowPendente()
   async ver(@Me() u: SessionUser, @Param('id', ParseIntPipe) id: number, @Res() res: Response) {
-    if (u.role !== 'ADMIN' && u.id !== id) throw new NotFoundException();
-    const r = (await this.db.query('SELECT foto_key, foto_url FROM sistema.users WHERE id=$1', [id])).rows[0];
-    if (!r || (!r.foto_key && !r.foto_url)) throw new NotFoundException();
+    const r = (await this.db.query('SELECT foto_key, foto_url, role FROM sistema.users WHERE id=$1', [id])).rows[0];
+    // administradores têm foto visível a todos (autor dos avisos); a dos demais só ao próprio e a administradores
+    if (!r || (u.role !== 'ADMIN' && u.id !== id && r.role !== 'ADMIN') || (!r.foto_key && !r.foto_url)) throw new NotFoundException();
     res.set({ 'Cache-Control': 'private, max-age=240' });
     if (r.foto_key) {
       const url = await this.storage.urlAssinada(r.foto_key);

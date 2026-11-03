@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Bell, BellRing, X } from 'lucide-react';
+import { API } from '@/lib/api';
 import { haTempo, marcarLida, marcarTodasLidas, pedirPermissaoNotificacoes, pushSuportado, sincronizarPush, useNotificacoes } from '@/lib/notificacoes';
 
 const CHAVE = 'sharon_notif_ate';
@@ -104,7 +105,7 @@ export default function Notificacoes({ lugar }: { lugar: 'menu' | 'topo' }) {
           return (
             <li key={n.id} className="border-b border-line/70 last:border-0">
               <button type="button" onClick={() => abrirItem(n.id)} aria-expanded={aberta} className={`flex w-full items-start gap-3 px-5 py-3.5 text-left transition hover:bg-ivory ${n.lida ? '' : 'bg-[#fffaf0]'}`}>
-                <span className="relative mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><Bell size={18} strokeWidth={1.7} />{!n.lida && <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white bg-[#b3261e]" aria-label="Não lida" />}</span>
+                <span className="relative mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#f6efe0] text-gold-600">{n.autor_foto ? <img src={`${API}${n.autor_foto}`} alt="" referrerPolicy="no-referrer" className="h-full w-full rounded-full object-cover" /> : <Bell size={18} strokeWidth={1.7} />}{!n.lida && <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white bg-[#b3261e]" aria-label="Não lida" />}</span>
                 <span className="min-w-0 flex-1">
                   <span className={`block text-[0.92rem] leading-snug ${n.lida ? 'font-semibold' : 'font-bold'}`}>{n.titulo}</span>
                   <span className={`aviso-html mt-0.5 block text-[0.84rem] leading-snug text-ink/70 ${aberta ? '' : 'line-clamp-2'}`} dangerouslySetInnerHTML={{ __html: n.corpo }} />

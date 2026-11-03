@@ -2,14 +2,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Megaphone, Pencil, Plus, Search, Send, Trash2, UserRound, Users, X } from 'lucide-react';
-import { api } from '@/lib/api';
+import { API, api } from '@/lib/api';
 import { fmtData } from '@/lib/api';
 import { nomeLimpo } from '@/lib/session';
 import EditorTexto from './EditorTexto';
 import Spinner from './Spinner';
 
 type Dest = { id: number; nome: string; email: string };
-type Aviso = { id: number; titulo: string; corpo: string; para_todos: boolean; created_at: string; editado_em: string | null; autor: string | null; lidos: number; total: number; destinatarios: Dest[] };
+type Aviso = { id: number; titulo: string; corpo: string; para_todos: boolean; created_at: string; editado_em: string | null; autor: string | null; autor_foto: string | null; lidos: number; total: number; destinatarios: Dest[] };
 type Usuario = Dest & { role: 'ALUNO' | 'ADMIN'; matricula: string | null };
 
 const vazioHtml = (h: string) => !h.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
@@ -169,9 +169,14 @@ export default function MuralAvisos() {
         {lista.map((a) => (
           <li key={a.id} className="card p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-[#f6efe0] text-[0.9rem] font-bold text-gold-700">
+                  {a.autor_foto ? <img src={`${API}${a.autor_foto}`} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" /> : (a.autor ? nomeLimpo(a.autor).charAt(0).toUpperCase() : '?')}
+                </span>
+                <div className="min-w-0">
                 <h3 className="text-[1.02rem] font-bold leading-snug">{a.titulo}</h3>
                 <p className="mt-0.5 text-[0.74rem] text-ink/50">{a.autor ? `${nomeLimpo(a.autor)} · ` : ''}{fmtData(a.created_at)}{a.editado_em ? ' · editado' : ''}</p>
+                </div>
               </div>
               <div className="flex shrink-0 gap-1.5">
                 <button type="button" onClick={() => setForm(a)} aria-label="Editar aviso" title="Editar" className="grid h-9 w-9 place-items-center rounded-lg border border-line text-ink/70 transition hover:bg-ivory"><Pencil size={16} /></button>

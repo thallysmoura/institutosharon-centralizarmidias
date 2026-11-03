@@ -79,7 +79,7 @@ export class NotificacoesController {
   @Get()
   async listar(@Me() u: SessionUser) {
     const itens = (await this.db.query(
-      `SELECT a.id, a.titulo, a.corpo, a.created_at, a.editado_em, x.nome AS autor, (l.user_id IS NOT NULL) AS lida
+      `SELECT a.id, a.titulo, a.corpo, a.created_at, a.editado_em, x.nome AS autor, CASE WHEN x.foto_key IS NOT NULL OR x.foto_url IS NOT NULL THEN '/users/' || x.id || '/foto?v=' || x.foto_v END AS autor_foto, (l.user_id IS NOT NULL) AS lida
          FROM sistema.avisos a LEFT JOIN sistema.users x ON x.id=a.criado_por
          LEFT JOIN sistema.aviso_leituras l ON l.aviso_id=a.id AND l.user_id=$1
         WHERE ${VISIVEL} ORDER BY a.created_at DESC LIMIT 60`, [u.id])).rows;
@@ -129,7 +129,7 @@ export class AvisosAdminController {
   @Get('avisos')
   async historico() {
     return (await this.db.query(
-      `SELECT a.id, a.titulo, a.corpo, a.para_todos, a.created_at, a.editado_em, x.nome AS autor,
+      `SELECT a.id, a.titulo, a.corpo, a.para_todos, a.created_at, a.editado_em, x.nome AS autor, CASE WHEN x.foto_key IS NOT NULL OR x.foto_url IS NOT NULL THEN '/users/' || x.id || '/foto?v=' || x.foto_v END AS autor_foto,
               (SELECT count(*)::int FROM sistema.aviso_leituras l WHERE l.aviso_id=a.id) AS lidos,
               CASE WHEN a.para_todos THEN (SELECT count(*)::int FROM sistema.users) ELSE (SELECT count(*)::int FROM sistema.aviso_destinos d WHERE d.aviso_id=a.id) END AS total,
               COALESCE((SELECT json_agg(json_build_object('id', u.id, 'nome', u.nome, 'email', u.email) ORDER BY u.nome) FROM sistema.aviso_destinos d JOIN sistema.users u ON u.id=d.user_id WHERE d.aviso_id=a.id), '[]') AS destinatarios
