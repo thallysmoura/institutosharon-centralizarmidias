@@ -25,7 +25,7 @@ class Posicao {
 
 class LoginDto extends Posicao {
   @IsEmail() @MaxLength(160) email!: string;
-  @IsString() @MinLength(4) @MaxLength(100) senha!: string;
+  @IsString() @MinLength(3) @MaxLength(100) senha!: string;
 }
 
 class GoogleDto extends Posicao {
