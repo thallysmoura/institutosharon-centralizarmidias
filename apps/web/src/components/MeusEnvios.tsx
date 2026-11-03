@@ -1,7 +1,7 @@
 'use client';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CheckCircle2, Download, History, ImageIcon, Info, Pencil, PlusCircle, Trash2, User, Camera } from 'lucide-react';
+import { X, CheckCircle2, Download, History, ImageIcon, Info, Pencil, PlusCircle, Trash2, User, Camera } from 'lucide-react';
 import { api, Atendimento, fmtData, fotoUrl } from '@/lib/api';
 import { fmtDia } from '@/lib/session';
 import Titulo from '@/components/Titulo';
@@ -157,12 +157,13 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
 
   /** Detalhes da foto: informações, editar nome do paciente, baixar e excluir (só some para o aluno). */
   const modalDetalhe = atual && (
-    <div role="dialog" aria-modal="true" aria-label="Detalhes da foto" className="fade-in fixed inset-0 z-[60] flex items-end justify-center bg-black/55 sm:items-center sm:p-6" onClick={() => setDet(null)}>
-      <div className="pop flex max-h-[94dvh] w-full max-w-[860px] flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl lg:flex-row" onClick={(e) => e.stopPropagation()}>
-        <div className="relative flex min-h-[220px] flex-1 items-center justify-center bg-[#21180D]">
+    <div role="dialog" aria-modal="true" aria-label="Detalhes da foto" className="fade-in fixed inset-0 z-[60] flex bg-black/55 sm:items-center sm:justify-center sm:p-6" onClick={() => setDet(null)}>
+      <div className="pop flex h-full w-full flex-col overflow-hidden bg-white sm:h-auto sm:max-h-[94dvh] sm:max-w-[860px] sm:rounded-3xl sm:shadow-2xl lg:flex-row" onClick={(e) => e.stopPropagation()}>
+        <div className="relative h-[44dvh] shrink-0 bg-[#21180D] lg:h-auto lg:min-h-[340px] lg:flex-1">
+          <button type="button" onClick={() => setDet(null)} aria-label="Fechar" className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm transition hover:bg-black/70"><X size={20} /></button>
           <button type="button" onClick={() => setVer({ a: atual.a, i: Math.max(0, atual.a.fotos.findIndex((x) => x.id === atual.f.id)) })} aria-label="Ampliar foto" className="block h-full w-full cursor-zoom-in">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={fotoUrl(atual.f.id)} alt="" className="mx-auto max-h-[46dvh] w-full object-contain lg:max-h-[78dvh]" />
+            <img src={fotoUrl(atual.f.id)} alt="" className="h-full w-full object-contain" />
           </button>
           {todas.length > 1 && (
             <>
@@ -171,10 +172,9 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
             </>
           )}
         </div>
-        <div className="flex min-h-0 w-full flex-col overflow-y-auto p-5 lg:w-[330px] lg:shrink-0">
+        <div className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:w-[330px] lg:flex-none lg:shrink-0">
           <div className="flex items-start justify-between gap-3">
             <h2 className="text-[1.15rem] font-bold leading-tight">Detalhes da foto</h2>
-            <button type="button" onClick={() => setDet(null)} aria-label="Fechar" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-sand text-xl leading-none">×</button>
           </div>
 
           <div className="mt-4">
