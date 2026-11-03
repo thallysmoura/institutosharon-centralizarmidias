@@ -23,6 +23,9 @@ const TIPOS = ['image/jpeg', 'image/png', 'image/webp'];
 function Envio({ me, sair, recarregar, abrirConfig }: { me: Me; sair: () => void; recarregar: () => void; abrirConfig: () => void }) {
   const [aba, setAba] = useState<Aba>('inicio');
   const [menuNovo, setMenuNovo] = useState(false);
+  const aberturaMenu = useRef(0);
+  // Abre o menu de envio; um toque "fantasma" logo após abrir (ao trocar de aba) não pode fechá-lo.
+  const abrirMenuNovo = () => { aberturaMenu.current = Date.now(); setMenuNovo(true); };
   const [camAberta, setCamAberta] = useState(false);
   const [det, setDet] = useState<number | null>(null); // posição na grade da foto aberta no modal
   const [editando, setEditando] = useState(false);
@@ -52,7 +55,7 @@ function Envio({ me, sair, recarregar, abrirConfig }: { me: Me; sair: () => void
     setMenuMovel(false);
     if (k === 'config') return abrirConfig();
     setAba(k);
-    if (k === 'inicio' && window.matchMedia('(min-width: 1024px)').matches) setMenuNovo(true); // no celular o menu de envio fica só no rodapé
+    if (k === 'inicio' && window.matchMedia('(min-width: 1024px)').matches) abrirMenuNovo(); // no celular o menu de envio fica só no rodapé
   }
   useEffect(() => {
     if (!menuRodape) return;
@@ -268,7 +271,7 @@ function Envio({ me, sair, recarregar, abrirConfig }: { me: Me; sair: () => void
   /** Menu do "Novo envio": câmera ou arquivos do aparelho. */
   const menuNovoUI = menuNovo && (
     <>
-      <div className="fade-in fixed inset-0 z-[55] bg-black/45" onClick={() => setMenuNovo(false)} aria-hidden />
+      <div className="fade-in fixed inset-0 z-[55] bg-black/45" onClick={() => { if (Date.now() - aberturaMenu.current > 400) setMenuNovo(false); }} aria-hidden />
       <div role="menu" aria-label="Novo envio" className="pop fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] z-[56] mx-auto max-w-[380px] overflow-hidden rounded-2xl bg-white p-2 shadow-[0_24px_60px_-20px_rgba(33,24,13,.6)] lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-[7.5rem] lg:-translate-x-1/2">
         <p className="px-3 pb-1 pt-2 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-ink/45">Novo envio</p>
         <button type="button" role="menuitem" onClick={() => { setMenuNovo(false); if (typeof navigator.mediaDevices?.getUserMedia === 'function') setCamAberta(true); else camera.current?.click(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-left transition hover:bg-ivory active:scale-[0.99]">
@@ -393,7 +396,7 @@ function Envio({ me, sair, recarregar, abrirConfig }: { me: Me; sair: () => void
           const ativo = k === 'novo' ? aba === 'inicio' : aba === k;
           return (
             <button key={k} type="button" aria-current={ativo ? 'page' : undefined}
-              onClick={() => { if (k === 'novo') { setAba('inicio'); setMenuNovo(true); } else setAba(k); }}
+              onClick={() => { if (k === 'novo') { setAba('inicio'); abrirMenuNovo(); } else setAba(k); }}
               className={`relative z-10 flex flex-col items-center gap-0.5 rounded-xl py-1.5 transition-colors duration-300 text-[0.7rem] font-semibold lg:flex-row lg:justify-center lg:gap-2 lg:py-2 lg:text-[0.82rem] ${ativo ? 'text-white' : 'text-ink/70'}`}
               >
               <span className="relative"><Icon size={20} strokeWidth={1.7} />{k === 'historico' && meus.length > 0 && <span className="absolute -right-3.5 -top-2 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#b3261e] px-1 text-[0.62rem] font-bold leading-none text-white ring-2 ring-white">{meus.length > 99 ? '99+' : meus.length}</span>}</span>{l}
