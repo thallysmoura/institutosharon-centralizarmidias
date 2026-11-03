@@ -30,7 +30,25 @@ ALTER TABLE sistema.fotos ADD COLUMN IF NOT EXISTS oculta_por INT;
 CREATE INDEX IF NOT EXISTS fotos_oculta_idx ON sistema.fotos (oculta_em) WHERE oculta_em IS NOT NULL;
 CREATE TABLE IF NOT EXISTS sistema.auditoria (
   id BIGSERIAL PRIMARY KEY, quando TIMESTAMPTZ NOT NULL DEFAULT now(), ator_id INT, acao TEXT NOT NULL, foto_id INT, atendimento_id INT, detalhe JSONB);
+ALTER TABLE sistema.auditoria ADD COLUMN IF NOT EXISTS ator_email TEXT;
+ALTER TABLE sistema.auditoria ADD COLUMN IF NOT EXISTS ip TEXT;
+ALTER TABLE sistema.auditoria ADD COLUMN IF NOT EXISTS user_agent TEXT;
 CREATE INDEX IF NOT EXISTS auditoria_quando_idx ON sistema.auditoria (quando DESC);
+CREATE INDEX IF NOT EXISTS auditoria_ator_idx ON sistema.auditoria (ator_id, quando DESC);
+CREATE INDEX IF NOT EXISTS auditoria_acao_idx ON sistema.auditoria (acao, quando DESC);
+CREATE TABLE IF NOT EXISTS sistema.avisos (
+  id SERIAL PRIMARY KEY, titulo TEXT NOT NULL, corpo TEXT NOT NULL, para_todos BOOLEAN NOT NULL DEFAULT true,
+  criado_por INT REFERENCES sistema.users(id) ON DELETE SET NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), editado_em TIMESTAMPTZ);
+CREATE INDEX IF NOT EXISTS avisos_created_idx ON sistema.avisos (created_at DESC);
+CREATE TABLE IF NOT EXISTS sistema.aviso_destinos (
+  aviso_id INT NOT NULL REFERENCES sistema.avisos(id) ON DELETE CASCADE, user_id INT NOT NULL REFERENCES sistema.users(id) ON DELETE CASCADE, PRIMARY KEY (aviso_id, user_id));
+CREATE TABLE IF NOT EXISTS sistema.aviso_leituras (
+  aviso_id INT NOT NULL REFERENCES sistema.avisos(id) ON DELETE CASCADE, user_id INT NOT NULL REFERENCES sistema.users(id) ON DELETE CASCADE,
+  lido_em TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY (aviso_id, user_id));
+CREATE TABLE IF NOT EXISTS sistema.push_subs (
+  id SERIAL PRIMARY KEY, user_id INT NOT NULL REFERENCES sistema.users(id) ON DELETE CASCADE, endpoint TEXT UNIQUE NOT NULL,
+  p256dh TEXT NOT NULL, auth TEXT NOT NULL, ua TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS push_subs_user_idx ON sistema.push_subs (user_id);
 CREATE TABLE IF NOT EXISTS sistema.refresh_tokens (
   id BIGSERIAL PRIMARY KEY, user_id INT NOT NULL REFERENCES sistema.users(id) ON DELETE CASCADE, token_hash TEXT NOT NULL UNIQUE,
   familia TEXT NOT NULL, cid INT, lembrar BOOLEAN NOT NULL DEFAULT false, expira TIMESTAMPTZ NOT NULL, revogado BOOLEAN NOT NULL DEFAULT false,

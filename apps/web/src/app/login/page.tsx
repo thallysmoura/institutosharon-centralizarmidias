@@ -158,7 +158,7 @@ export default function Login() {
       <form onSubmit={entrar} noValidate className="rise mt-[1.07em]" style={{ '--d': '240ms' } as React.CSSProperties}>
         <div className="relative">
           <Mail size="1.3em" strokeWidth={1.7} className="pointer-events-none absolute left-[1.05em] top-1/2 -translate-y-1/2 text-[#33240F]" aria-hidden />
-          <input type="email" autoFocus={!ehToque()} autoComplete="email" aria-label="E-mail" aria-invalid={!!errs.email} value={email} onChange={(e) => { setEmail(e.target.value); setErro(''); setErrs((v) => ({ ...v, email: undefined })); }} placeholder="E-mail" className={`${CAMPO} ${errs.email || erro ? '!border-[#d9534f] !bg-[#fff6f5]' : ''}`} />
+          <input type="email" autoFocus={!ehToque()} suppressHydrationWarning autoComplete="email" aria-label="E-mail" aria-invalid={!!errs.email} value={email} onChange={(e) => { setEmail(e.target.value); setErro(''); setErrs((v) => ({ ...v, email: undefined })); }} placeholder="E-mail" className={`${CAMPO} ${errs.email || erro ? '!border-[#d9534f] !bg-[#fff6f5]' : ''}`} />
         </div>
         {errs.email && <p role="alert" className="mt-1.5 text-[0.82em] font-medium text-[#b3261e]">{errs.email}</p>}
         <div className="relative mt-[0.7em]">
@@ -176,7 +176,7 @@ export default function Login() {
           </label>
         </div>
         {erro && <p role="alert" className="mt-3 flex items-center gap-2 rounded-xl border border-[#f0c5c0] bg-[#fdf0ee] px-4 py-3 text-[0.9em] font-medium text-[#b3261e]"><CircleAlert size="1.2em" className="shrink-0" aria-hidden />{erro}</p>}
-        <button type="submit" disabled={loading} className="mt-[1.2em] flex h-[3.05em] w-full items-center justify-center gap-[0.6em] rounded-[0.8em] text-[1.08em] font-semibold text-white shadow-[0_0.55em_1.1em_-0.5em_rgba(150,100,10,.65)] transition hover:brightness-105 disabled:opacity-70" style={{ background: OURO }}>
+        <button type="submit" disabled={loading} className="mt-[1.2em] flex h-[2.9em] w-full items-center justify-center gap-[0.6em] rounded-[0.85em] text-[1em] font-semibold text-white shadow-[0_0.55em_1.1em_-0.5em_rgba(150,100,10,.65)] transition hover:brightness-105 disabled:opacity-70" style={{ background: OURO }}>
           {loading && via === 'senha' ? <><Spinner />{fase === 'local' ? 'Aguarde...' : 'Entrando…'}</> : 'Entrar'}
         </button>
         <button type="button" onClick={() => { setRecuperar(true); setSucesso(''); }} className="mx-auto mt-[0.95em] block whitespace-nowrap text-[0.95em] font-bold text-[#a9771a] hover:underline">Esqueceu a senha?</button>
@@ -184,7 +184,7 @@ export default function Login() {
       <div className="rise my-[0.88em] flex items-center gap-[1em] text-[0.92em] text-[#4f453b]" style={{ '--d': '280ms' } as React.CSSProperties}>
         <span className="h-px flex-1 bg-[#e0d3ba]" />ou<span className="h-px flex-1 bg-[#e0d3ba]" />
       </div>
-      <button type="button" onClick={google} disabled={loading} className="rise flex h-[2.95em] w-full items-center justify-center gap-[0.8em] rounded-[0.75em] border border-[#e6dccb] bg-white text-[1em] font-medium text-[#33240F] shadow-[0_1px_2px_rgba(60,40,10,.04)] transition hover:border-[#c9a24a]/60 disabled:opacity-70" style={{ '--d': '300ms' } as React.CSSProperties}>
+      <button type="button" onClick={google} disabled={loading} className="rise flex h-[2.9em] w-full items-center justify-center gap-[0.8em] rounded-[0.85em] border border-[#e4d9c5] bg-white text-[1em] font-medium text-[#33240F] shadow-[0_1px_2px_rgba(60,40,10,.04)] transition hover:border-[#c9a24a]/60 disabled:opacity-70" style={{ '--d': '300ms' } as React.CSSProperties}>
         <svg viewBox="0 0 48 48" className="h-[1.45em] w-[1.45em]" aria-hidden>
           <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z" />
           <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17z" />
@@ -193,7 +193,7 @@ export default function Login() {
         </svg>
         {loading && via === 'google' ? <><Spinner />{fase === 'local' ? 'Aguarde...' : 'Entrando…'}</> : 'Entrar com Google'}
       </button>
-      <button type="button" onClick={() => { setCadastro(true); setSucesso(''); }} className="rise mt-[1.1em] h-[2.95em] w-full rounded-[0.75em] border-[1.5px] border-[#c9a24a] bg-white text-[1em] font-semibold text-[#9a6b12] transition hover:bg-[#fbf5e6]" style={{ '--d': '340ms' } as React.CSSProperties}>Criar minha conta</button>
+      <button type="button" onClick={() => { setCadastro(true); setSucesso(''); }} className="rise mt-[1.1em] h-[2.9em] w-full rounded-[0.85em] border border-[#c9a24a] bg-white text-[1em] font-semibold text-[#9a6b12] transition hover:bg-[#fbf5e6]" style={{ '--d': '340ms' } as React.CSSProperties}>Criar minha conta</button>
     </>
   );
 
@@ -294,7 +294,7 @@ export default function Login() {
             />
           ) : formulario}
         </section>
-        <footer className="relative z-10 mt-5 text-center text-[0.78rem] text-[#4f453b] min-[1100px]:mt-[calc(var(--u)*28)] min-[1100px]:pl-[calc(var(--u)*70)] min-[1100px]:text-left min-[1100px]:text-[length:calc(var(--u)*15)]">
+        <footer className="relative z-10 mt-8 pb-3 text-center text-[0.68rem] text-[#4f453b] min-[1100px]:mt-[calc(var(--u)*28)] min-[1100px]:text-center min-[1100px]:text-[length:calc(var(--u)*12)]">
           © {new Date().getFullYear()} Instituto Sharon. Todos os direitos reservados.
         </footer>
           </div>

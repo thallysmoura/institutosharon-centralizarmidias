@@ -22,6 +22,7 @@ function repoName(): string {
 }
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const API_CSP = API.startsWith('/') ? '' : API; // via proxy (/backend) a API já é 'self'
 const dev = process.env.NODE_ENV !== 'production';
 
 /** Cabeçalhos de segurança (anti-XSS, clickjacking, sniffing). O CSP libera só o necessário: API própria, Firebase/Google (login) e imagens assinadas do R2. */
@@ -29,9 +30,9 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' https://apis.google.com${dev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${API} https://*.googleusercontent.com https://*.r2.cloudflarestorage.com https://*.r2.dev`,
+  `img-src 'self' data: blob: ${API_CSP} https://*.googleusercontent.com https://*.r2.cloudflarestorage.com https://*.r2.dev`,
   "font-src 'self' data:",
-  `connect-src 'self' ${API} https://*.googleapis.com https://*.firebaseapp.com https://*.r2.cloudflarestorage.com${dev ? ' ws://localhost:* http://localhost:*' : ''}`,
+  `connect-src 'self' ${API_CSP} https://*.googleapis.com https://*.firebaseapp.com https://*.r2.cloudflarestorage.com${dev ? ' ws://localhost:* http://localhost:*' : ''}`,
   "frame-src https://*.firebaseapp.com https://accounts.google.com",
   "object-src 'none'",
   "base-uri 'self'",

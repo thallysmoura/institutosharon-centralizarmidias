@@ -3,6 +3,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, BadgeCheck, Check, ChevronDown, CircleAlert, CircleCheck, Eye, EyeOff, IdCard, Lock, Mail, MapPin, ShieldCheck, User, X } from 'lucide-react';
 import { api, Cidade } from '@/lib/api';
 import { ehToque } from '@/lib/pwa';
+import { pedirLocalizacao } from '@/lib/geo';
 import PinModal from './PinModal';
 import Spinner from './Spinner';
 
@@ -24,6 +25,8 @@ function Rotulo({ id, children }: { id: string; children: React.ReactNode }) {
 }
 
 /** Campo com ícone, estado de erro/sucesso e mensagem associada (acessível). */
+const MSG_VERIFICAR = 'Verifique o e-mail com o código enviado.';
+
 function Linha({ id, icone, erro, ok, dica, children, fim }: { id: string; icone: React.ReactNode; erro?: string; ok?: boolean; dica?: string; children: React.ReactNode; fim?: React.ReactNode }) {
   return (
     <div>
@@ -53,6 +56,9 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
   const [busy, setBusy] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [pediu, setPediu] = useState(false);
+  const posRef = useRef<[number, number] | null>(null);
+  // Na última etapa já pede a localização, para entrar automaticamente ao concluir o cadastro.
+  useEffect(() => { if (passo === 3) pedirLocalizacao().then((p) => { posRef.current = p; }).catch(() => null); }, [passo]);
   const [erro, setErro] = useState('');
   const [erroEmail, setErroEmail] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
@@ -86,7 +92,7 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
   if (!email) erros.email = 'Informe o e-mail.';
   else if (!EMAIL_RE.test(email)) erros.email = 'Digite um e-mail válido, como nome@dominio.com.';
   else if (DESCARTAVEIS.includes(dominio)) erros.email = 'E-mails temporários não são aceitos.';
-  else if (!emailVerificado) erros.email = 'Verifique o e-mail com o código enviado.';
+  else if (!emailVerificado) erros.email = MSG_VERIFICAR;
   if (!v.matricula.trim()) erros.matricula = 'Informe a matrícula.';
   else if (v.matricula.trim().length < 3) erros.matricula = 'A matrícula deve ter ao menos 3 caracteres.';
   else if (!MAT_RE.test(v.matricula.trim())) erros.matricula = 'Use apenas letras, números e - . _ /';
@@ -94,7 +100,8 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
   if (!v.senha) erros.senha = 'Crie uma senha.';
   else if (!senhaOk) erros.senha = 'A senha não atende a todos os requisitos.';
   if (!regras[4][1]) erros.conf = v.conf ? 'As senhas não coincidem.' : 'Confirme a senha.';
-  const mostra = (c: Campo) => (tocado[c] ? erros[c] : undefined);
+  // Pendência de verificação é informativa (cinza), não erro: não pinta o campo de vermelho.
+  const mostra = (c: Campo) => { const m = tocado[c] ? erros[c] : undefined; return m === MSG_VERIFICAR ? undefined : m; };
   const ok = (c: Campo) => !erros[c] && !!v[c];
 
   async function pedirPin() {
@@ -147,10 +154,11 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
     if (!validarPasso(3)) return;
     setBusy(true);
     try {
+      const pos = posRef.current ?? (await pedirLocalizacao().catch(() => null));
       const r = await api<{ logado: boolean; role: 'ALUNO' }>('/auth/cadastro', {
         method: 'POST',
         headers: JSON_H,
-        body: JSON.stringify({ nome: capitaliza(v.nome), sobrenome: capitaliza(v.sobrenome), email: v.email.trim(), token, matricula: v.matricula.trim().toUpperCase(), cidade_id: Number(v.cidade), senha: v.senha }),
+        body: JSON.stringify({ nome: capitaliza(v.nome), sobrenome: capitaliza(v.sobrenome), email: v.email.trim(), token, matricula: v.matricula.trim().toUpperCase(), cidade_id: Number(v.cidade), senha: v.senha, ...(pos ? { lat: pos[0], lng: pos[1] } : {}) }),
       });
       onConcluido({ ...r, email: v.email.trim() });
     } catch (err) {
@@ -159,7 +167,7 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
     }
   }
 
-  const cls = (c: Campo) => `field ${mostra(c) ? '!border-[#d9534f]' : ok(c) ? '!border-[#3aa56b]' : ''}`;
+  const cls = (c: Campo) => `field !h-[2.9em] !rounded-[0.85em] !text-[1em] ${mostra(c) ? '!border-[#d9534f]' : ok(c) ? '!border-[#3aa56b]' : '!border-[#e4d9c5]'}`;
   const pad = { paddingLeft: '2.8rem' };
   const a11y = (c: Campo) => ({ 'aria-invalid': !!mostra(c), 'aria-describedby': `cad-${c}-msg` });
 
@@ -168,9 +176,9 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
   return (
     <>
       <div>
-        <button type="button" onClick={voltar} className="mb-3 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-[#a9771a] hover:underline"><ArrowLeft size={16} />{passo === 1 ? 'Voltar ao login' : 'Voltar'}</button>
-        <header>
-          <h2 className="font-sans text-[2.3rem] font-medium leading-[0.95] tracking-[-0.02em] text-[#33240F]">Criar <span className="font-bold italic text-gold-600">conta</span></h2>
+        {passo > 1 && <button type="button" onClick={voltar} className="mb-3 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-[#a9771a] hover:underline"><ArrowLeft size={16} />Voltar</button>}
+        <header className="px-[0.5em] min-[1100px]:px-[0.72em]">
+          <h2 className="font-sans text-[2.5em] font-medium leading-[0.92] tracking-[-0.02em] text-[#33240F] min-[1100px]:text-[3em]">Criar uma<br /><span className="font-bold italic" style={{ background: 'linear-gradient(180deg,#d6a431,#a8761a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>Conta</span></h2>
         </header>
 
         <ol aria-label="Etapas do cadastro" className="mt-4 flex items-center gap-2">
@@ -195,7 +203,7 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
                   <div>
                     <Rotulo id="cad-nome">Nome</Rotulo>
                     <Linha id="cad-nome" icone={<User size={18} />} erro={mostra('nome')} ok={ok('nome')}>
-                      <input id="cad-nome" autoFocus={!ehToque()} autoComplete="given-name" value={v.nome} onChange={set('nome')} onBlur={() => { setV((x) => ({ ...x, nome: capitaliza(x.nome) })); blur('nome')(); }} placeholder="Maria" className={`${cls('nome')} pr-10`} style={pad} {...a11y('nome')} />
+                      <input id="cad-nome" autoFocus={!ehToque()} suppressHydrationWarning autoComplete="given-name" value={v.nome} onChange={set('nome')} onBlur={() => { setV((x) => ({ ...x, nome: capitaliza(x.nome) })); blur('nome')(); }} placeholder="Maria" className={`${cls('nome')} pr-10`} style={pad} {...a11y('nome')} />
                     </Linha>
                   </div>
                   <div>
@@ -209,14 +217,14 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
                   <Rotulo id="cad-email">E-mail</Rotulo>
                   <div className="flex items-start gap-2">
                     <div className="min-w-0 flex-1">
-                      <Linha id="cad-email" icone={<Mail size={18} />} erro={erroEmail || (emailVerificado ? undefined : mostra('email'))} ok={emailVerificado} dica={emailVerificado || !pediu ? undefined : 'Enviaremos um código de 4 números para confirmar.'}>
+                      <Linha id="cad-email" icone={<Mail size={18} />} erro={erroEmail || (emailVerificado ? undefined : mostra('email'))} ok={emailVerificado} dica={emailVerificado ? undefined : tocado.email && erros.email === MSG_VERIFICAR ? MSG_VERIFICAR : !pediu ? undefined : 'Enviaremos um código de 4 números para confirmar.'}>
                         <input id="cad-email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} value={v.email} onChange={set('email')} onBlur={blur('email')} placeholder="voce@email.com" className={`${cls('email')} pr-10 ${emailVerificado ? '!border-[#3aa56b]' : ''}`} style={pad} {...a11y('email')} />
                       </Linha>
                     </div>
                     {emailVerificado ? (
-                      <span className="inline-flex min-h-[52px] shrink-0 items-center gap-1.5 rounded-xl bg-[#e7f6ee] px-3 text-[0.8rem] font-semibold text-[#17794a]"><BadgeCheck size={17} />Verificado</span>
+                      <span className="inline-flex h-[2.9em] shrink-0 items-center gap-1.5 rounded-[0.85em] bg-[#e7f6ee] px-3 text-[0.8rem] font-semibold text-[#17794a]"><BadgeCheck size={17} />Verificado</span>
                     ) : (
-                      <button type="button" onClick={verificar} disabled={enviando || !EMAIL_RE.test(email)} className="btn btn-gold !min-h-[52px] shrink-0 !px-4 !text-[0.85rem] disabled:!opacity-50">{enviando ? <Spinner /> : 'Verificar'}</button>
+                      <button type="button" onClick={verificar} disabled={enviando || !EMAIL_RE.test(email)} className="btn btn-gold !h-[2.9em] !min-h-0 shrink-0 !rounded-[0.85em] !px-4 !text-[0.85em] disabled:!opacity-50">{enviando ? <Spinner /> : 'Verificar'}</button>
                     )}
                   </div>
                   {sugestao && !emailVerificado && (
@@ -232,7 +240,7 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
                 <div>
                   <Rotulo id="cad-matricula">Matrícula</Rotulo>
                   <Linha id="cad-matricula" icone={<IdCard size={18} />} erro={mostra('matricula')} ok={ok('matricula')}>
-                    <input id="cad-matricula" autoFocus={!ehToque()} autoComplete="off" autoCapitalize="characters" value={v.matricula} onChange={set('matricula')} onBlur={blur('matricula')} placeholder="A0001" className={`${cls('matricula')} pr-10 uppercase`} style={pad} {...a11y('matricula')} />
+                    <input id="cad-matricula" autoFocus={!ehToque()} suppressHydrationWarning autoComplete="off" autoCapitalize="characters" value={v.matricula} onChange={set('matricula')} onBlur={blur('matricula')} placeholder="A0001" className={`${cls('matricula')} pr-10 uppercase`} style={pad} {...a11y('matricula')} />
                   </Linha>
                 </div>
                 <div>
@@ -252,7 +260,7 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
                 <div>
                   <Rotulo id="cad-senha">Senha</Rotulo>
                   <Linha id="cad-senha" icone={<Lock size={18} />} erro={mostra('senha')} fim={<button type="button" onClick={() => setVer((x) => !x)} aria-label={ver ? 'Ocultar senhas' : 'Mostrar senhas'} className="absolute right-2 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center text-ink/70">{ver ? <EyeOff size={19} /> : <Eye size={19} />}</button>}>
-                    <input id="cad-senha" autoFocus={!ehToque()} type={ver ? 'text' : 'password'} autoComplete="new-password" value={v.senha} onChange={set('senha')} onBlur={blur('senha')} onKeyUp={(e) => setCaps(e.getModifierState('CapsLock'))} placeholder="Crie uma senha" className={`${cls('senha')} pr-12`} style={pad} {...a11y('senha')} />
+                    <input id="cad-senha" autoFocus={!ehToque()} suppressHydrationWarning type={ver ? 'text' : 'password'} autoComplete="new-password" value={v.senha} onChange={set('senha')} onBlur={blur('senha')} onKeyUp={(e) => setCaps(e.getModifierState('CapsLock'))} placeholder="Crie uma senha" className={`${cls('senha')} pr-12`} style={pad} {...a11y('senha')} />
                   </Linha>
                   {caps && <p className="mt-1.5 text-[0.78rem] font-medium text-[#8a6a1c]">Caps Lock está ativado.</p>}
                 </div>
@@ -274,7 +282,7 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
           </div>
           <footer className="mt-5 space-y-2.5">
             {erro && <p role="alert" className="flex items-start gap-2 rounded-xl bg-[#fdf0ee] px-4 py-2.5 text-[0.82rem] font-medium text-[#b3261e]"><CircleAlert size={16} className="mt-0.5 shrink-0" />{erro}</p>}
-            <button type="submit" disabled={busy || (passo === 1 && !emailVerificado)} className="btn btn-gold w-full !min-h-[52px] !text-[1.02rem] disabled:!opacity-50">
+            <button type="submit" disabled={busy || (passo === 1 && !emailVerificado)} className="btn btn-gold w-full !h-[2.9em] !min-h-0 !rounded-[0.85em] !text-[1em] disabled:!opacity-50">
               {busy ? <><Spinner />Cadastrando...</> : passo < 3 ? 'Continuar' : 'Criar conta'}
             </button>
             {passo === 1 && <p className="mt-[5px] text-center text-[0.8rem] text-ink/60">Já tem conta? <button type="button" onClick={onFechar} className="font-semibold text-gold-700 underline underline-offset-2">Entrar</button></p>}

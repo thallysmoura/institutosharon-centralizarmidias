@@ -74,10 +74,12 @@ export class SessaoService {
   }
 
   /** Encerra a sessão: revoga a família do refresh token atual e limpa os cookies. */
-  async encerrar(req: Request, res: Response) {
+  async encerrar(req: Request, res: Response): Promise<number | null> {
     const atual: string | undefined = req.cookies?.[COOKIE_REFRESH];
+    const dono = atual ? (await this.db.query('SELECT user_id FROM sistema.refresh_tokens WHERE token_hash=$1', [sha(atual)])).rows[0]?.user_id ?? null : null;
     if (atual) await this.db.query('UPDATE sistema.refresh_tokens SET revogado=true WHERE familia=(SELECT familia FROM sistema.refresh_tokens WHERE token_hash=$1)', [sha(atual)]);
     this.limpar(res);
+    return dono;
   }
 
   /** Revoga todas as sessões do usuário (ex.: após trocar a senha). */

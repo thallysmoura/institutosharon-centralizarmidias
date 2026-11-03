@@ -5,6 +5,7 @@ import { Type } from 'class-transformer';
 import type { Request, Response } from 'express';
 import * as bcrypt from 'bcryptjs';
 import { DbService } from '../db/db.service';
+import { AuditoriaService } from '../db/auditoria.service';
 import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { dominioDescartavel, excedeu } from '../common/seguranca';
 import { AllowPendente, AuthGuard, Me, SessionUser } from '../common/auth';
@@ -77,6 +78,7 @@ export class AuthController {
     private readonly mail: MailService,
     private readonly storage: StorageService,
     private readonly sessao: SessaoService,
+    private readonly aud: AuditoriaService,
   ) {}
 
   private hashPin(userId: number, pin: string) {
@@ -142,7 +144,7 @@ export class AuthController {
   @Post('cadastro')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(201)
-  async cadastrar(@Body() dto: CadastroDto, @Res({ passthrough: true }) res: Response) {
+  async cadastrar(@Body() dto: CadastroDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
     const email = dto.email.trim().toLowerCase();
     const invalido = new BadRequestException('A verificação do e-mail expirou. Verifique o e-mail novamente.');
     const t = (await this.db.query('SELECT token_hash, (token_expira < now()) AS vencido FROM sistema.pin_cadastro WHERE email=$1 AND token_hash IS NOT NULL', [email])).rows[0];
@@ -161,6 +163,7 @@ export class AuthController {
       throw e;
     }
     await this.db.query('DELETE FROM sistema.pin_cadastro WHERE email=$1', [email]);
+    this.aud.registrar('cadastro', { ator: id, email, req, detalhe: { matricula: dto.matricula.trim(), cidade_id: dto.cidade_id } });
     if (dto.lat != null && dto.lng != null) {
       await this.db.query('UPDATE sistema.users SET ultimo_acesso=now() WHERE id=$1', [id]);
       const csrf = await this.iniciarSessao(res, id, { lat: dto.lat, lng: dto.lng });
@@ -215,7 +218,7 @@ export class AuthController {
   @Post('senha/redefinir')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
-  async redefinirSenha(@Body() dto: RedefinirDto) {
+  async redefinirSenha(@Body() dto: RedefinirDto, @Req() req: Request) {
     const erro = new BadRequestException('Sessão de recuperação expirada. Comece novamente.');
     const u = (await this.db.query('SELECT id FROM sistema.users WHERE lower(email)=lower($1)', [dto.email.trim()])).rows[0];
     if (!u) throw erro;
@@ -225,6 +228,7 @@ export class AuthController {
     await this.db.query('DELETE FROM sistema.pin_senha WHERE user_id=$1', [u.id]);
     await this.sessao.revogarTodas(u.id);
     tentativas.delete(dto.email.trim().toLowerCase());
+    this.aud.registrar('senha_redefinida', { ator: u.id, email: dto.email.trim(), req });
     return { ok: true };
   }
 
@@ -248,19 +252,21 @@ export class AuthController {
   @Post('login')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
-  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
     const k = dto.email.toLowerCase();
     const t = tentativas.get(k);
     if (t && t.n >= 8 && t.ate > Date.now()) throw new UnauthorizedException('Muitas tentativas. Aguarde alguns minutos.');
     const r = await this.db.query('SELECT id,role,password_hash FROM sistema.users WHERE lower(email)=lower($1)', [dto.email]);
     const ok = r.rows[0] && (await bcrypt.compare(dto.senha, r.rows[0].password_hash));
     if (!ok) {
+      this.aud.registrar('login_falha', { ator: r.rows[0]?.id ?? null, email: dto.email, req, detalhe: { motivo: r.rows[0] ? 'senha incorreta' : 'e-mail não cadastrado' } });
       tentativas.set(k, { n: (t && t.ate > Date.now() ? t.n : 0) + 1, ate: Date.now() + 5 * 60_000 });
       throw new UnauthorizedException('E-mail ou senha inválidos.');
     }
     tentativas.delete(k);
     await this.db.query('UPDATE sistema.users SET ultimo_acesso=now() WHERE id=$1', [r.rows[0].id]);
     const csrf = await this.iniciarSessao(res, r.rows[0].id, dto);
+    this.aud.registrar('login', { ator: r.rows[0].id, email: dto.email, req, detalhe: { metodo: 'senha', lembrar: !!dto.lembrar } });
     return { role: r.rows[0].role, csrf };
   }
 
@@ -269,7 +275,7 @@ export class AuthController {
   @Post('google')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
-  async google(@Body() dto: GoogleDto, @Res({ passthrough: true }) res: Response) {
+  async google(@Body() dto: GoogleDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
     const { email, nome, foto } = await this.firebase.emailGoogle(dto.idToken);
     let r = await this.db.query('SELECT id,role FROM sistema.users WHERE lower(email)=lower($1) OR lower(google_email)=lower($1)', [email]);
     if (!r.rows[0]) {
@@ -284,6 +290,7 @@ export class AuthController {
     }
     await this.db.query('UPDATE sistema.users SET ultimo_acesso=now() WHERE id=$1', [r.rows[0].id]);
     const csrf = await this.iniciarSessao(res, r.rows[0].id, dto);
+    this.aud.registrar('login', { ator: r.rows[0].id, email, req, detalhe: { metodo: 'google' } });
     return { role: r.rows[0].role, csrf };
   }
 
@@ -297,7 +304,8 @@ export class AuthController {
   @Post('logout')
   @HttpCode(204)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    await this.sessao.encerrar(req, res);
+    const quem = await this.sessao.encerrar(req, res);
+    if (quem) this.aud.registrar('logout', { ator: quem, req });
   }
 
   @Get('me')

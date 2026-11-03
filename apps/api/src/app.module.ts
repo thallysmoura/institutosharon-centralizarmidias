@@ -12,6 +12,7 @@ import { PerfilModule } from './perfil/perfil.module';
 import { MailModule } from './mail/mail.module';
 import { EventosModule } from './eventos/eventos.service';
 import { PresencaModule } from './presenca/presenca.service';
+import { AvisosModule } from './avisos/avisos.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { PresencaModule } from './presenca/presenca.service';
     DbModule,
     EventosModule,
     PresencaModule,
+    AvisosModule,
     StorageModule,
     HealthModule,
     AuthModule,

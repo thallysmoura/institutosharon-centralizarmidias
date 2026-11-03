@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, Download, Eye, GraduationCap, HardDrive, RotateCcw, Trash2, House, ImageIcon, LogOut, MapPin, ShieldCheck, Users, Smartphone, RefreshCw, Settings, ChevronsUpDown, SlidersHorizontal, ChevronDown, LayoutGrid, Menu, X, Search } from 'lucide-react';
+import { Bell, Download, Eye, GraduationCap, HardDrive, RotateCcw, Trash2, House, ImageIcon, LogOut, MapPin, ShieldCheck, Users, Smartphone, RefreshCw, Settings, ChevronsUpDown, SlidersHorizontal, ChevronDown, LayoutGrid, Menu, X, Search, ScrollText, Megaphone } from 'lucide-react';
 import { API, api, Atendimento, fotoUrl, fmtData, Me } from '@/lib/api';
 import { fmtDia, nomeLimpo, useSession } from '@/lib/session';
 import { Wordmark } from '@/components/Brand';
@@ -13,8 +13,11 @@ import BuscaAluno from '@/components/BuscaAluno';
 import Avatar from '@/components/Avatar';
 import PerfilInicial from '@/components/PerfilInicial';
 import Aplicativo from '@/components/Aplicativo';
+import Auditoria from '@/components/Auditoria';
+import MuralAvisos from '@/components/MuralAvisos';
+import Notificacoes from '@/components/Notificacoes';
 
-type Vista = 'geral' | 'fotos' | 'alunos' | 'pacientes' | 'cidades' | 'armazenamento' | 'acessos' | 'exclusoes' | 'aplicativo';
+type Vista = 'geral' | 'fotos' | 'alunos' | 'pacientes' | 'cidades' | 'armazenamento' | 'acessos' | 'exclusoes' | 'aplicativo' | 'auditoria' | 'avisos';
 type Excl = { id: number; atendimento_id: number; oculta_em: string; identificador_paciente: string; cidade: string; aluno: { id: number; nome: string; matricula: string | null } };
 type Resumo = { fotos: number; pacientes: number; alunos: number; cidades: number; pendentes: number; ocultas?: number };
 type Cidade = { id: number; nome: string; alunos: number; fotos: number };
@@ -23,15 +26,17 @@ type Paciente = { identificador: string; alunos: number; fotos: number; ultima: 
 type Filtros = { cidade: string; aluno_id: string; q: string; de: string; ate: string };
 const VAZIO: Filtros = { cidade: '', aluno_id: '', q: '', de: '', ate: '' };
 
-const GOV: Vista[] = ['exclusoes', 'acessos', 'armazenamento'];
+const GOV: Vista[] = ['exclusoes', 'acessos', 'auditoria', 'armazenamento'];
 const NAV: [Vista, string, typeof House][] = [
   ['geral', 'Visão Geral', House],
   ['fotos', 'Fotos', ImageIcon],
   ['alunos', 'Alunos', GraduationCap],
   ['pacientes', 'Pacientes', Users],
   ['cidades', 'Cidades', MapPin],
+  ['avisos', 'Mural de Avisos', Megaphone],
   ['exclusoes', 'Exclusões', Trash2],
   ['acessos', 'Controle de Acesso', ShieldCheck],
+  ['auditoria', 'Auditoria', ScrollText],
   ['aplicativo', 'Aplicativo', Smartphone],
   ['armazenamento', 'Armazenamento', HardDrive],
 ];
@@ -317,7 +322,6 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
       <div><Titulo nivel={1} icone={NAV.find((n) => n[0] === vista)![2]}>{t}</Titulo><p className="mt-1.5 pl-[60px] text-[0.88rem] text-ink/65">{s}</p></div>
       <div className="flex shrink-0 items-center gap-3">
         <button type="button" onClick={atualizar} disabled={atualizando} aria-label="Atualizar" title="Atualizar" className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-line bg-white px-3.5 text-[0.82rem] font-semibold text-ink/80 transition hover:bg-ivory disabled:opacity-70"><RefreshCw size={16} className={atualizando ? 'animate-spin' : ''} /><span className="hidden sm:inline">Atualizar</span></button>
-        <Bell size={22} className="hidden text-ink/80 lg:block" aria-hidden />
       </div>
     </div>
   );
@@ -339,6 +343,8 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
       <header className="sticky top-0 z-40 flex items-center justify-between bg-side px-4 py-3 text-white lg:hidden">
         <button type="button" onClick={() => setMenuMovel(true)} aria-label="Abrir menu" aria-expanded={menuMovel} className="grid h-10 w-10 place-items-center rounded-lg hover:bg-white/10"><Menu size={24} /></button>
         <button type="button" onClick={() => setVista('geral')} aria-label="Ir para a tela inicial" className="select-none"><Wordmark light /></button>
+        <div className="flex items-center gap-2.5">
+        <Notificacoes lugar="topo" />
         <div data-menu-topo className="relative">
           <button type="button" onClick={() => setMenuTopo((v) => !v)} aria-haspopup="menu" aria-expanded={menuTopo} aria-label="Menu do usuário" className="block rounded-full">
             {me.foto_url ? <Avatar foto={me.foto_url} size={36} semBorda /> : <span className="grid h-9 w-9 place-items-center rounded-full text-[0.9rem] font-bold" style={{ background: 'linear-gradient(180deg,#d9b655,#a67c26)' }}>{me.nome.charAt(0)}</span>}
@@ -351,12 +357,14 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
             </div>
           )}
         </div>
+        </div>
       </header>
       {menuMovel && <div className="fade-in fixed inset-0 z-40 bg-black/55 lg:hidden" onClick={() => setMenuMovel(false)} aria-hidden />}
       <aside aria-label="Menu lateral" className={`fixed inset-y-0 left-0 z-50 flex w-[290px] max-w-[85vw] flex-col bg-side text-white shadow-2xl transition-[transform,visibility] duration-300 ease-out lg:sticky lg:top-0 lg:z-auto lg:h-dvh lg:w-[256px] lg:max-w-none lg:shrink-0 lg:translate-x-0 lg:shadow-none ${menuMovel ? 'translate-x-0' : 'max-lg:invisible max-lg:-translate-x-full'}`}>
-        <div className="flex items-center justify-between px-5 py-5 lg:block lg:px-6 lg:py-7">
+        <div className="flex items-center justify-between gap-2 px-5 py-5 lg:px-5 lg:py-6">
           <button type="button" onClick={() => { setVista('geral'); setMenuMovel(false); }} aria-label="Ir para a tela inicial" className="select-none text-left"><Wordmark light /></button>
           <button type="button" onClick={() => setMenuMovel(false)} aria-label="Fechar menu" className="grid h-10 w-10 place-items-center rounded-full text-white/80 hover:bg-white/10 lg:hidden"><X size={22} /></button>
+          <span className="hidden lg:block"><Notificacoes lugar="menu" /></span>
         </div>
         <div className="relative px-4 pb-3">
           <Search size={17} className="pointer-events-none absolute left-7 top-1/2 -translate-y-[calc(50%+6px)] text-white/55" aria-hidden />
@@ -430,6 +438,8 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
 
         {vista === 'armazenamento' && <Armazenamento key={rk} />}
         {vista === 'aplicativo' && <Aplicativo key={rk} />}
+        {vista === 'auditoria' && <Auditoria key={rk} />}
+        {vista === 'avisos' && <MuralAvisos key={rk} />}
         {vista === 'acessos' && <ControleAcesso key={rk} meuId={me.id} />}
         {vista === 'exclusoes' && (
           <div className="mt-6">

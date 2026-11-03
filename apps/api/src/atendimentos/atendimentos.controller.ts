@@ -8,6 +8,7 @@ import sharp from 'sharp';
 import { DbService } from '../db/db.service';
 import { StorageService } from '../storage/storage.service';
 import { EventosService } from '../eventos/eventos.service';
+import { AuditoriaService } from '../db/auditoria.service';
 import { dispositivoDe, PresencaService } from '../presenca/presenca.service';
 import { AuthGuard, Me, Roles, SessionUser } from '../common/auth';
 
@@ -26,6 +27,10 @@ function formatoValido(b: Buffer) {
 
 class PapelDto {
   @IsIn(['ALUNO', 'ADMIN']) role!: 'ALUNO' | 'ADMIN';
+}
+
+class EditarDto {
+  @IsString() @MinLength(2) @MaxLength(80) @Matches(/^[^<>{}`$\\]+$/, { message: 'O identificador não pode ter < > { } ` $ ou barra invertida.' }) identificador!: string;
 }
 
 class CriarDto {
@@ -60,7 +65,7 @@ export class CidadesController {
 @UseGuards(AuthGuard)
 @Roles('ALUNO')
 export class AtendimentosController {
-  constructor(private readonly db: DbService, private readonly storage: StorageService, private readonly eventos: EventosService) {}
+  constructor(private readonly db: DbService, private readonly storage: StorageService, private readonly eventos: EventosService, private readonly aud: AuditoriaService) {}
 
   @Post()
   @UseInterceptors(FilesInterceptor('fotos', MAX_FILES, { storage: memoryStorage(), limits: { fileSize: MAX_BYTES, files: MAX_FILES } }))
@@ -98,7 +103,21 @@ export class AtendimentosController {
       );
     }
     this.eventos.novoAtendimento(atendimentoId); // painel do administrador atualiza em tempo real
+    this.aud.registrar('envio_fotos', { ator: u.id, atendimento: atendimentoId, req, detalhe: { paciente: ident, quantidade: files.length } });
     return { atendimentoId, enviadas: files.length };
+  }
+
+  /** O aluno corrige o nome/identificador do paciente de um atendimento dele (vale para todas as fotos do atendimento). */
+  @Patch(':id')
+  async editar(@Me() u: SessionUser, @Param('id', ParseIntPipe) id: number, @Body() dto: EditarDto, @Req() req: Request) {
+    const novo = dto.identificador.trim();
+    const a = (await this.db.query('SELECT identificador_paciente FROM sistema.atendimentos WHERE id=$1 AND aluno_id=$2', [id, u.id])).rows[0];
+    if (!a) throw new NotFoundException();
+    if (a.identificador_paciente === novo) return { ok: true };
+    await this.db.query('UPDATE sistema.atendimentos SET identificador_paciente=$2 WHERE id=$1', [id, novo]);
+    await this.aud.registrar('aluno_editou_paciente', { ator: u.id, atendimento: id, req, detalhe: { de: a.identificador_paciente, para: novo } });
+    this.eventos.novoAtendimento(id); // o painel do administrador atualiza o nome
+    return { ok: true };
   }
 
   @Get('meus')
@@ -110,7 +129,7 @@ export class AtendimentosController {
   /** O aluno "exclui" a foto: ela só fica oculta para ele. Nada é apagado do armazenamento; fica no log e o administrador é avisado. */
   @Delete('fotos/:id')
   @HttpCode(200)
-  async ocultarFoto(@Me() u: SessionUser, @Param('id', ParseIntPipe) id: number) {
+  async ocultarFoto(@Me() u: SessionUser, @Param('id', ParseIntPipe) id: number, @Req() req: Request) {
     const r = await this.db.query(
       `UPDATE sistema.fotos f SET oculta_em=now(), oculta_por=$2 FROM sistema.atendimentos a
         WHERE f.id=$1 AND a.id=f.atendimento_id AND a.aluno_id=$2 AND f.oculta_em IS NULL
@@ -120,7 +139,7 @@ export class AtendimentosController {
     const f = r.rows[0];
     if (!f) throw new NotFoundException();
     const aluno = { id: u.id, nome: u.nome, matricula: u.matricula };
-    await this.db.query('INSERT INTO sistema.auditoria (ator_id, acao, foto_id, atendimento_id, detalhe) VALUES ($1,$2,$3,$4,$5)', [u.id, 'aluno_ocultou_foto', f.id, f.atendimento_id, { paciente: f.identificador_paciente, aluno }]);
+    await this.aud.registrar('aluno_ocultou_foto', { ator: u.id, foto: f.id, atendimento: f.atendimento_id, req, detalhe: { paciente: f.identificador_paciente, aluno } });
     this.eventos.exclusao({ foto_id: f.id, atendimento_id: f.atendimento_id, paciente: f.identificador_paciente, aluno });
     return { ok: true };
   }
@@ -130,7 +149,7 @@ export class AtendimentosController {
 @UseGuards(AuthGuard)
 @Roles('ADMIN')
 export class AdminController {
-  constructor(private readonly db: DbService, private readonly storage: StorageService, private readonly eventos: EventosService, private readonly presenca: PresencaService) {}
+  constructor(private readonly db: DbService, private readonly storage: StorageService, private readonly eventos: EventosService, private readonly presenca: PresencaService, private readonly aud: AuditoriaService) {}
 
   /** Gestão do armazenamento: uso, quantidade de mídias e operações do mês frente ao limite gratuito do Cloudflare R2. */
   @Get('armazenamento')
@@ -191,10 +210,11 @@ export class AdminController {
 
   /** Define se o usuário é aluno ou administrador. Não é possível alterar o próprio papel. */
   @Patch('acessos/:id')
-  async definirPapel(@Me() eu: SessionUser, @Param('id', ParseIntPipe) id: number, @Body() dto: PapelDto) {
+  async definirPapel(@Me() eu: SessionUser, @Param('id', ParseIntPipe) id: number, @Body() dto: PapelDto, @Req() req: Request) {
     if (id === eu.id) throw new BadRequestException('Você não pode alterar o seu próprio papel.');
     const r = await this.db.query('UPDATE sistema.users SET role=$2 WHERE id=$1 RETURNING id', [id, dto.role]);
     if (!r.rowCount) throw new NotFoundException();
+    await this.aud.registrar('admin_alterou_papel', { ator: eu.id, req, detalhe: { usuario_id: id, novo_papel: dto.role } });
     return { ok: true };
   }
 
@@ -250,24 +270,24 @@ export class AdminController {
 
   @Post('fotos/:id/restaurar')
   @HttpCode(200)
-  async restaurar(@Me() u: SessionUser, @Param('id', ParseIntPipe) id: number) {
+  async restaurar(@Me() u: SessionUser, @Param('id', ParseIntPipe) id: number, @Req() req: Request) {
     const r = await this.db.query('UPDATE sistema.fotos SET oculta_em=NULL, oculta_por=NULL WHERE id=$1 AND oculta_em IS NOT NULL RETURNING id, atendimento_id', [id]);
     if (!r.rows[0]) throw new NotFoundException();
-    await this.db.query('INSERT INTO sistema.auditoria (ator_id, acao, foto_id, atendimento_id) VALUES ($1,$2,$3,$4)', [u.id, 'admin_restaurou_foto', id, r.rows[0].atendimento_id]);
+    await this.aud.registrar('admin_restaurou_foto', { ator: u.id, foto: id, atendimento: r.rows[0].atendimento_id, req });
     return { ok: true };
   }
 
   /** Exclusão definitiva (só administrador): remove os arquivos do armazenamento e o registro. */
   @Delete('fotos/:id')
   @HttpCode(200)
-  async excluirDefinitivo(@Me() u: SessionUser, @Param('id', ParseIntPipe) id: number) {
+  async excluirDefinitivo(@Me() u: SessionUser, @Param('id', ParseIntPipe) id: number, @Req() req: Request) {
     const f = (await this.db.query('SELECT f.id, f.storage_key, f.thumb_key, f.atendimento_id, f.oculta_em, a.aluno_id, a.identificador_paciente FROM sistema.fotos f JOIN sistema.atendimentos a ON a.id=f.atendimento_id WHERE f.id=$1', [id])).rows[0];
     if (!f) throw new NotFoundException();
     await this.storage.remove(f.storage_key);
     if (f.thumb_key) await this.storage.remove(f.thumb_key);
     await this.db.query('DELETE FROM sistema.fotos WHERE id=$1', [id]);
     await this.db.query('DELETE FROM sistema.atendimentos a WHERE a.id=$1 AND NOT EXISTS (SELECT 1 FROM sistema.fotos WHERE atendimento_id=a.id)', [f.atendimento_id]);
-    await this.db.query('INSERT INTO sistema.auditoria (ator_id, acao, foto_id, atendimento_id, detalhe) VALUES ($1,$2,$3,$4,$5)', [u.id, 'admin_excluiu_foto', id, f.atendimento_id, { paciente: f.identificador_paciente, aluno_id: f.aluno_id, ocultada_pelo_aluno: !!f.oculta_em }]);
+    await this.aud.registrar('admin_excluiu_foto', { ator: u.id, foto: id, atendimento: f.atendimento_id, req, detalhe: { paciente: f.identificador_paciente, aluno_id: f.aluno_id, ocultada_pelo_aluno: !!f.oculta_em } });
     return { ok: true };
   }
 

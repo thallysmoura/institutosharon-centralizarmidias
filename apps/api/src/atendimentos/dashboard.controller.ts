@@ -1,8 +1,9 @@
-import { Controller, Get, Query, Res, UseGuards } from '@nestjs/common';
-import type { Response } from 'express';
+import { Controller, Get, Query, Req, Res, UseGuards } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import ExcelJS from 'exceljs';
 import { DbService } from '../db/db.service';
-import { AuthGuard, Roles } from '../common/auth';
+import { AuditoriaService } from '../db/auditoria.service';
+import { AuthGuard, Me, Roles, SessionUser } from '../common/auth';
 
 const TZ = 'America/Manaus';
 const DIAS_OK = [7, 30, 90, 365];
@@ -13,7 +14,7 @@ const periodo = (v?: string) => { const n = Number(v); return DIAS_OK.includes(n
 @UseGuards(AuthGuard)
 @Roles('ADMIN')
 export class DashboardController {
-  constructor(private readonly db: DbService) {}
+  constructor(private readonly db: DbService, private readonly aud: AuditoriaService) {}
 
   @Get('dashboard')
   async dashboard(@Query('dias') diasQ?: string) {
@@ -58,9 +59,41 @@ export class DashboardController {
     return { dias, kpi: kpi[0], porDia, porCidade: cidades, topAlunos: alunos, dispositivos: disp, porHora: Array.from({ length: 24 }, (_, i) => ({ hora: i, fotos: h.get(i) ?? 0 })) };
   }
 
+  /** Trilha de auditoria (mais recentes primeiro). Filtros: ação, usuário (id), texto (nome, e-mail, IP), período. Paginação por cursor (`antes` = id). */
+  @Get('auditoria')
+  async auditoria(@Query('acao') acao?: string, @Query('ator') ator?: string, @Query('q') q?: string, @Query('de') de?: string, @Query('ate') ate?: string, @Query('antes') antes?: string, @Query('limite') limite?: string) {
+    const w: string[] = [];
+    const p: unknown[] = [];
+    const add = (sql: string, v: unknown) => { p.push(v); w.push(sql.replace('?', `$${p.length}`)); };
+    if (acao && /^[a-z_]{2,40}$/.test(acao)) add('au.acao = ?', acao);
+    if (ator && /^\d+$/.test(ator)) add('au.ator_id = ?', Number(ator));
+    if (de && /^\d{4}-\d{2}-\d{2}$/.test(de)) add(`au.quando >= (?::date::timestamp AT TIME ZONE '${TZ}')`, de);
+    if (ate && /^\d{4}-\d{2}-\d{2}$/.test(ate)) add(`au.quando < ((?::date + 1)::timestamp AT TIME ZONE '${TZ}')`, ate);
+    if (antes && /^\d+$/.test(antes)) add('au.id < ?', Number(antes));
+    if (q?.trim()) { p.push(`%${q.trim().slice(0, 80)}%`); w.push(`(u.nome ILIKE $${p.length} OR u.email ILIKE $${p.length} OR au.ator_email ILIKE $${p.length} OR au.ip ILIKE $${p.length} OR au.detalhe::text ILIKE $${p.length})`); }
+    const lim = Math.min(Math.max(Number(limite) || 50, 1), 100);
+    const rows = (await this.db.query(
+      `SELECT au.id, au.quando, au.acao, au.ip, au.user_agent, au.foto_id, au.atendimento_id, au.detalhe, au.ator_email,
+              CASE WHEN u.id IS NULL THEN NULL ELSE json_build_object('id', u.id, 'nome', u.nome, 'email', u.email, 'role', u.role) END AS ator
+         FROM sistema.auditoria au LEFT JOIN sistema.users u ON u.id = au.ator_id
+        ${w.length ? 'WHERE ' + w.join(' AND ') : ''} ORDER BY au.id DESC LIMIT ${lim + 1}`,
+      p,
+    )).rows;
+    const mais = rows.length > lim;
+    const itens = mais ? rows.slice(0, lim) : rows;
+    return { itens, proximo: mais ? itens[itens.length - 1].id : null };
+  }
+
+  /** Ações já registradas (para o filtro), com a contagem de cada uma. */
+  @Get('auditoria/acoes')
+  async auditoriaAcoes() {
+    return (await this.db.query('SELECT acao, count(*)::int AS n FROM sistema.auditoria GROUP BY acao ORDER BY n DESC')).rows;
+  }
+
   /** Planilha Excel com resumo, atendimentos, fotos, alunos e cidades (dias=0 exporta tudo). */
   @Get('exportar')
-  async exportar(@Res() res: Response, @Query('dias') diasQ?: string) {
+  async exportar(@Res() res: Response, @Req() req: Request, @Me() u: SessionUser, @Query('dias') diasQ?: string) {
+    this.aud.registrar('admin_exportou_excel', { ator: u.id, req, detalhe: { dias: diasQ ?? '30' } });
     const dias = diasQ === '0' ? 0 : periodo(diasQ);
     const filtro = dias ? `AND a.created_at >= now() - make_interval(days => ${dias})` : '';
     const wb = new ExcelJS.Workbook();
@@ -124,6 +157,11 @@ export class DashboardController {
         FROM sistema.cidades c LEFT JOIN sistema.atendimentos a ON a.cidade_id=c.id ${filtro}
         LEFT JOIN sistema.fotos f ON f.atendimento_id=a.id GROUP BY c.id ORDER BY fotos DESC, c.nome`)).rows;
     aba('Cidades', [['Cidade', 24], ['Alunos ativos', 14], ['Atendimentos', 14], ['Fotos', 10]], cidades.map((r) => [r.nome, r.alunos, r.atend, r.fotos]));
+
+    const aud = (await this.db.query(`SELECT ${dt('au.quando')} AS quando, au.acao, COALESCE(u.nome, au.ator_email, '') AS ator, COALESCE(u.email, au.ator_email, '') AS email, au.ip, au.atendimento_id, au.foto_id, au.detalhe::text AS detalhe
+        FROM sistema.auditoria au LEFT JOIN sistema.users u ON u.id = au.ator_id ${dias ? `WHERE au.quando >= now() - make_interval(days => ${dias})` : ''} ORDER BY au.id DESC LIMIT 50000`)).rows;
+    aba('Auditoria', [['Data e horário', 18], ['Ação', 24], ['Usuário', 28], ['E-mail', 30], ['IP', 16], ['Atendimento', 12], ['Foto', 8], ['Detalhes', 60]],
+      aud.map((r) => [r.quando, r.acao, r.ator, r.email, r.ip ?? '', r.atendimento_id ?? '', r.foto_id ?? '', r.detalhe ?? '']));
 
     const nome = `fotos-clinicas-sharon-${new Date().toISOString().slice(0, 10)}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

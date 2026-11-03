@@ -1,5 +1,6 @@
 'use client';
 import { ClipboardEvent, KeyboardEvent, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { MailCheck, X } from 'lucide-react';
 import Spinner from './Spinner';
 
@@ -78,7 +79,8 @@ export default function PinModal({ email, titulo, topo, aviso, onConfirmar, onRe
     }
   }
 
-  return (
+  // Portal no body: o card de login usa backdrop-blur, que prende elementos fixed dentro dele.
+  return createPortal(
     <div role="dialog" aria-modal="true" aria-labelledby="pin-t" className="fixed inset-0 z-[100] flex items-stretch justify-center bg-ink/60 sm:items-center sm:p-6 sm:backdrop-blur-sm" onClick={onFechar}>
       <div onClick={(e) => e.stopPropagation()} className="relative flex h-[100dvh] w-full flex-col justify-center bg-ivory px-6 py-10 text-center sm:h-auto sm:max-w-[420px] sm:rounded-[24px] sm:p-9 sm:shadow-soft">
         <button type="button" onClick={onFechar} aria-label="Fechar" className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full text-ink/60 hover:bg-sand"><X size={18} /></button>
@@ -107,5 +109,5 @@ export default function PinModal({ email, titulo, topo, aviso, onConfirmar, onRe
         <p className="mt-1 text-[0.72rem] text-ink/40">Dica: você pode copiar e colar o código recebido.</p>
       </div>
     </div>
-  );
+    , document.body);
 }

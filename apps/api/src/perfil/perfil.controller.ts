@@ -1,8 +1,9 @@
-import { BadRequestException, Body, ConflictException, HttpCode, HttpException, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, ParseIntPipe, Patch, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, ConflictException, HttpCode, HttpException, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, ParseIntPipe, Patch, Post, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Transform } from 'class-transformer';
 import { IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
+import { AuditoriaService } from '../db/auditoria.service';
 import { createHmac, randomInt, randomUUID } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import { MailService } from '../mail/mail.service';
@@ -40,7 +41,7 @@ function imagemValida(b: Buffer) {
 @Controller()
 @UseGuards(AuthGuard)
 export class PerfilController {
-  constructor(private readonly db: DbService, private readonly storage: StorageService, private readonly mail: MailService, private readonly cfg: ConfigService) {}
+  constructor(private readonly db: DbService, private readonly storage: StorageService, private readonly mail: MailService, private readonly cfg: ConfigService, private readonly aud: AuditoriaService) {}
 
   private hashPin(userId: number, pin: string) {
     return createHmac('sha256', this.cfg.getOrThrow<string>('JWT_SECRET')).update(`${userId}:${pin}`).digest('hex');
@@ -70,7 +71,7 @@ export class PerfilController {
   @Post('perfil/email/confirmar')
   @AllowPendente()
   @HttpCode(200)
-  async confirmarEmail(@Me() u: SessionUser, @Body() dto: PinDto) {
+  async confirmarEmail(@Me() u: SessionUser, @Body() dto: PinDto, @Req() req: Request) {
     const r = (await this.db.query('SELECT novo_email, pin_hash, tentativas, (expira < now()) AS vencido FROM sistema.pin_email WHERE user_id=$1', [u.id])).rows[0];
     if (!r) throw new BadRequestException('Peça um novo código para alterar o e-mail.');
     if (r.vencido || r.tentativas >= PIN_TENTATIVAS) {
@@ -88,12 +89,13 @@ export class PerfilController {
       throw e;
     }
     await this.db.query('DELETE FROM sistema.pin_email WHERE user_id=$1', [u.id]);
+    this.aud.registrar('email_alterado', { ator: u.id, email: r.novo_email, req, detalhe: { de: u.email, para: r.novo_email } });
     return { ok: true, email: r.novo_email };
   }
 
   @Patch('perfil')
   @AllowPendente()
-  async matricula(@Me() u: SessionUser, @Body() dto: MatriculaDto) {
+  async matricula(@Me() u: SessionUser, @Body() dto: MatriculaDto, @Req() req: Request) {
     if (u.role !== 'ALUNO') throw new ForbiddenException();
     try {
       await this.db.query('UPDATE sistema.users SET matricula=$2, nome=COALESCE(NULLIF($3, \'\'), nome) WHERE id=$1', [u.id, dto.matricula.trim(), dto.nome?.replace(/\s+/g, ' ').trim() ?? '']);
@@ -101,29 +103,32 @@ export class PerfilController {
       if ((e as { code?: string }).code === '23505') throw new ConflictException('Esta matrícula já está em uso por outro aluno.');
       throw e;
     }
+    this.aud.registrar('perfil_editado', { ator: u.id, req, detalhe: { nome_antes: u.nome, nome: dto.nome?.replace(/\s+/g, ' ').trim() || u.nome, matricula_antes: u.matricula, matricula: dto.matricula.trim() } });
     return { ok: true };
   }
 
   @Post('perfil/foto')
   @AllowPendente()
   @UseInterceptors(FileInterceptor('foto', { storage: memoryStorage(), limits: { fileSize: MAX_FOTO, files: 1 } }))
-  async foto(@Me() u: SessionUser, @UploadedFile() f?: Express.Multer.File) {
+  async foto(@Me() u: SessionUser, @Req() req: Request, @UploadedFile() f?: Express.Multer.File) {
     if (!f) throw new BadRequestException('Envie uma imagem.');
     if (!imagemValida(f.buffer)) throw new BadRequestException('Formato inválido. Use JPEG, PNG ou WebP.');
     const out = await sharp(f.buffer, { failOn: 'none' }).rotate().resize(512, 512, { fit: 'cover', position: 'attention' }).webp({ quality: 86 }).toBuffer();
     const key = `perfil/${u.id}-${randomUUID()}.webp`;
     await this.storage.put(key, out, 'image/webp');
     await this.db.query('UPDATE sistema.users SET foto_key=$2, foto_v=foto_v+1 WHERE id=$1', [u.id, key]);
+    this.aud.registrar('foto_perfil_alterada', { ator: u.id, req });
     return { ok: true };
   }
 
   @Delete('perfil/foto')
   @AllowPendente()
   @HttpCode(200)
-  async removerFoto(@Me() u: SessionUser) {
+  async removerFoto(@Me() u: SessionUser, @Req() req: Request) {
     const r = (await this.db.query('SELECT foto_key FROM sistema.users WHERE id=$1', [u.id])).rows[0];
     await this.db.query('UPDATE sistema.users SET foto_key=NULL, foto_url=NULL, foto_v=foto_v+1 WHERE id=$1', [u.id]);
     if (r?.foto_key) await this.storage.remove(r.foto_key);
+    this.aud.registrar('foto_perfil_removida', { ator: u.id, req });
     return { ok: true };
   }
 

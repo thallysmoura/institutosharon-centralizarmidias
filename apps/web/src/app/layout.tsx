@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Figtree, Poppins, Roboto } from 'next/font/google';
 import './globals.css';
 import PwaRegister from '@/components/PwaRegister';
+import InstalarApp from '@/components/InstalarApp';
 
 const display = Poppins({ subsets: ['latin'], weight: ['500', '600', '700'], style: ['normal', 'italic'], variable: '--font-display', display: 'swap' });
 const sans = Figtree({ subsets: ['latin'], weight: ['400', '500', '600', '700'], style: ['normal', 'italic'], variable: '--font-sans', display: 'swap' });
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-dvh">
         {children}
         <PwaRegister />
+        <InstalarApp />
       </body>
     </html>
   );
