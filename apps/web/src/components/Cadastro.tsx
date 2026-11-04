@@ -105,7 +105,7 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
   else if (!senhaOk) erros.senha = 'A senha não atende a todos os requisitos.';
   if (!regras[4][1]) erros.conf = v.conf ? 'As senhas não coincidem.' : 'Confirme a senha.';
   // Pendência de verificação é informativa (cinza), não erro: não pinta o campo de vermelho.
-  const mostra = (c: Campo) => { const m = tocado[c] ? erros[c] : undefined; return m === MSG_VERIFICAR ? undefined : m; };
+  const mostra = (c: Campo) => { const m = tocado[c] || (c === 'cpf' && soDigitos(v.cpf).length === 11) ? erros[c] : undefined; return m === MSG_VERIFICAR ? undefined : m; };
   const ok = (c: Campo) => !erros[c] && !!v[c];
 
   async function pedirPin() {

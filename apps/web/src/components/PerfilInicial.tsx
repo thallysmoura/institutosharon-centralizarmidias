@@ -2,7 +2,7 @@
 import { FormEvent, useRef, useState } from 'react';
 import IconeCpf from '@/components/IconeCpf';
 import { cpfValido, mascaraCpf, soDigitos } from '@/lib/cpf';
-import { ArrowLeft, ArrowRight, Check, GraduationCap, LogOut, Mail, MapPin, Pencil, User } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, CircleAlert, GraduationCap, LogOut, Mail, MapPin, Pencil, User } from 'lucide-react';
 import { api, Me } from '@/lib/api';
 import Avatar from './Avatar';
 import { Logo } from './Brand';
@@ -18,6 +18,7 @@ export default function PerfilInicial({ me, sair, recarregar, modo = 'primeiro',
   const [nome, setNome] = useState(me.nome.replace(/ \(.*\)$/, ''));
   const [matricula, setMatricula] = useState(me.matricula ?? '');
   const [cpf, setCpf] = useState(me.cpf ? mascaraCpf(me.cpf) : '');
+  const cpfEstado = soDigitos(cpf).length === 11 ? (cpfValido(cpf) ? 'ok' : 'erro') : null; // verificação ao vivo
   const [erro, setErro] = useState('');
   const [busy, setBusy] = useState(false);
   const [editEmail, setEditEmail] = useState(false);
@@ -180,13 +181,17 @@ const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/
               <input id="matricula" ref={matRef} value={matricula} onChange={(e) => { setMatricula(e.target.value); setErro(''); }} maxLength={30} autoComplete="off" aria-invalid={!!erro} className="w-full bg-transparent text-[1em] font-medium text-[#33240F] outline-none" />
             </div>
           </label>
-          <label htmlFor="cpf" className={`${PILULA} mt-[0.7em] cursor-text py-[0.6em] transition focus-within:border-[#c9a24a] focus-within:ring-4 focus-within:ring-[#c9a24a]/15 ${config && cpf && !cpfValido(cpf) ? '!border-[#d9534f]' : ''}`}>
+          <label htmlFor="cpf" className={`${PILULA} mt-[0.7em] cursor-text py-[0.6em] transition focus-within:border-[#c9a24a] focus-within:ring-4 focus-within:ring-[#c9a24a]/15 ${cpfEstado === 'erro' ? '!border-[#d9534f] !bg-[#fff6f5]' : cpfEstado === 'ok' ? '!border-[#3aa56b]' : ''}`}>
             <IconeCpf size="1.3em" strokeWidth={1.7} className="shrink-0 text-[#b8902f]" aria-hidden />
             <div className="min-w-0 flex-1 leading-tight">
               <p className="text-[0.68em] font-semibold uppercase tracking-[0.14em] text-[#8a7a62]">CPF</p>
               <input id="cpf" inputMode="numeric" value={cpf} onChange={(e) => { setCpf(mascaraCpf(e.target.value)); setErro(''); }} maxLength={14} autoComplete="off" placeholder="000.000.000-00" className="w-full bg-transparent text-[1em] font-medium text-[#33240F] outline-none placeholder:text-[#33240F]/30" />
             </div>
+            {cpfEstado === 'ok' && <Check size="1.3em" className="shrink-0 text-[#22a35a]" aria-label="CPF válido" />}
+            {cpfEstado === 'erro' && <CircleAlert size="1.3em" className="shrink-0 text-[#d9534f]" aria-label="CPF inválido" />}
           </label>
+          {cpfEstado === 'erro' && <p role="alert" className="mt-1.5 text-[0.82em] font-medium text-[#b3261e]">CPF inválido. Confira os números.</p>}
+          {cpfEstado === 'ok' && <p className="mt-1.5 text-[0.82em] font-medium text-[#17794a]">CPF válido</p>}
           {erro && <p role="alert" className="mt-1.5 text-[0.82em] font-medium text-[#b3261e]">{erro}</p>}
           {salvo && <p role="status" className="pop mt-2 flex items-center gap-1.5 rounded-xl bg-[#e7f6ee] px-3 py-2 text-[0.85em] font-medium text-[#17794a]"><Check size="1.1em" />Dados salvos com sucesso.</p>}
           {(!config || pronto || busy) && (
