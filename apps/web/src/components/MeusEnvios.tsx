@@ -251,8 +251,8 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
   /** Menu do "Novo envio": câmera ou arquivos do aparelho. */
   const menuNovoUI = menuNovo && (
     <>
-      <div className="fade-in fixed inset-0 z-[55] bg-black/45" onClick={() => { if (Date.now() - aberturaMenu.current > 400) setMenuNovo(false); }} aria-hidden />
-      <div role="menu" aria-label="Novo envio" className="pop fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] z-[56] mx-auto max-w-[380px] overflow-hidden rounded-2xl bg-white p-2 shadow-[0_24px_60px_-20px_rgba(33,24,13,.6)] lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-[7.5rem] lg:-translate-x-1/2">
+      <div className="fade-in fixed inset-0 z-[65] bg-black/45" onClick={() => { if (Date.now() - aberturaMenu.current > 400) setMenuNovo(false); }} aria-hidden />
+      <div role="menu" aria-label="Novo envio" className="pop fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] z-[66] mx-auto max-w-[380px] overflow-hidden rounded-2xl bg-white p-2 shadow-[0_24px_60px_-20px_rgba(33,24,13,.6)] lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-[7.5rem] lg:-translate-x-1/2">
         <p className="px-3 pb-1 pt-2 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-ink/45">Novo envio</p>
         <button type="button" role="menuitem" onClick={() => { setMenuNovo(false); if (typeof navigator.mediaDevices?.getUserMedia === 'function') { setCamModo('foto'); setCamAberta(true); } else camera.current?.click(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-left transition hover:bg-ivory active:scale-[0.99]">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-white" style={{ background: 'linear-gradient(180deg,#c9a24a,#a67c26)' }}><Camera size={22} strokeWidth={1.6} /></span>
@@ -289,7 +289,7 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
               <button type="button" disabled={enviando} onClick={() => remover(k)} aria-label="Remover foto" className="absolute right-0.5 top-0.5 grid h-5 w-5 place-items-center rounded-full bg-ink/75 text-[0.8rem] leading-none text-white">×</button>
             </li>
           ))}
-          {itens.length < MAX && <li className="shrink-0"><button type="button" disabled={enviando} onClick={() => galeria.current?.click()} aria-label="Adicionar mais fotos" className="grid h-16 w-16 place-items-center rounded-xl border border-dashed border-gold-500/60 text-gold-600 transition hover:bg-ivory"><PlusCircle size={22} strokeWidth={1.6} /></button></li>}
+          {itens.length < MAX && <li className="shrink-0"><button type="button" disabled={enviando} onClick={() => abrirMenuNovo()} aria-label="Adicionar mais fotos ou vídeos" className="grid h-16 w-16 place-items-center rounded-xl border border-dashed border-gold-500/60 text-gold-600 transition hover:bg-ivory"><PlusCircle size={22} strokeWidth={1.6} /></button></li>}
         </ul>
         <div className="relative mt-3">
           <User size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink/50" aria-hidden />
@@ -299,7 +299,7 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
         <div className="mt-3 flex gap-2.5">
           <button type="button" disabled={enviando} onClick={cancelarEnvio} className="btn btn-line !min-h-[48px] shrink-0 !px-5">Cancelar</button>
           <button type="button" onClick={enviar} disabled={!pronto} className="btn btn-gold !min-h-[48px] flex-1">
-            {enviando ? 'Enviando…' : `Enviar ${itens.length} foto${itens.length === 1 ? '' : 's'}`}
+            {enviando ? 'Enviando…' : `Enviar ${itens.length} ${itens.some((i) => i.video) ? 'arquivo' : 'foto'}${itens.length === 1 ? '' : 's'}`}
           </button>
         </div>
         <p className="mt-2.5 flex items-center gap-1.5 text-[0.7rem] text-ink/50"><Info size={13} className="shrink-0" />As fotos são organizadas e centralizadas pelo Instituto Sharon.</p>

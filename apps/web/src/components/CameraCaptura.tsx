@@ -72,6 +72,9 @@ export default function CameraCaptura({ modo = 'foto', total, max, onFoto, onVid
   const [previa, setPrevia] = useState<Previa | null>(null);
   const [gravando, setGravando] = useState(false);
   const [seg, setSeg] = useState(0);
+  const [espelho, setEspelho] = useState(false); // câmera frontal: a prévia e o arquivo ficam espelhados, como no celular
+  const espelhoRef = useRef(false);
+  const pararDesenho = useRef<(() => void) | null>(null);
   const [contagem, setContagem] = useState<number | null>(null); // 3, 2, 1 antes de gravar
   const contaTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const rec = useRef<MediaRecorder | null>(null);
@@ -88,6 +91,8 @@ export default function CameraCaptura({ modo = 'foto', total, max, onFoto, onVid
     clearTimeout(espera.current);
     clearInterval(relogio.current);
     clearInterval(contaTimer.current);
+    pararDesenho.current?.();
+    pararDesenho.current = null;
     if (rec.current && rec.current.state !== 'inactive') { rec.current.onstop = null; rec.current.stop(); }
     gravandoRef.current = false;
     stream.current?.getTracks().forEach((t) => t.stop());
@@ -105,6 +110,10 @@ export default function CameraCaptura({ modo = 'foto', total, max, onFoto, onVid
       try { s = await pedirStream(video_); }
       catch (e) { if ((e as DOMException).name === 'OverconstrainedError') s = await pedirStream({ facingMode: modo }); else throw e; }
       stream.current = s;
+      const st = s.getVideoTracks()[0]?.getSettings();
+      const frontal = st?.facingMode ? st.facingMode === 'user' : true; // webcam de computador não informa e é tratada como selfie
+      espelhoRef.current = frontal;
+      setEspelho(frontal);
       // foco/exposição contínuos quando o aparelho permite (ignora se não houver suporte)
       s.getVideoTracks()[0]?.applyConstraints({ advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet] }).catch(() => null);
       if (video.current) { video.current.srcObject = s; await video.current.play().catch(() => null); }
@@ -136,7 +145,7 @@ export default function CameraCaptura({ modo = 'foto', total, max, onFoto, onVid
     try {
       let blob: Blob | null = null;
       const track = stream.current?.getVideoTracks()[0];
-      if (track && temImageCapture()) {
+      if (track && temImageCapture() && !espelhoRef.current) {
         try {
           const IC = (window as unknown as { ImageCapture: new (t: MediaStreamTrack) => { takePhoto: () => Promise<Blob> } }).ImageCapture;
           const b = await new IC(track).takePhoto();
@@ -147,7 +156,9 @@ export default function CameraCaptura({ modo = 'foto', total, max, onFoto, onVid
         const c = document.createElement('canvas');
         c.width = v.videoWidth;
         c.height = v.videoHeight;
-        c.getContext('2d')?.drawImage(v, 0, 0);
+        const ctx = c.getContext('2d');
+        if (espelhoRef.current) ctx?.setTransform(-1, 0, 0, 1, c.width, 0);
+        ctx?.drawImage(v, 0, 0);
         blob = await new Promise<Blob | null>((ok) => c.toBlob(ok, 'image/jpeg', 0.92));
       }
       if (!blob) return;
@@ -164,19 +175,44 @@ export default function CameraCaptura({ modo = 'foto', total, max, onFoto, onVid
     const v = video.current;
     const mime = mimeVideo();
     if (!s || !v || !mime || !onVideo || total >= max || gravandoRef.current) return false;
+    let origem: MediaStream = s;
+    if (espelhoRef.current) {
+      const esc = Math.min(1, 1920 / Math.max(v.videoWidth, v.videoHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.round(v.videoWidth * esc);
+      c.height = Math.round(v.videoHeight * esc);
+      const ctx = c.getContext('2d');
+      if (ctx && typeof c.captureStream === 'function') {
+        let vivo = true;
+        const desenhar = () => {
+          if (!vivo) return;
+          ctx.setTransform(-1, 0, 0, 1, c.width, 0);
+          ctx.drawImage(v, 0, 0, c.width, c.height);
+          requestAnimationFrame(desenhar);
+        };
+        desenhar();
+        origem = c.captureStream(30);
+        s.getAudioTracks().forEach((t) => origem.addTrack(t));
+        pararDesenho.current = () => { vivo = false; };
+      }
+    }
     let r: MediaRecorder;
-    try { r = new MediaRecorder(s, { mimeType: mime, videoBitsPerSecond: 10_000_000, audioBitsPerSecond: 128_000 }); } catch { return false; }
+    try { r = new MediaRecorder(origem, { mimeType: mime, videoBitsPerSecond: 10_000_000, audioBitsPerSecond: 128_000 }); } catch { return false; }
     // quadro de prévia do vídeo (a miniatura que o administrador vê na lista)
     try {
       const c = document.createElement('canvas');
       c.width = v.videoWidth;
       c.height = v.videoHeight;
-      c.getContext('2d')?.drawImage(v, 0, 0);
+      const pctx = c.getContext('2d');
+      if (espelhoRef.current) pctx?.setTransform(-1, 0, 0, 1, c.width, 0);
+      pctx?.drawImage(v, 0, 0);
       c.toBlob((b) => { posterRef.current = b; }, 'image/jpeg', 0.85);
     } catch { posterRef.current = null; }
     partes.current = [];
     r.ondataavailable = (e) => { if (e.data.size) partes.current.push(e.data); };
     r.onstop = () => {
+      pararDesenho.current?.();
+      pararDesenho.current = null;
       clearInterval(relogio.current);
       gravandoRef.current = false;
       setGravando(false);
@@ -241,8 +277,13 @@ export default function CameraCaptura({ modo = 'foto', total, max, onFoto, onVid
 
   const usar = () => {
     if (!previa) return;
-    if (previa.tipo === 'video') videoCb.current?.(previa.file);
-    else fotoRef.current(previa.file);
+    if (previa.tipo === 'video') {
+      videoCb.current?.(previa.file);
+      setPrevia(null);
+      fecharRef.current(); // vídeo pronto: vai direto para a tela de envio (como Concluir)
+      return;
+    }
+    fotoRef.current(previa.file);
     setPrevia(null);
   };
   const refazer = () => setPrevia(null);
@@ -259,7 +300,7 @@ export default function CameraCaptura({ modo = 'foto', total, max, onFoto, onVid
       </div>
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
-        <video ref={video} playsInline muted autoPlay className="h-full w-full object-cover" />
+        <video ref={video} playsInline muted autoPlay className={`h-full w-full object-cover ${espelho ? '-scale-x-100' : ''}`} />
         {flash && <div className="pointer-events-none absolute inset-0 bg-white/80" aria-hidden />}
         {contagem !== null && <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/25" role="timer" aria-live="assertive"><span key={contagem} className="pop text-[9rem] font-bold leading-none text-white [text-shadow:0_4px_30px_rgba(0,0,0,.6)]">{contagem}</span></div>}
         {estado === 'ok' && !previa && onVideo && <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-[0.78rem] font-medium text-white/85 [text-shadow:0_1px_4px_rgba(0,0,0,.7)]">{soVideo ? (gravando ? 'Toque no botão para parar' : contagem !== null ? 'Toque para cancelar' : 'Toque no botão para gravar') : gravando ? 'Solte para parar a gravação' : 'Toque para foto · Segure para vídeo'}</p>}
