@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import IconeCpf from '@/components/IconeCpf';
 import { CalendarDays, ChevronLeft, ChevronRight, IdCard, Images, Mail, MapPin, Search, X } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -18,6 +19,7 @@ type Cid = { id: number; nome: string };
  */
 export default function ListaAlunos({ cidades }: { cidades: Cid[] }) {
   const [ver, setVer] = useState<Linha | null>(null); // aluno cujas fotos estão abertas na janela
+  const [det, setDet] = useState<Linha | null>(null); // aluno cujos dados completos estão abertos (celular)
   const [q, setQ] = useState('');
   const [cidade, setCidade] = useState('');
   const [ordem, setOrdem] = useState<'nome' | 'recentes' | 'antigos'>('nome');
@@ -83,7 +85,13 @@ export default function ListaAlunos({ cidades }: { cidades: Cid[] }) {
 
       <ul className={`mt-2 space-y-2.5 transition-opacity ${carregando && dados ? 'opacity-55' : ''}`}>
         {dados?.itens.map((a) => (
-          <li key={a.id} className="card flex flex-wrap items-center gap-x-4 gap-y-3 p-3.5 sm:p-4">
+          <li key={a.id}>
+            <button type="button" onClick={() => setDet(a)} className="card flex w-full items-center gap-3 p-3 text-left transition active:bg-ivory sm:hidden">
+              <FotoPerfil aluno={a} size={44} />
+              <span className="min-w-0 flex-1 leading-tight"><b className="block truncate text-[0.95rem]">{nomeLimpo(a.nome)}</b><span className="block truncate text-[0.78rem] text-ink/60">{a.email}</span></span>
+              <ChevronRight size={18} className="shrink-0 text-ink/35" aria-hidden />
+            </button>
+            <div className="card hidden flex-wrap items-center gap-x-4 gap-y-3 p-3.5 sm:flex sm:p-4">
             <FotoPerfil aluno={a} size={52} />
             <div className="min-w-0 flex-1 basis-[220px] leading-tight">
               <p className="truncate text-[1rem] font-bold">{nomeLimpo(a.nome)}</p>
@@ -99,6 +107,7 @@ export default function ListaAlunos({ cidades }: { cidades: Cid[] }) {
               <p className="text-right text-[0.78rem] leading-tight text-gold-700"><b className="block text-[1rem]">{a.fotos.toLocaleString('pt-BR')}</b>foto(s) · {a.atendimentos} atend.</p>
               <button type="button" onClick={() => setVer(a)} className="btn btn-line !min-h-[40px] !gap-1.5 !rounded-lg !px-3 !text-[0.8rem]"><Images size={15} />Ver fotos</button>
             </div>
+          </div>
           </li>
         ))}
       </ul>
@@ -109,6 +118,24 @@ export default function ListaAlunos({ cidades }: { cidades: Cid[] }) {
           <span className="text-[0.8rem] font-medium text-ink/65">Página {pagina + 1} de {paginas}</span>
           <button type="button" onClick={() => irPagina(pagina + 1)} disabled={pagina + 1 >= paginas || carregando} className="btn btn-line !min-h-[40px] !gap-1 !px-3.5 !text-[0.82rem]">Próxima<ChevronRight size={16} /></button>
         </nav>
+      )}
+      {det && createPortal(
+        <div role="dialog" aria-modal="true" aria-label={`Dados de ${nomeLimpo(det.nome)}`} className="fixed inset-0 z-[100] flex items-end justify-center bg-black/55 sm:items-center sm:p-6" onClick={() => setDet(null)}>
+          <div className="pop w-full max-w-[420px] rounded-t-3xl bg-[#fdfaf3] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-3.5">
+              <FotoPerfil aluno={det} size={60} />
+              <div className="min-w-0 flex-1 leading-tight"><h2 className="truncate text-[1.2rem] font-bold text-[#33240F]">{nomeLimpo(det.nome)}</h2><p className="mt-0.5 truncate text-[0.82rem] text-ink/60">{det.email}</p></div>
+              <button type="button" onClick={() => setDet(null)} aria-label="Fechar" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink/55 hover:bg-sand"><X size={19} /></button>
+            </div>
+            <dl className="mt-4 divide-y divide-[#efe6d2] rounded-2xl border border-[#efe6d2] bg-white text-[0.88rem]">
+              {([[IdCard, 'Matrícula', det.matricula ?? 'Não informada'], [IconeCpf, 'CPF', det.cpf ? mascaraCpf(det.cpf) : 'Não informado'], [MapPin, 'Cidade', det.cidade ?? 'Sem cidade'], [CalendarDays, 'Cadastro em', fmtDia(det.created_at)], [Images, 'Fotos enviadas', `${det.fotos.toLocaleString('pt-BR')} (${det.atendimentos} atendimento(s))`]] as const).map(([Icone, t, v]) => (
+                <div key={t} className="flex items-center gap-3 px-3.5 py-3"><Icone size={17} className="shrink-0 text-gold-600" aria-hidden /><dt className="w-[6.5rem] shrink-0 text-ink/55">{t}</dt><dd className="min-w-0 flex-1 truncate text-right font-semibold text-[#33240F]">{v}</dd></div>
+              ))}
+            </dl>
+            <button type="button" onClick={() => { const a = det; setDet(null); setVer(a); }} className="btn btn-gold mt-4 w-full !min-h-[46px] !gap-2"><Images size={17} />Ver fotos</button>
+          </div>
+        </div>,
+        document.body,
       )}
       {ver && <FotosAluno aluno={ver} onFechar={() => setVer(null)} />}
     </section>

@@ -401,7 +401,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
 
       <main className={`relative isolate min-w-0 flex-1 overflow-x-clip bg-page px-3 py-5 sm:px-8 sm:py-6 lg:py-8 ${vista === 'fotos' ? 'pb-28 sm:pb-28 lg:pb-28' : ''}`}>
         <OndasDouradas />
-        <Cab t={NAV.find((n) => n[0] === vista)![1]} s="Gestão centralizada das fotografias clínicas" />
+        <Cab t={NAV.find((n) => n[0] === vista)![1]} s={vista === 'geral' ? 'Indicadores consolidados da operação de fotografias clínicas' : 'Gestão centralizada das fotografias clínicas'} />
 
         {vista === 'geral' && <VisaoGeral key={rk} recentes={lista} irPara={(v) => setVista(v)} abrir={(a) => setAberta({ a, i: 0 })} />}
 
