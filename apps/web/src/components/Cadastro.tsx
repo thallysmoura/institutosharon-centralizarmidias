@@ -207,7 +207,7 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
                   <div>
                     <Rotulo id="cad-nome">Nome</Rotulo>
                     <Linha id="cad-nome" icone={<User size={18} />} erro={mostra('nome')} ok={ok('nome')}>
-                      <input id="cad-nome" autoFocus={!ehToque()} suppressHydrationWarning autoComplete="given-name" value={v.nome} onChange={set('nome')} onBlur={() => { setV((x) => ({ ...x, nome: capitaliza(x.nome) })); blur('nome')(); }} placeholder="Maria" className={`${cls('nome')} pr-10`} style={pad} {...a11y('nome')} />
+                      <input id="cad-nome" suppressHydrationWarning autoComplete="given-name" value={v.nome} onChange={set('nome')} onBlur={() => { setV((x) => ({ ...x, nome: capitaliza(x.nome) })); blur('nome')(); }} placeholder="Maria" className={`${cls('nome')} pr-10`} style={pad} {...a11y('nome')} />
                     </Linha>
                   </div>
                   <div>
