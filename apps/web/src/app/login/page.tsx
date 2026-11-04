@@ -138,19 +138,6 @@ export default function Login() {
     }
   }
 
-  /** Atalho de desenvolvimento (só com NEXT_PUBLIC_DEV_LOGIN=1 e DEV_LOGIN=1 na API, apenas local). */
-  async function entrarDev(perfil: 'ADMIN' | 'ALUNO') {
-    setErro('');
-    setLoading(true);
-    try {
-      const { role } = await api<{ role: 'ADMIN' | 'ALUNO' }>('/auth/dev-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ perfil }) });
-      concluir(role);
-    } catch (err) {
-      setErro((err as Error).message);
-      setLoading(false);
-    }
-  }
-
   /** Depois de ter o ID token do Google (pela janela ou pelo redirecionamento): localização, sessão e entrada. */
   async function finalizarGoogle(idToken: string, lembrarEscolha: boolean) {
     const pos = await exigirLocalizacao();
@@ -272,13 +259,6 @@ export default function Login() {
         <button type="submit" disabled={loading} className="mt-[1.2em] flex h-[2.9em] w-full items-center justify-center gap-[0.6em] rounded-[0.85em] text-[1em] font-semibold text-white shadow-[0_0.55em_1.1em_-0.5em_rgba(150,100,10,.65)] transition hover:brightness-105 disabled:opacity-70" style={{ background: OURO }}>
           {loading && via === 'senha' ? <><Spinner />{fase === 'local' ? 'Aguarde...' : 'Entrando…'}</> : 'Entrar'}
         </button>
-        {process.env.NEXT_PUBLIC_DEV_LOGIN === '1' && (
-          <div className="mt-[0.7em] grid grid-cols-2 gap-[0.6em]">
-            {(['ADMIN', 'ALUNO'] as const).map((p) => (
-              <button key={p} type="button" disabled={loading} onClick={() => entrarDev(p)} className="h-[2.6em] rounded-[0.85em] border border-dashed border-[#c9a24a] bg-white text-[0.9em] font-semibold text-[#9a6b12] hover:bg-[#fbf5e6] disabled:opacity-70">{p === 'ADMIN' ? 'Administrador' : 'Aluno'}</button>
-            ))}
-          </div>
-        )}
         <button type="button" onClick={() => { setRecuperar(true); setSucesso(''); }} className="mx-auto mt-[0.95em] block whitespace-nowrap text-[0.95em] font-bold text-[#a9771a] hover:underline">Esqueceu a senha?</button>
       </form>
       <div className="rise my-[0.88em] flex items-center gap-[1em] text-[0.92em] text-[#4f453b]" style={{ '--d': '280ms' } as React.CSSProperties}>
