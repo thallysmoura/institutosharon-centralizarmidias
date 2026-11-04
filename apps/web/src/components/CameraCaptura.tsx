@@ -195,7 +195,7 @@ export default function CameraCaptura({ modo = 'foto', total, max, onFoto, onVid
     relogio.current = setInterval(() => {
       const t = Math.floor((Date.now() - inicioGrav.current) / 1000);
       setSeg(t);
-      if (t >= MAX_GRAVACAO_S) pararGravacao();
+      if (t >= MAX_GRAVACAO_S) { navigator.vibrate?.(60); pararGravacao(); } // chegou ao máximo: conclui sozinho
     }, 250);
     return true;
   }
@@ -239,7 +239,7 @@ export default function CameraCaptura({ modo = 'foto', total, max, onFoto, onVid
       <div className="flex items-center justify-between px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <button type="button" onClick={onFechar} aria-label="Fechar câmera" className="grid h-11 w-11 place-items-center rounded-full bg-white/10 hover:bg-white/20"><X size={22} /></button>
         {gravando
-          ? <span className="inline-flex items-center gap-2 rounded-full bg-[#b3261e] px-3.5 py-1 text-[0.85rem] font-bold tabular-nums" role="timer"><span className="h-2.5 w-2.5 animate-pulse rounded-full bg-white" />{fmtDur(seg) || '0:00'}</span>
+          ? <span className="inline-flex items-center gap-2 rounded-full bg-[#b3261e] px-3.5 py-1 text-[0.85rem] font-bold tabular-nums" role="timer"><span className="h-2.5 w-2.5 animate-pulse rounded-full bg-white" />{fmtDur(seg) || '0:00'} <span className="font-medium text-white/70">/ {fmtDur(MAX_GRAVACAO_S)}</span></span>
           : <span className="rounded-full bg-white/10 px-3 py-1 text-[0.78rem] font-semibold">{contados}/{max}</span>}
         <button type="button" onClick={() => setFacing((f) => (f === 'environment' ? 'user' : 'environment'))} disabled={!!previa || gravando} aria-label="Trocar câmera" className="grid h-11 w-11 place-items-center rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30"><RefreshCw size={20} /></button>
       </div>

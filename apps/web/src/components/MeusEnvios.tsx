@@ -7,7 +7,7 @@ import { fmtDia } from '@/lib/session';
 import Titulo from '@/components/Titulo';
 import { Ampliada } from '@/components/Avatar';
 import CameraCaptura from '@/components/CameraCaptura';
-import { ehVideo, fmtDur, MAX_VIDEO_BYTES, MAX_VIDEOS, metaDe, prepararVideo, TIPOS_VIDEO } from '@/lib/midia';
+import { ehVideo, fmtDur, MAX_GRAVACAO_S, MAX_VIDEO_BYTES, MAX_VIDEOS, metaDe, prepararVideo, TIPOS_VIDEO } from '@/lib/midia';
 
 type Item = { file: File; url: string; video?: boolean; thumb?: string; dur?: number };
 const liberar = (i: Item) => { URL.revokeObjectURL(i.url); if (i.thumb) URL.revokeObjectURL(i.thumb); };
@@ -63,6 +63,7 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
         else if (bytesVideos + f.size > MAX_VIDEO_BYTES) aviso = 'Os vídeos passam de 90 MB. Grave um vídeo mais curto ou envie em partes.';
         else {
           const m = metaDe(f) ?? (await prepararVideo(f));
+          if (m.duracao > MAX_GRAVACAO_S + 0.5) { aviso = `Cada vídeo pode ter no máximo ${MAX_GRAVACAO_S} segundos.`; continue; }
           nVideos++;
           bytesVideos += f.size;
           novos.push({ file: f, url: URL.createObjectURL(f), video: true, thumb: m.poster ? URL.createObjectURL(m.poster) : undefined, dur: m.duracao });

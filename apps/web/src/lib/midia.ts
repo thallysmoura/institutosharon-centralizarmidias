@@ -2,7 +2,7 @@
 export const TIPOS_VIDEO = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v'];
 export const MAX_VIDEOS = 3;
 export const MAX_VIDEO_BYTES = 90 * 1024 * 1024; // soma por envio: o limite de corpo da hospedagem é de 100 MB
-export const MAX_GRAVACAO_S = 60;
+export const MAX_GRAVACAO_S = 15; // duração máxima de cada vídeo (gravado ou escolhido da galeria)
 
 export type MetaVideo = { poster: Blob | null; duracao: number };
 const metas = new WeakMap<File, MetaVideo>();

@@ -93,6 +93,7 @@ export class AtendimentosController {
     if (infoVideos.some((i) => !i)) throw new BadRequestException('Vídeo inválido. Use MP4, MOV ou WebM.');
     let duracoes: number[] = [];
     try { duracoes = JSON.parse(dto.duracoes ?? '[]'); } catch { duracoes = []; }
+    if (duracoes.some((d) => Number(d) > 16)) throw new BadRequestException('Cada vídeo pode ter no máximo 15 segundos.');
     // A cidade vem da sessão (localização do login) e não pode ser escolhida no envio.
     let cidadeId = u.cidade_id;
     if (!cidadeId && u.role === 'ADMIN') {
