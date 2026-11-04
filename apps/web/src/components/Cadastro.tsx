@@ -1,6 +1,7 @@
 'use client';
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, BadgeCheck, Check, ChevronDown, CircleAlert, CircleCheck, Eye, EyeOff, IdCard, Lock, Mail, MapPin, ShieldCheck, User, X } from 'lucide-react';
+import { cpfValido, mascaraCpf, soDigitos } from '@/lib/cpf';
+import { ArrowLeft, BadgeCheck, Check, ChevronDown, CircleAlert, CircleCheck, Eye, EyeOff, IdCard, Fingerprint, Lock, Mail, MapPin, ShieldCheck, User, X } from 'lucide-react';
 import { api, Cidade } from '@/lib/api';
 import { ehToque } from '@/lib/pwa';
 import { pedirLocalizacao } from '@/lib/geo';
@@ -15,7 +16,7 @@ const JSON_H = { 'Content-Type': 'application/json' };
 const DESCARTAVEIS = ['mailinator.com', 'guerrillamail.com', '10minutemail.com', 'tempmail.com', 'temp-mail.org', 'yopmail.com', 'trashmail.com', 'getnada.com', 'sharklasers.com', 'maildrop.cc', 'dispostable.com', 'fakeinbox.com'];
 const ERROS_DOMINIO: Record<string, string> = { 'gmial.com': 'gmail.com', 'gamil.com': 'gmail.com', 'gmail.con': 'gmail.com', 'gmal.com': 'gmail.com', 'hotmial.com': 'hotmail.com', 'hotmail.con': 'hotmail.com', 'outlok.com': 'outlook.com', 'outlook.con': 'outlook.com', 'yaho.com': 'yahoo.com', 'yahoo.con': 'yahoo.com', 'gmail.com.br': 'gmail.com' };
 
-type Campo = 'nome' | 'sobrenome' | 'email' | 'matricula' | 'cidade' | 'senha' | 'conf';
+type Campo = 'nome' | 'sobrenome' | 'email' | 'matricula' | 'cpf' | 'cidade' | 'senha' | 'conf';
 
 /** Capitaliza cada parte do nome ("maria da silva" vira "Maria da Silva"). */
 const capitaliza = (t: string) => t.trim().replace(/\s+/g, ' ').toLowerCase().replace(/(^|[\s'-])([a-zà-ÿ])/g, (_, a, b) => a + b.toUpperCase()).replace(/\b(Da|De|Do|Das|Dos|E)\b/g, (m) => m.toLowerCase());
@@ -44,7 +45,7 @@ function Linha({ id, icone, erro, ok, dica, children, fim }: { id: string; icone
 
 /** Cadastro de aluno: e-mail verificado por PIN, matrícula, unidade e senha forte. */
 export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => void; onConcluido: (r: { logado: boolean; email: string; role: 'ALUNO' }) => void }) {
-  const [v, setV] = useState({ nome: '', sobrenome: '', email: '', matricula: '', cidade: '', senha: '', conf: '' });
+  const [v, setV] = useState({ nome: '', sobrenome: '', email: '', matricula: '', cpf: '', cidade: '', senha: '', conf: '' });
   const [tocado, setTocado] = useState<Partial<Record<Campo, boolean>>>({});
   const [passo, setPasso] = useState<1 | 2 | 3>(1);
   const [token, setToken] = useState('');
@@ -96,6 +97,8 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
   if (!v.matricula.trim()) erros.matricula = 'Informe a matrícula.';
   else if (v.matricula.trim().length < 3) erros.matricula = 'A matrícula deve ter ao menos 3 caracteres.';
   else if (!MAT_RE.test(v.matricula.trim())) erros.matricula = 'Use apenas letras, números e - . _ /';
+  if (!v.cpf.trim()) erros.cpf = 'Informe o CPF.';
+  else if (!cpfValido(v.cpf)) erros.cpf = 'CPF inválido. Confira os números.';
   if (!v.cidade) erros.cidade = 'Selecione a unidade.';
   if (!v.senha) erros.senha = 'Crie uma senha.';
   else if (!senhaOk) erros.senha = 'A senha não atende a todos os requisitos.';
@@ -125,7 +128,7 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
     }
   }
 
-  const CAMPOS: Record<1 | 2 | 3, Campo[]> = { 1: ['nome', 'sobrenome', 'email'], 2: ['matricula', 'cidade'], 3: ['senha', 'conf'] };
+  const CAMPOS: Record<1 | 2 | 3, Campo[]> = { 1: ['nome', 'sobrenome', 'email'], 2: ['matricula', 'cpf', 'cidade'], 3: ['senha', 'conf'] };
 
   /** Marca os campos da etapa como tocados e devolve false (com foco no primeiro erro) se houver pendência. */
   function validarPasso(n: 1 | 2 | 3) {
@@ -158,7 +161,7 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
       const r = await api<{ logado: boolean; role: 'ALUNO' }>('/auth/cadastro', {
         method: 'POST',
         headers: JSON_H,
-        body: JSON.stringify({ nome: capitaliza(v.nome), sobrenome: capitaliza(v.sobrenome), email: v.email.trim(), token, matricula: v.matricula.trim().toUpperCase(), cidade_id: Number(v.cidade), senha: v.senha, ...(pos ? { lat: pos[0], lng: pos[1] } : {}) }),
+        body: JSON.stringify({ nome: capitaliza(v.nome), sobrenome: capitaliza(v.sobrenome), email: v.email.trim(), token, matricula: v.matricula.trim().toUpperCase(), cpf: soDigitos(v.cpf), cidade_id: Number(v.cidade), senha: v.senha, ...(pos ? { lat: pos[0], lng: pos[1] } : {}) }),
       });
       onConcluido({ ...r, email: v.email.trim() });
     } catch (err) {
@@ -242,6 +245,12 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
                   <Rotulo id="cad-matricula">Matrícula</Rotulo>
                   <Linha id="cad-matricula" icone={<IdCard size={18} />} erro={mostra('matricula')} ok={ok('matricula')}>
                     <input id="cad-matricula" autoFocus={!ehToque()} suppressHydrationWarning autoComplete="off" autoCapitalize="characters" value={v.matricula} onChange={set('matricula')} onBlur={blur('matricula')} placeholder="A0001" className={`${cls('matricula')} pr-10 uppercase`} style={pad} {...a11y('matricula')} />
+                  </Linha>
+                </div>
+                <div>
+                  <Rotulo id="cad-cpf">CPF</Rotulo>
+                  <Linha id="cad-cpf" icone={<Fingerprint size={18} />} erro={mostra('cpf')} ok={ok('cpf')}>
+                    <input id="cad-cpf" inputMode="numeric" suppressHydrationWarning autoComplete="off" maxLength={14} value={v.cpf} onChange={(e) => { e.target.value = mascaraCpf(e.target.value); set('cpf')(e); }} onBlur={blur('cpf')} placeholder="000.000.000-00" className={`${cls('cpf')} pr-10`} style={pad} {...a11y('cpf')} />
                   </Linha>
                 </div>
                 <div>

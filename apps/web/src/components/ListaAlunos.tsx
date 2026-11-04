@@ -1,12 +1,13 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, IdCard, Images, Mail, MapPin, Search, X } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Fingerprint, IdCard, Images, Mail, MapPin, Search, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { fmtDia, nomeLimpo } from '@/lib/session';
+import { mascaraCpf } from '@/lib/cpf';
 import { FotoPerfil } from '@/components/CartaoAluno';
 import FotosAluno from '@/components/FotosAluno';
 
-type Linha = { id: number; nome: string; email: string; matricula: string | null; cidade: string | null; foto: string | null; created_at: string; atendimentos: number; fotos: number };
+type Linha = { id: number; nome: string; email: string; matricula: string | null; cpf: string | null; cidade: string | null; foto: string | null; created_at: string; atendimentos: number; fotos: number };
 type Resposta = { itens: Linha[]; total: number; porPagina: number };
 type Cid = { id: number; nome: string };
 
@@ -57,7 +58,7 @@ export default function ListaAlunos({ cidades }: { cidades: Cid[] }) {
       <div className="card grid gap-2.5 p-3.5 sm:grid-cols-[1fr_200px_170px]">
         <div className="relative">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink/50" aria-hidden />
-          <input value={q} onChange={(e) => filtrar(setQ)(e.target.value)} placeholder="Buscar por nome, e-mail ou matrícula" aria-label="Buscar aluno" className="field-plain !pl-9 !pr-9" />
+          <input value={q} onChange={(e) => filtrar(setQ)(e.target.value)} placeholder="Buscar por nome, e-mail, matrícula ou CPF" aria-label="Buscar aluno" className="field-plain !pl-9 !pr-9" />
           {q && <button type="button" onClick={() => filtrar(setQ)('')} aria-label="Limpar busca" className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-ink/50 hover:bg-sand"><X size={15} /></button>}
         </div>
         <select value={cidade} onChange={(e) => filtrar(setCidade)(e.target.value)} aria-label="Cidade" className="field-plain">
@@ -88,6 +89,7 @@ export default function ListaAlunos({ cidades }: { cidades: Cid[] }) {
               <p className="mt-1 flex items-center gap-1.5 truncate text-[0.8rem] text-ink/65"><Mail size={13} className="shrink-0 text-gold-600" /><span className="truncate">{a.email}</span></p>
               <p className="mt-1 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[0.78rem] text-ink/60">
                 <span className="inline-flex items-center gap-1"><IdCard size={13} className="text-gold-600" />{a.matricula ?? 'Sem matrícula'}</span>
+                <span className="inline-flex items-center gap-1"><Fingerprint size={13} className="text-gold-600" />{a.cpf ? mascaraCpf(a.cpf) : 'CPF não informado'}</span>
                 <span className="inline-flex items-center gap-1"><MapPin size={13} className="text-gold-600" />{a.cidade ?? 'Sem cidade'}</span>
                 <span className="inline-flex items-center gap-1"><CalendarDays size={13} className="text-gold-600" />Cadastro em {fmtDia(a.created_at)}</span>
               </p>

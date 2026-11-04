@@ -1,6 +1,6 @@
 export const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
-export type Me = { id: number; nome: string; email: string; role: 'ADMIN' | 'ALUNO'; matricula: string | null; cidade: string | null; foto_url: string | null; primeiro_acesso: boolean };
+export type Me = { id: number; nome: string; email: string; role: 'ADMIN' | 'ALUNO'; matricula: string | null; cpf?: string | null; cidade: string | null; foto_url: string | null; primeiro_acesso: boolean };
 export type Cidade = { id: number; nome: string; lat: number | null; lng: number | null };
 export type Foto = { id: number; tipo?: 'foto' | 'video'; duracao?: number | null; created_at: string; oculta?: boolean; bytes?: number; width?: number | null; height?: number | null; dispositivo?: string | null; so?: string | null; navegador?: string | null };
 export type Atendimento = {

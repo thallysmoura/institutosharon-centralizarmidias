@@ -1,5 +1,7 @@
 'use client';
 import { FormEvent, useRef, useState } from 'react';
+import { cpfValido, mascaraCpf, soDigitos } from '@/lib/cpf';
+import { Fingerprint } from 'lucide-react';
 import { ArrowLeft, ArrowRight, Check, GraduationCap, LogOut, Mail, MapPin, Pencil, User } from 'lucide-react';
 import { api, Me } from '@/lib/api';
 import Avatar from './Avatar';
@@ -15,6 +17,7 @@ export default function PerfilInicial({ me, sair, recarregar, modo = 'primeiro',
   const [salvo, setSalvo] = useState(false);
   const [nome, setNome] = useState(me.nome.replace(/ \(.*\)$/, ''));
   const [matricula, setMatricula] = useState(me.matricula ?? '');
+  const [cpf, setCpf] = useState(me.cpf ? mascaraCpf(me.cpf) : '');
   const [erro, setErro] = useState('');
   const [busy, setBusy] = useState(false);
   const [editEmail, setEditEmail] = useState(false);
@@ -33,10 +36,11 @@ export default function PerfilInicial({ me, sair, recarregar, modo = 'primeiro',
     if (!m) return setErro('Informe a sua matrícula.');
     if (m.length < 3) return setErro('A matrícula deve ter ao menos 3 caracteres.');
     if (!/^[A-Za-z0-9._\-/]+$/.test(m)) return setErro('Use apenas letras, números e - . _ /');
+    if (!cpfValido(cpf)) return setErro('Informe um CPF válido.');
     setErro('');
     setBusy(true);
     try {
-      await api('/perfil', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matricula: m, nome: n }) });
+      await api('/perfil', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matricula: m, nome: n, cpf: soDigitos(cpf) }) });
       await recarregar();
       if (config) {
         setBusy(false);
@@ -77,8 +81,8 @@ export default function PerfilInicial({ me, sair, recarregar, modo = 'primeiro',
     setTimeout(() => matRef.current?.focus(), 80); // segue direto para a matrícula
   }
 
-const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/, '') || matricula.trim() !== (me.matricula ?? '');
-  const pronto = matricula.trim().length > 0 && (!config || alterado);
+const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/, '') || matricula.trim() !== (me.matricula ?? '') || soDigitos(cpf) !== soDigitos(me.cpf ?? '');
+  const pronto = matricula.trim().length > 0 && cpfValido(cpf) && (!config || alterado);
   const PILULA = 'flex items-center gap-[0.8em] rounded-[0.9em] border border-[#e4d9c5] bg-white/90 px-[1em] shadow-[inset_0_1px_2px_rgba(60,40,10,.04)]';
   const campo = (Icon: typeof Mail, rotulo: string, valor: string, dica?: string, acao?: React.ReactNode, d = 0) => (
     <div className={`${PILULA} lift rise py-[0.6em]`} style={{ '--d': `${d}ms` } as React.CSSProperties}>
@@ -174,6 +178,13 @@ const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/
             <div className="min-w-0 flex-1 leading-tight">
               <p className="text-[0.68em] font-semibold uppercase tracking-[0.14em] text-[#8a7a62]">Matrícula</p>
               <input id="matricula" ref={matRef} value={matricula} onChange={(e) => { setMatricula(e.target.value); setErro(''); }} maxLength={30} autoComplete="off" aria-invalid={!!erro} className="w-full bg-transparent text-[1em] font-medium text-[#33240F] outline-none" />
+            </div>
+          </label>
+          <label htmlFor="cpf" className={`${PILULA} mt-[0.7em] cursor-text py-[0.6em] transition focus-within:border-[#c9a24a] focus-within:ring-4 focus-within:ring-[#c9a24a]/15 ${config && cpf && !cpfValido(cpf) ? '!border-[#d9534f]' : ''}`}>
+            <Fingerprint size="1.3em" strokeWidth={1.7} className="shrink-0 text-[#b8902f]" aria-hidden />
+            <div className="min-w-0 flex-1 leading-tight">
+              <p className="text-[0.68em] font-semibold uppercase tracking-[0.14em] text-[#8a7a62]">CPF</p>
+              <input id="cpf" inputMode="numeric" value={cpf} onChange={(e) => { setCpf(mascaraCpf(e.target.value)); setErro(''); }} maxLength={14} autoComplete="off" placeholder="000.000.000-00" className="w-full bg-transparent text-[1em] font-medium text-[#33240F] outline-none placeholder:text-[#33240F]/30" />
             </div>
           </label>
           {erro && <p role="alert" className="mt-1.5 text-[0.82em] font-medium text-[#b3261e]">{erro}</p>}

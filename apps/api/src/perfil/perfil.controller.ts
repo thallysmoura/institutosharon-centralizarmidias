@@ -13,10 +13,12 @@ import { DbService } from '../db/db.service';
 import { StorageService } from '../storage/storage.service';
 import { AllowPendente, AuthGuard, Me, SessionUser } from '../common/auth';
 import { fotoDoUsuario } from '../common/foto';
+import { cpfValido, soDigitos } from '../common/cpf';
 
 class MatriculaDto {
   @IsOptional() @Transform(({ value }) => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : value)) @IsString() @MinLength(2, { message: 'Informe o nome completo.' }) @MaxLength(100) @Matches(/^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ' .()-]*$/, { message: 'O nome deve ter apenas letras.' }) nome?: string;
   @IsString() @MinLength(3) @MaxLength(30) @Matches(/^[A-Za-z0-9._\-/]+$/, { message: 'Use apenas letras, números e - . _ /' }) matricula!: string;
+  @IsOptional() @IsString() @Matches(/^[\d.\-]{11,14}$/, { message: 'CPF inválido.' }) cpf?: string;
 }
 
 class EmailDto {
@@ -97,10 +99,11 @@ export class PerfilController {
   @AllowPendente()
   async matricula(@Me() u: SessionUser, @Body() dto: MatriculaDto, @Req() req: Request) {
     if (u.role !== 'ALUNO') throw new ForbiddenException();
+    if (dto.cpf && !cpfValido(dto.cpf)) throw new BadRequestException('CPF inválido.');
     try {
-      await this.db.query('UPDATE sistema.users SET matricula=$2, nome=COALESCE(NULLIF($3, \'\'), nome) WHERE id=$1', [u.id, dto.matricula.trim(), dto.nome?.replace(/\s+/g, ' ').trim() ?? '']);
+      await this.db.query('UPDATE sistema.users SET matricula=$2, nome=COALESCE(NULLIF($3, \'\'), nome), cpf=COALESCE($4, cpf) WHERE id=$1', [u.id, dto.matricula.trim(), dto.nome?.replace(/\s+/g, ' ').trim() ?? '', dto.cpf ? soDigitos(dto.cpf) : null]);
     } catch (e) {
-      if ((e as { code?: string }).code === '23505') throw new ConflictException('Esta matrícula já está em uso por outro aluno.');
+      if ((e as { code?: string }).code === '23505') throw new ConflictException((e as { constraint?: string }).constraint === 'users_cpf_uq' ? 'Este CPF já está cadastrado.' : 'Esta matrícula já está em uso por outro aluno.');
       throw e;
     }
     this.aud.registrar('perfil_editado', { ator: u.id, req, detalhe: { nome_antes: u.nome, nome: dto.nome?.replace(/\s+/g, ' ').trim() || u.nome, matricula_antes: u.matricula, matricula: dto.matricula.trim() } });

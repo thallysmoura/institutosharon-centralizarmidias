@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 61L4Pek5WqMchVkbSoo416Yb7cnpCdTPz4DFOmN076OB28QrFda9KuhddlfHwki
+\restrict gricRily5vxHVAYTLtUWdgwB7a0VF8fgqnD6EaQJWjG6AVxUosiJuzU7QHf1GPy
 
 -- Dumped from database version 16.15
 -- Dumped by pg_dump version 16.15
@@ -421,6 +421,7 @@ CREATE TABLE sistema.users (
     foto_key text,
     foto_v integer DEFAULT 0 NOT NULL,
     google_email text,
+    cpf text,
     CONSTRAINT users_role_check CHECK ((role = ANY (ARRAY['ADMIN'::text, 'ALUNO'::text])))
 );
 
@@ -766,6 +767,13 @@ CREATE INDEX users_cidade_idx ON sistema.users USING btree (cidade_id);
 
 
 --
+-- Name: users_cpf_uq; Type: INDEX; Schema: sistema; Owner: -
+--
+
+CREATE UNIQUE INDEX users_cpf_uq ON sistema.users USING btree (cpf) WHERE (cpf IS NOT NULL);
+
+
+--
 -- Name: users_email_uq; Type: INDEX; Schema: sistema; Owner: -
 --
 
@@ -909,5 +917,5 @@ ALTER TABLE ONLY sistema.users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 61L4Pek5WqMchVkbSoo416Yb7cnpCdTPz4DFOmN076OB28QrFda9KuhddlfHwki
+\unrestrict gricRily5vxHVAYTLtUWdgwB7a0VF8fgqnD6EaQJWjG6AVxUosiJuzU7QHf1GPy
 

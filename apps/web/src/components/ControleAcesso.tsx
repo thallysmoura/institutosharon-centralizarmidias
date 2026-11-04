@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { mascaraCpf } from '@/lib/cpf';
 import { ChevronDown, MapPin, Monitor, Search, ShieldCheck, SlidersHorizontal, Smartphone, Tablet, UserRound, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import Avatar from './Avatar';
@@ -8,7 +9,7 @@ import Spinner from './Spinner';
 
 type Estado = 'online' | 'ausente' | 'offline';
 type Usuario = {
-  id: number; nome: string; email: string; role: 'ALUNO' | 'ADMIN'; matricula: string | null; origem: string;
+  id: number; nome: string; email: string; role: 'ALUNO' | 'ADMIN'; matricula: string | null; cpf?: string | null; origem: string;
   ultimo_acesso: string | null; cidade: string | null; cidade_id: number | null; foto_url: string | null; fotos: number;
 };
 type Presenca = { id: number; estado: Estado; visto_em: string | null; dispositivo: string; so: string; navegador: string; ip: string };
@@ -66,6 +67,7 @@ function ItemUsuario({ u, souEu, mudou }: { u: Linha; souEu: boolean; mudou: () 
           <p className="truncate text-[0.82rem] text-ink/60">{u.email}</p>
           <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[0.75rem] text-ink/50">
             <span>{u.matricula ? `Matrícula ${u.matricula}` : adm ? 'Administração' : 'Sem matrícula'}</span>
+            {u.cpf && <span>CPF {mascaraCpf(u.cpf)}</span>}
             {u.cidade && <span className="inline-flex items-center gap-1"><MapPin size={12} />{u.cidade}</span>}
             <span>{u.origem === 'google' ? 'Google' : 'Senha'}</span>
           </p>

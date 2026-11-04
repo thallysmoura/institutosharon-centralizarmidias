@@ -11,6 +11,7 @@ import { EventosService } from '../eventos/eventos.service';
 import { AuditoriaService } from '../db/auditoria.service';
 import { dispositivoDe, PresencaService } from '../presenca/presenca.service';
 import { AuthGuard, Me, Roles, SessionUser } from '../common/auth';
+import { soDigitos } from '../common/cpf';
 
 
 const MAX_BYTES = 25 * 1024 * 1024; // por foto (iPhone em alta resolução passa de 10 MB; o servidor reduz a imagem ao guardar)
@@ -254,7 +255,7 @@ export class AdminController {
   @Get('acessos')
   async acessos() {
     return (await this.db.query(
-      `SELECT u.id, u.nome, u.email, u.role, u.matricula, u.origem, u.created_at, u.ultimo_acesso, c.nome AS cidade, u.cidade_id,
+      `SELECT u.id, u.nome, u.email, u.role, u.matricula, u.cpf, u.origem, u.created_at, u.ultimo_acesso, c.nome AS cidade, u.cidade_id,
               CASE WHEN u.foto_key IS NOT NULL OR u.foto_url IS NOT NULL THEN '/users/' || u.id || '/foto?v=' || u.foto_v END AS foto_url,
               (SELECT count(*)::int FROM sistema.fotos f JOIN sistema.atendimentos a ON a.id=f.atendimento_id WHERE a.aluno_id=u.id) AS fotos
        FROM sistema.users u LEFT JOIN sistema.cidades c ON c.id=u.cidade_id
@@ -297,13 +298,13 @@ export class AdminController {
     const p: unknown[] = [];
     const w = ["u.role='ALUNO'"];
     const t = q.trim().slice(0, 80);
-    if (t) { p.push(`%${t.replace(/[\\%_]/g, (c) => `\\${c}`)}%`); w.push(`(u.nome ILIKE $${p.length} OR u.email ILIKE $${p.length} OR u.matricula ILIKE $${p.length})`); }
+    if (t) { p.push(`%${t.replace(/[\\%_]/g, (c) => `\\${c}`)}%`); const dig = soDigitos(t); w.push(`(u.nome ILIKE $${p.length} OR u.email ILIKE $${p.length} OR u.matricula ILIKE $${p.length}${dig.length >= 3 ? ` OR u.cpf LIKE '%${dig}%'` : ''})`); }
     if (/^\d+$/.test(cidade)) { p.push(Number(cidade)); w.push(`u.cidade_id = $${p.length}`); }
     const ord = ordem === 'recentes' ? 'u.created_at DESC, u.id DESC' : ordem === 'antigos' ? 'u.created_at, u.id' : 'u.nome, u.id';
     const pg = Math.max(0, Math.min(100000, parseInt(pagina, 10) || 0));
     const r = (await this.db.query(
       `WITH pag AS (SELECT u.id, count(*) OVER()::int AS total FROM sistema.users u WHERE ${w.join(' AND ')} ORDER BY ${ord} LIMIT ${POR} OFFSET ${pg * POR})
-       SELECT u.id, u.nome, u.email, u.matricula, u.created_at, c.nome AS cidade, pag.total,
+       SELECT u.id, u.nome, u.email, u.matricula, u.cpf, u.created_at, c.nome AS cidade, pag.total,
               CASE WHEN u.foto_key IS NOT NULL OR u.foto_url IS NOT NULL THEN '/users/' || u.id || '/foto?v=' || u.foto_v END AS foto,
               (SELECT count(*)::int FROM sistema.atendimentos a WHERE a.aluno_id=u.id) AS atendimentos,
               (SELECT count(f.id)::int FROM sistema.fotos f JOIN sistema.atendimentos a ON a.id=f.atendimento_id WHERE a.aluno_id=u.id AND f.oculta_em IS NULL) AS fotos

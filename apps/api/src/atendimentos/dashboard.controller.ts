@@ -1,4 +1,5 @@
 import { Controller, Get, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { fmtCpf } from '../common/cpf';
 import type { Request, Response } from 'express';
 import ExcelJS from 'exceljs';
 import { DbService } from '../db/db.service';
@@ -147,11 +148,11 @@ export class DashboardController {
     aba('Fotos', [['Foto', 8], ['Atendimento', 12], ['Data e horário', 18], ['Paciente', 26], ['Aluno', 28], ['Cidade', 18], ['Dispositivo', 14], ['Sistema', 12], ['Navegador', 12], ['Tamanho (KB)', 13], ['Largura', 10], ['Altura', 10], ['Situação', 20]],
       fotos.map((r) => [r.id, r.atend, r.quando, r.paciente, r.aluno, r.cidade, r.dispositivo ?? 'Não registrado', r.so ?? '', r.navegador ?? '', r.kb, r.width ?? '', r.height ?? '', r.oculta ? 'Excluída pelo aluno' : 'Visível']));
 
-    const alunos = (await this.db.query(`SELECT u.nome, u.matricula, u.email, c.nome AS cidade, count(DISTINCT a.id)::int AS atend, count(f.id)::int AS fotos, ${dt('max(a.created_at)')} AS ultimo
+    const alunos = (await this.db.query(`SELECT u.nome, u.matricula, u.cpf, u.email, c.nome AS cidade, count(DISTINCT a.id)::int AS atend, count(f.id)::int AS fotos, ${dt('max(a.created_at)')} AS ultimo
         FROM sistema.users u LEFT JOIN sistema.cidades c ON c.id=u.cidade_id LEFT JOIN sistema.atendimentos a ON a.aluno_id=u.id ${filtro}
         LEFT JOIN sistema.fotos f ON f.atendimento_id=a.id WHERE u.role='ALUNO' GROUP BY u.id, c.nome ORDER BY fotos DESC, u.nome`)).rows;
-    aba('Alunos', [['Aluno', 30], ['Matrícula', 14], ['E-mail', 32], ['Cidade', 18], ['Atendimentos', 14], ['Fotos', 10], ['Último envio', 18]],
-      alunos.map((r) => [r.nome, r.matricula ?? '', r.email, r.cidade ?? '', r.atend, r.fotos, r.ultimo ?? '']));
+    aba('Alunos', [['Aluno', 30], ['Matrícula', 14], ['CPF', 16], ['E-mail', 32], ['Cidade', 18], ['Atendimentos', 14], ['Fotos', 10], ['Último envio', 18]],
+      alunos.map((r) => [r.nome, r.matricula ?? '', fmtCpf(r.cpf), r.email, r.cidade ?? '', r.atend, r.fotos, r.ultimo ?? '']));
 
     const cidades = (await this.db.query(`SELECT c.nome, count(DISTINCT a.aluno_id)::int AS alunos, count(DISTINCT a.id)::int AS atend, count(f.id)::int AS fotos
         FROM sistema.cidades c LEFT JOIN sistema.atendimentos a ON a.cidade_id=c.id ${filtro}

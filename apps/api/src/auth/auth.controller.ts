@@ -15,6 +15,7 @@ import { Throttle } from '@nestjs/throttler';
 import { MailService } from '../mail/mail.service';
 import { StorageService } from '../storage/storage.service';
 import { fotoDoUsuario } from '../common/foto';
+import { cpfValido, soDigitos } from '../common/cpf';
 
 /** A localização é pré-requisito do login: sem coordenadas a API recusa (o navegador só as envia com a permissão concedida). */
 class Posicao {
@@ -73,6 +74,7 @@ class CadastroDto {
   @IsEmail() @MaxLength(160) email!: string;
   @IsString() @MinLength(20) @MaxLength(200) token!: string;
   @IsString() @MinLength(3, { message: 'A matrícula deve ter ao menos 3 caracteres.' }) @MaxLength(30) @Matches(/^[A-Za-z0-9._\-/]+$/, { message: 'Use apenas letras, números e - . _ /' }) matricula!: string;
+  @IsString() @Matches(/^[\d.\-]{11,14}$/, { message: 'CPF inválido.' }) cpf!: string;
   @Type(() => Number) @IsInt({ message: 'Selecione a cidade.' }) cidade_id!: number;
   @IsString() @MinLength(8, { message: 'A senha deve ter ao menos 8 caracteres.' }) @MaxLength(100)
   @Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/, { message: 'A senha deve ter 1 letra maiúscula, 1 número e 1 caractere especial.' }) senha!: string;
@@ -168,13 +170,14 @@ export class AuthController {
     const nome = `${dto.nome.trim()} ${dto.sobrenome.trim()}`.replace(/\s+/g, ' ');
     let id: number;
     try {
+      if (!cpfValido(dto.cpf)) throw new BadRequestException('CPF inválido.');
       id = (await this.db.query(
-        "INSERT INTO sistema.users (nome,email,password_hash,role,matricula,cidade_id,autorizado,origem) VALUES ($1,$2,$3,'ALUNO',$4,$5,true,'senha') RETURNING id",
-        [nome, email, await bcrypt.hash(dto.senha, 10), dto.matricula.trim(), dto.cidade_id],
+        "INSERT INTO sistema.users (nome,email,password_hash,role,matricula,cidade_id,autorizado,origem,cpf) VALUES ($1,$2,$3,'ALUNO',$4,$5,true,'senha',$6) RETURNING id",
+        [nome, email, await bcrypt.hash(dto.senha, 10), dto.matricula.trim(), dto.cidade_id, soDigitos(dto.cpf)],
       )).rows[0].id;
     } catch (e) {
       const c = e as { code?: string; constraint?: string };
-      if (c.code === '23505') throw new ConflictException(c.constraint === 'users_matricula_uq' ? 'Esta matrícula já está em uso por outro aluno.' : 'Este e-mail já possui cadastro.');
+      if (c.code === '23505') throw new ConflictException(c.constraint === 'users_cpf_uq' ? 'Este CPF já está cadastrado.' : c.constraint === 'users_matricula_uq' ? 'Esta matrícula já está em uso por outro aluno.' : 'Este e-mail já possui cadastro.');
       throw e;
     }
     await this.db.query('DELETE FROM sistema.pin_cadastro WHERE email=$1', [email]);

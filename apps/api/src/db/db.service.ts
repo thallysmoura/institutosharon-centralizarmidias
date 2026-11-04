@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS sistema.aviso_leituras (
 ALTER TABLE sistema.avisos ADD COLUMN IF NOT EXISTS para_cidades INT[];
 CREATE INDEX IF NOT EXISTS aviso_leituras_user_idx ON sistema.aviso_leituras (user_id);
 CREATE INDEX IF NOT EXISTS users_cidade_idx ON sistema.users (cidade_id);
+ALTER TABLE sistema.users ADD COLUMN IF NOT EXISTS cpf TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS users_cpf_uq ON sistema.users (cpf) WHERE cpf IS NOT NULL;
 CREATE INDEX IF NOT EXISTS users_role_nome_idx ON sistema.users (role, nome, id);
 CREATE INDEX IF NOT EXISTS users_role_criado_idx ON sistema.users (role, created_at DESC, id DESC);
 CREATE TABLE IF NOT EXISTS sistema.aviso_anexos (
