@@ -7,14 +7,13 @@ import { fmtDia } from '@/lib/session';
 import Titulo from '@/components/Titulo';
 import { Ampliada } from '@/components/Avatar';
 import CameraCaptura from '@/components/CameraCaptura';
-import { ehVideo, fmtDur, MAX_GRAVACAO_S, MAX_VIDEO_BYTES, MAX_VIDEOS, metaDe, prepararVideo, TIPOS_VIDEO } from '@/lib/midia';
+import { ehVideo, fmtDur, fmtMB, MAX_ENVIO_BYTES, MAX_FOTO_BYTES, MAX_GRAVACAO_S, MAX_VIDEO_BYTES, MAX_VIDEOS, metaDe, prepararVideo, TIPOS_VIDEO } from '@/lib/midia';
 
 type Item = { file: File; url: string; video?: boolean; thumb?: string; dur?: number };
 const liberar = (i: Item) => { URL.revokeObjectURL(i.url); if (i.thumb) URL.revokeObjectURL(i.thumb); };
 export type MeusEnviosHandle = { abrirMenu: () => void };
 
 const MAX = 10;
-const MAX_BYTES = 10 * 1024 * 1024;
 const TIPOS = ['image/jpeg', 'image/png', 'image/webp'];
 
 /**
@@ -52,28 +51,36 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
   async function adicionar(lista: FileList | File[] | null) {
     if (!lista) return;
     const novos: Item[] = [];
-    let aviso = '';
+    const avisos: string[] = [];
     let nVideos = itens.filter((i) => i.video).length;
-    let bytesVideos = itens.filter((i) => i.video).reduce((t, i) => t + i.file.size, 0);
+    let bytes = itens.reduce((t, i) => t + i.file.size, 0);
     for (const f of Array.from(lista)) {
-      if (itens.length + novos.length >= MAX) { aviso = `Máximo de ${MAX} arquivos por envio.`; break; }
+      if (itens.length + novos.length >= MAX) { avisos.push(`Máximo de ${MAX} arquivos por envio.`); break; }
+      const nome = f.name.length > 28 ? `${f.name.slice(0, 25)}...` : f.name;
+      const motivos: string[] = [];
       if (ehVideo(f)) {
-        if (f.type && !TIPOS_VIDEO.includes(f.type)) aviso = 'Use vídeos MP4, MOV ou WebM.';
-        else if (nVideos >= MAX_VIDEOS) aviso = `Máximo de ${MAX_VIDEOS} vídeos por envio.`;
-        else if (bytesVideos + f.size > MAX_VIDEO_BYTES) aviso = 'Os vídeos passam de 90 MB. Grave um vídeo mais curto ou envie em partes.';
-        else {
-          const m = metaDe(f) ?? (await prepararVideo(f));
-          if (m.duracao > MAX_GRAVACAO_S + 0.5) { aviso = `Cada vídeo pode ter no máximo ${MAX_GRAVACAO_S} segundos.`; continue; }
-          nVideos++;
-          bytesVideos += f.size;
-          novos.push({ file: f, url: URL.createObjectURL(f), video: true, thumb: m.poster ? URL.createObjectURL(m.poster) : undefined, dur: m.duracao });
-        }
-      } else if (!TIPOS.includes(f.type)) aviso = 'Use fotos JPEG, PNG ou WebP, ou vídeos MP4, MOV ou WebM.';
-      else if (f.size > MAX_BYTES) aviso = 'Cada foto deve ter no máximo 10 MB.';
-      else novos.push({ file: f, url: URL.createObjectURL(f) });
+        if (f.type && !TIPOS_VIDEO.includes(f.type)) motivos.push('formato não aceito (use MP4, MOV ou WebM)');
+        if (f.size > MAX_VIDEO_BYTES) motivos.push(`muito grande (${fmtMB(f.size)}; o máximo é ${fmtMB(MAX_VIDEO_BYTES)} por vídeo)`);
+        if (nVideos >= MAX_VIDEOS) motivos.push(`só cabem ${MAX_VIDEOS} vídeos por envio`);
+        const m = motivos.length ? undefined : (metaDe(f) ?? (await prepararVideo(f)));
+        if (m && m.duracao > MAX_GRAVACAO_S + 0.5) motivos.push(`muito longo (${fmtDur(m.duracao)}; o máximo é ${MAX_GRAVACAO_S} segundos)`);
+        if (!motivos.length && bytes + f.size > MAX_ENVIO_BYTES) motivos.push(`o envio passaria de ${fmtMB(MAX_ENVIO_BYTES)} no total (já há ${fmtMB(bytes)})`);
+        if (motivos.length) { avisos.push(`Vídeo ${nome}: ${motivos.join(' e ')}.`); continue; }
+        nVideos++;
+        bytes += f.size;
+        novos.push({ file: f, url: URL.createObjectURL(f), video: true, thumb: m?.poster ? URL.createObjectURL(m.poster) : undefined, dur: m?.duracao });
+      } else {
+        if (/heic|heif/i.test(f.type) || /\.(heic|heif)$/i.test(f.name)) motivos.push('formato HEIC não é aceito; no iPhone, use a câmera do app ou Ajustes > Câmera > Formatos > Mais Compatível');
+        else if (!TIPOS.includes(f.type)) motivos.push('formato não aceito (use JPEG, PNG ou WebP)');
+        if (f.size > MAX_FOTO_BYTES) motivos.push(`muito grande (${fmtMB(f.size)}; o máximo é ${fmtMB(MAX_FOTO_BYTES)} por foto)`);
+        if (!motivos.length && bytes + f.size > MAX_ENVIO_BYTES) motivos.push(`o envio passaria de ${fmtMB(MAX_ENVIO_BYTES)} no total (já há ${fmtMB(bytes)})`);
+        if (motivos.length) { avisos.push(`Foto ${nome}: ${motivos.join(' e ')}.`); continue; }
+        bytes += f.size;
+        novos.push({ file: f, url: URL.createObjectURL(f) });
+      }
     }
     setItens((v) => [...v, ...novos]);
-    setMsg(aviso ? { ok: false, texto: aviso } : null);
+    setMsg(avisos.length ? { ok: false, texto: avisos.slice(0, 3).join(' ') } : null);
   }
 
   const remover = (i: number) => setItens((v) => { liberar(v[i]); return v.filter((_, k) => k !== i); });
@@ -302,7 +309,7 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
             {enviando ? 'Enviando…' : `Enviar ${itens.length} ${itens.some((i) => i.video) ? 'arquivo' : 'foto'}${itens.length === 1 ? '' : 's'}`}
           </button>
         </div>
-        <p className="mt-2.5 flex items-center gap-1.5 text-[0.7rem] text-ink/50"><Info size={13} className="shrink-0" />As fotos são organizadas e centralizadas pelo Instituto Sharon.</p>
+        <p className="mt-2.5 flex items-center gap-1.5 text-[0.7rem] text-ink/50"><Info size={13} className="shrink-0" />Fotos até {fmtMB(MAX_FOTO_BYTES)}, vídeos até {MAX_GRAVACAO_S} s e {fmtMB(MAX_VIDEO_BYTES)}; no máximo {fmtMB(MAX_ENVIO_BYTES)} por envio.</p>
       </div>
     </div>
   );

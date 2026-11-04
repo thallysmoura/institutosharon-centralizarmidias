@@ -56,7 +56,7 @@ export async function api<T = unknown>(path: string, init: RequestInit = {}, ten
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    const amigavel = res.status >= 500 ? 'Algo deu errado do nosso lado. Tente novamente em instantes.' : res.status === 429 ? 'Muitas tentativas em pouco tempo. Aguarde um instante e tente de novo.' : null;
+    const amigavel = res.status >= 500 ? 'Algo deu errado do nosso lado. Tente novamente em instantes.' : res.status === 429 ? 'Muitas tentativas em pouco tempo. Aguarde um instante e tente de novo.' : res.status === 413 ? 'Os arquivos passam do tamanho máximo do envio (95 MB no total). Envie menos arquivos de cada vez ou grave em qualidade menor.' : null;
     const e = new Error(amigavel ?? (Array.isArray(data?.message) ? data.message[0] : (data?.message ?? 'Erro inesperado.'))) as Error & { status: number };
     e.status = res.status;
     throw e;

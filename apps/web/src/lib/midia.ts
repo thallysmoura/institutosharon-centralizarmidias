@@ -1,7 +1,9 @@
 /** Vídeos no envio: limites, detecção e dados de prévia (quadro inicial + duração) gerados no aparelho. */
 export const TIPOS_VIDEO = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v'];
 export const MAX_VIDEOS = 3;
-export const MAX_VIDEO_BYTES = 90 * 1024 * 1024; // soma por envio: o limite de corpo da hospedagem é de 100 MB
+export const MAX_FOTO_BYTES = 25 * 1024 * 1024; // fotos de iPhone em alta resolução passam de 10 MB
+export const MAX_VIDEO_BYTES = 90 * 1024 * 1024; // por vídeo
+export const MAX_ENVIO_BYTES = 95 * 1024 * 1024; // soma de tudo num envio: a hospedagem recusa corpo acima de 100 MB
 export const MAX_GRAVACAO_S = 15; // duração máxima de cada vídeo (gravado ou escolhido da galeria)
 
 export type MetaVideo = { poster: Blob | null; duracao: number };
@@ -9,6 +11,7 @@ const metas = new WeakMap<File, MetaVideo>();
 export const metaDe = (f: File) => metas.get(f);
 export const definirMeta = (f: File, m: MetaVideo) => metas.set(f, m);
 
+export const fmtMB = (b: number) => `${(b / 1048576).toFixed(b >= 10 * 1048576 ? 0 : 1).replace('.', ',')} MB`;
 export const ehVideo = (f: File) => f.type.startsWith('video/') || /\.(mp4|mov|m4v|webm)$/i.test(f.name);
 export const fmtDur = (s?: number | null) => {
   if (!s || !Number.isFinite(s)) return '';

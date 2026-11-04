@@ -16,7 +16,7 @@ async function pedirStream(video: MediaTrackConstraints) {
 }
 const mimeVideo = () => ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find((m) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(m));
 
-const LIMITE_BYTES = 9.5 * 1048576; // o servidor aceita até 10 MB por foto
+const LIMITE_BYTES = 24 * 1048576; // o servidor aceita até 25 MB por foto
 
 /** Android/Chrome tem captura de foto em resolução total do sensor (ImageCapture); iPhone usa o quadro de vídeo em 4K. */
 const temImageCapture = () => typeof window !== 'undefined' && 'ImageCapture' in window;

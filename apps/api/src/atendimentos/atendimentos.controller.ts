@@ -13,10 +13,11 @@ import { dispositivoDe, PresencaService } from '../presenca/presenca.service';
 import { AuthGuard, Me, Roles, SessionUser } from '../common/auth';
 
 
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = 25 * 1024 * 1024; // por foto (iPhone em alta resolução passa de 10 MB; o servidor reduz a imagem ao guardar)
+const MAX_ENVIO_BYTES = 95 * 1024 * 1024; // soma de todos os arquivos de um envio (a hospedagem recusa corpo acima de 100 MB)
 const MAX_FILES = 10;
 const MAX_VIDEOS = 3;
-const MAX_VIDEO_BYTES = 120 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 90 * 1024 * 1024; // por vídeo
 const MAX_POSTER_BYTES = 3 * 1024 * 1024;
 
 /** Vídeo MP4/MOV (caixa `ftyp`) ou WebM (EBML), pelo conteúdo; devolve o tipo e a extensão, ou null. */
@@ -80,14 +81,20 @@ export class AtendimentosController {
   constructor(private readonly db: DbService, private readonly storage: StorageService, private readonly eventos: EventosService, private readonly aud: AuditoriaService) {}
 
   @Post()
-  @UseInterceptors(FileFieldsInterceptor([{ name: 'fotos', maxCount: MAX_FILES }, { name: 'videos', maxCount: MAX_VIDEOS }, { name: 'posters', maxCount: MAX_VIDEOS }], { storage: memoryStorage(), limits: { fileSize: MAX_VIDEO_BYTES, files: MAX_FILES + MAX_VIDEOS * 2 } }))
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'fotos', maxCount: MAX_FILES }, { name: 'videos', maxCount: MAX_VIDEOS }, { name: 'posters', maxCount: MAX_VIDEOS }], { storage: memoryStorage(), limits: { fileSize: MAX_ENVIO_BYTES, files: MAX_FILES + MAX_VIDEOS * 2 } }))
   async criar(@Me() u: SessionUser, @Body() dto: CriarDto, @UploadedFiles() enviados: { fotos?: Express.Multer.File[]; videos?: Express.Multer.File[]; posters?: Express.Multer.File[] }, @Req() req: Request) {
     const disp = dispositivoDe(req.headers['user-agent'] ?? '');
     const files = enviados?.fotos ?? [];
     const videos = enviados?.videos ?? [];
     const posters = enviados?.posters ?? [];
     if (!files.length && !videos.length) throw new BadRequestException('Envie ao menos uma foto ou vídeo.');
-    if (files.some((f) => f.size > MAX_BYTES)) throw new BadRequestException('Cada foto deve ter no máximo 10 MB.');
+    const mb = (b: number) => `${(b / 1048576).toFixed(1).replace('.', ',')} MB`;
+    const tooBig = files.find((f) => f.size > MAX_BYTES);
+    if (tooBig) throw new BadRequestException(`Foto muito grande (${mb(tooBig.size)}). O máximo é ${mb(MAX_BYTES)} por foto.`);
+    const vidBig = videos.find((f) => f.size > MAX_VIDEO_BYTES);
+    if (vidBig) throw new BadRequestException(`Vídeo muito grande (${mb(vidBig.size)}). O máximo é ${mb(MAX_VIDEO_BYTES)} por vídeo.`);
+    const somaEnvio = [...files, ...videos, ...posters].reduce((t, f) => t + f.size, 0);
+    if (somaEnvio > MAX_ENVIO_BYTES) throw new BadRequestException(`O envio tem ${mb(somaEnvio)}. O máximo é ${mb(MAX_ENVIO_BYTES)} por envio.`);
     if (posters.some((f) => f.size > MAX_POSTER_BYTES)) throw new BadRequestException('Prévia do vídeo muito grande.');
     const infoVideos = videos.map((v) => videoValido(v.buffer));
     if (infoVideos.some((i) => !i)) throw new BadRequestException('Vídeo inválido. Use MP4, MOV ou WebM.');
