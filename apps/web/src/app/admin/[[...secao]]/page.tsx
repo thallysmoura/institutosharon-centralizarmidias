@@ -16,6 +16,7 @@ import MostrarMais, { PASSO } from '@/components/MostrarMais';
 import CartaoAluno, { FotoPerfil } from '@/components/CartaoAluno';
 import BuscaAluno from '@/components/BuscaAluno';
 import ListaAlunos from '@/components/ListaAlunos';
+import ListaCidades, { CidadeInfo } from '@/components/ListaCidades';
 import Avatar from '@/components/Avatar';
 import PerfilInicial from '@/components/PerfilInicial';
 import Aplicativo from '@/components/Aplicativo';
@@ -27,7 +28,7 @@ import MeusEnvios, { MeusEnviosHandle } from '@/components/MeusEnvios';
 type Vista = 'geral' | 'fotos' | 'alunos' | 'pacientes' | 'cidades' | 'armazenamento' | 'acessos' | 'exclusoes' | 'aplicativo' | 'auditoria' | 'avisos';
 type Excl = { id: number; atendimento_id: number; oculta_em: string; identificador_paciente: string; cidade: string; aluno: { id: number; nome: string; matricula: string | null } };
 type Resumo = { fotos: number; pacientes: number; alunos: number; cidades: number; pendentes: number; ocultas?: number };
-type Cidade = { id: number; nome: string; alunos: number; fotos: number };
+type Cidade = CidadeInfo;
 type Paciente = { identificador: string; alunos: number; fotos: number; ultima: string };
 type Filtros = { cidade: string; aluno_id: string; q: string; de: string; ate: string };
 const VAZIO: Filtros = { cidade: '', aluno_id: '', q: '', de: '', ate: '' };
@@ -510,16 +511,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
           <li className="sm:col-span-2 xl:col-span-3"><MostrarMais temMais={pacientes.length > nPac} onClick={() => setNPac((n) => n + PASSO)} /></li>
           </ul>
         )}
-        {vista === 'cidades' && (
-          <ul className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {cidades.map((c) => (
-              <li key={c.id}><button type="button" onClick={() => irFotos({ cidade: String(c.id) })} className="card w-full p-4 text-left transition hover:border-gold-500">
-                <p className="flex items-center gap-2 font-bold"><MapPin size={16} className="text-gold-500" />{c.nome}</p>
-                <p className="mt-2 text-[0.82rem] text-gold-700">{c.alunos} aluno(s) · {c.fotos} foto(s)</p>
-              </button></li>
-            ))}
-          </ul>
-        )}
+        {vista === 'cidades' && <ListaCidades cidades={cidades} onVerFotos={(id) => irFotos({ cidade: String(id) })} />}
       </main>
 
       <div aria-live="polite" className="pointer-events-none fixed right-4 top-4 z-[90] flex w-[min(92vw,360px)] flex-col gap-2">

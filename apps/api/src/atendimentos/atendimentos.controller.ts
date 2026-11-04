@@ -183,7 +183,7 @@ export class AdminController {
   @Get('cidades')
   async cidades() {
     return (await this.db.query(
-      "SELECT c.id, c.nome, (SELECT count(*)::int FROM sistema.users u WHERE u.cidade_id=c.id AND u.role='ALUNO') AS alunos, (SELECT count(*)::int FROM sistema.fotos f JOIN sistema.atendimentos a ON a.id=f.atendimento_id WHERE a.cidade_id=c.id) AS fotos FROM sistema.cidades c ORDER BY c.nome",
+      "SELECT c.id, c.nome, (SELECT count(*)::int FROM sistema.users u WHERE u.cidade_id=c.id AND u.role='ALUNO') AS alunos, (SELECT count(*)::int FROM sistema.fotos f JOIN sistema.atendimentos a ON a.id=f.atendimento_id WHERE a.cidade_id=c.id) AS fotos, (SELECT count(*)::int FROM sistema.atendimentos a WHERE a.cidade_id=c.id) AS atendimentos, (SELECT max(a.created_at) FROM sistema.atendimentos a WHERE a.cidade_id=c.id) AS ultimo FROM sistema.cidades c ORDER BY c.nome",
     )).rows;
   }
 
