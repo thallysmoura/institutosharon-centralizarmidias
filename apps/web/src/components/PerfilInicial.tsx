@@ -37,7 +37,7 @@ export default function PerfilInicial({ me, sair, recarregar, modo = 'primeiro',
     if (!m) return setErro('Informe a sua matrícula.');
     if (m.length < 3) return setErro('A matrícula deve ter ao menos 3 caracteres.');
     if (!/^[A-Za-z0-9._\-/]+$/.test(m)) return setErro('Use apenas letras, números e - . _ /');
-    if (!cpfValido(cpf)) return setErro('Informe um CPF válido para continuar.');
+    if (!cpfValido(cpf)) return setErro('Informe um CPF válido.');
     setErro('');
     setBusy(true);
     try {
@@ -190,8 +190,8 @@ const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/
             {cpfEstado === 'ok' && <Check size="1.3em" className="shrink-0 text-[#22a35a]" aria-label="CPF válido" />}
             {cpfEstado === 'erro' && <CircleAlert size="1.3em" className="shrink-0 text-[#d9534f]" aria-label="CPF inválido" />}
           </label>
-          {cpfEstado === 'erro' && <p role="alert" className="mt-2 flex items-center gap-1.5 px-[1.1em] text-[0.82em] font-medium leading-snug text-[#b3261e]"><CircleAlert size="1.1em" className="shrink-0" aria-hidden />Este CPF não parece válido. Confira os números digitados.</p>}
-          {cpfEstado === 'ok' && <p className="mt-2 flex items-center gap-1.5 px-[1.1em] text-[0.82em] font-medium text-[#17794a]"><Check size="1.1em" className="shrink-0" aria-hidden />CPF válido</p>}
+          {cpfEstado === 'erro' && <p role="alert" className="mt-1.5 px-[1.2em] text-[0.74em] font-medium text-[#b3261e]">Informe um CPF válido</p>}
+          {cpfEstado === 'ok' && <p className="mt-1.5 px-[1.2em] text-[0.74em] font-medium text-[#17794a]">CPF válido</p>}
           {erro && <p role="alert" className="mt-1.5 text-[0.82em] font-medium text-[#b3261e]">{erro}</p>}
           {salvo && <p role="status" className="pop mt-2 flex items-center gap-1.5 rounded-xl bg-[#e7f6ee] px-3 py-2 text-[0.85em] font-medium text-[#17794a]"><Check size="1.1em" />Dados salvos com sucesso.</p>}
           {(!config || pronto || busy) && (
