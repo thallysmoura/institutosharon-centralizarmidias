@@ -148,7 +148,7 @@ export default function VisaoGeral({ recentes, irPara, abrir }: { recentes: Aten
       {erro && <p role="alert" className="rounded-xl bg-[#fdf0ee] px-4 py-3 text-[0.85rem] font-medium text-[#b3261e]">{erro}</p>}
 
       {!d && !erro && (
-        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-5" aria-hidden>{[0, 1, 2, 3, 4].map((i) => <div key={i} className={`${CARTAO} h-[100px] animate-pulse !bg-sand`} />)}</div>
+        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-4" aria-hidden>{[0, 1, 2, 3, 4].map((i) => <div key={i} className={`${CARTAO} h-[100px] animate-pulse !bg-sand`} />)}</div>
       )}
 
       {d && k && (
@@ -165,7 +165,6 @@ export default function VisaoGeral({ recentes, irPara, abrir }: { recentes: Aten
             <Kpi icone={ImageIcon} rotulo="Fotos recebidas" valor={num(k.fotos_periodo)} extra={<Delta atual={k.fotos_periodo} anterior={k.fotos_anterior} />} sub={`${rotuloPeriodo} · vs. período anterior`} />
             <Kpi icone={Activity} rotulo="Atendimentos" valor={num(k.atend_periodo)} extra={<Delta atual={k.atend_periodo} anterior={k.atend_anterior} />} sub={`${rotuloPeriodo} · vs. período anterior`} />
             <Kpi icone={GraduationCap} rotulo="Alunos ativos" valor={num(k.alunos_ativos)} extra={k.alunos ? <span className="rounded-full bg-[#f7ecd3] px-2 py-0.5 text-[0.7rem] font-bold text-gold-700">{pct(k.alunos_ativos, k.alunos)}% da base</span> : undefined} sub={`de ${num(k.alunos)} alunos cadastrados`} />
-            <Kpi icone={Users} rotulo="Pacientes atendidos" valor={num(k.pacientes)} sub={`em ${num(k.cidades)} unidade(s)`} />
             <Kpi icone={Camera} rotulo="Fotos por atendimento" valor={k.atend_periodo ? (k.fotos_periodo / k.atend_periodo).toFixed(1).replace('.', ',') : '0'} sub="média no período" />
           </div>
 

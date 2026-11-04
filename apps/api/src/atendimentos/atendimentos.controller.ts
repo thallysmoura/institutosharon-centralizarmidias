@@ -47,7 +47,7 @@ class EditarDto {
 }
 
 class CriarDto {
-  @IsString() @MinLength(2) @MaxLength(80) @Matches(/^[^<>{}`$\\]+$/, { message: 'O identificador não pode ter < > { } ` $ ou barra invertida.' }) identificador!: string;
+  @IsOptional() @IsString() @MinLength(2) @MaxLength(80) @Matches(/^[^<>{}`$\\]+$/, { message: 'O identificador não pode ter < > { } ` $ ou barra invertida.' }) identificador?: string;
   @IsOptional() @IsString() @MaxLength(200) duracoes?: string; // JSON com a duração (s) de cada vídeo, na ordem enviada
 }
 
@@ -111,11 +111,11 @@ export class AtendimentosController {
     if (!cidadeId) throw new BadRequestException('Sua localização não corresponde a uma localidade cadastrada. Procure a administração.');
     if (files.some((f) => !formatoValido(f.buffer))) throw new BadRequestException('Formato inválido. Use JPEG, PNG ou WebP.');
 
-    const ident = dto.identificador.trim();
-    const ex = await this.db.query(
+    const ident = dto.identificador?.trim() || 'Sem identificação';
+    const ex = dto.identificador?.trim() ? await this.db.query(
       'SELECT id FROM sistema.atendimentos WHERE aluno_id=$1 AND lower(trim(identificador_paciente))=lower($2) AND created_at::date = current_date ORDER BY id LIMIT 1',
       [u.id, ident],
-    );
+    ) : { rows: [] as { id: number }[] };
     const atendimentoId: number =
       ex.rows[0]?.id ??
       (await this.db.query('INSERT INTO sistema.atendimentos (identificador_paciente, aluno_id, cidade_id) VALUES ($1,$2,$3) RETURNING id', [ident, u.id, cidadeId])).rows[0].id;

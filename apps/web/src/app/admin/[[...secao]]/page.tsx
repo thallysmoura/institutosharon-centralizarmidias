@@ -18,7 +18,6 @@ import { fmtDur } from '@/lib/midia';
 import CartaoAluno, { FotoPerfil } from '@/components/CartaoAluno';
 import BuscaAluno from '@/components/BuscaAluno';
 import ListaAlunos from '@/components/ListaAlunos';
-import ListaPacientes from '@/components/ListaPacientes';
 import ListaCidades, { CidadeInfo } from '@/components/ListaCidades';
 import Avatar from '@/components/Avatar';
 import PerfilInicial from '@/components/PerfilInicial';
@@ -28,7 +27,7 @@ import MuralAvisos from '@/components/MuralAvisos';
 import Notificacoes from '@/components/Notificacoes';
 import MeusEnvios, { MeusEnviosHandle } from '@/components/MeusEnvios';
 
-type Vista = 'geral' | 'fotos' | 'alunos' | 'pacientes' | 'cidades' | 'armazenamento' | 'acessos' | 'exclusoes' | 'aplicativo' | 'auditoria' | 'avisos';
+type Vista = 'geral' | 'fotos' | 'alunos' | 'cidades' | 'armazenamento' | 'acessos' | 'exclusoes' | 'aplicativo' | 'auditoria' | 'avisos';
 type Excl = { id: number; atendimento_id: number; oculta_em: string; identificador_paciente: string; cidade: string; aluno: { id: number; nome: string; matricula: string | null } };
 type Resumo = { fotos: number; pacientes: number; alunos: number; cidades: number; pendentes: number; ocultas?: number };
 type Cidade = CidadeInfo;
@@ -36,13 +35,12 @@ type Filtros = { cidade: string; aluno_id: string; q: string; de: string; ate: s
 const VAZIO: Filtros = { cidade: '', aluno_id: '', q: '', de: '', ate: '' };
 
 /** Seções válidas = caminhos /admin/<seção> (a inicial fica em /admin). */
-const SECOES: readonly Vista[] = ['geral', 'fotos', 'alunos', 'pacientes', 'cidades', 'armazenamento', 'acessos', 'exclusoes', 'aplicativo', 'auditoria', 'avisos'];
+const SECOES: readonly Vista[] = ['geral', 'fotos', 'alunos', 'cidades', 'armazenamento', 'acessos', 'exclusoes', 'aplicativo', 'auditoria', 'avisos'];
 const GOV: Vista[] = ['exclusoes', 'acessos', 'auditoria', 'armazenamento'];
 const NAV: [Vista, string, typeof House][] = [
   ['geral', 'Visão Geral', House],
   ['fotos', 'Fotos', ImageIcon],
   ['alunos', 'Alunos', GraduationCap],
-  ['pacientes', 'Pacientes', Users],
   ['cidades', 'Cidades', MapPin],
   ['avisos', 'Mural de Avisos', Megaphone],
   ['exclusoes', 'Exclusões', Trash2],
@@ -501,7 +499,6 @@ function Painel({ me, sair, recarregar }: { me: Me; sair: () => void; recarregar
         )}
 
         {vista === 'alunos' && <ListaAlunos key={rk} cidades={cidades} />}
-        {vista === 'pacientes' && <ListaPacientes key={rk} cidades={cidades} />}
         {vista === 'cidades' && <ListaCidades cidades={cidades} onVerFotos={(id) => irFotos({ cidade: String(id) })} />}
         </>}
       </main>

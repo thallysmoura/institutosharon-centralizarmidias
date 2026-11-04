@@ -1,7 +1,7 @@
 'use client';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, CheckCircle2, Download, History, ImageIcon, Info, Pencil, PlusCircle, Trash2, User, Camera, Play, Video } from 'lucide-react';
+import { X, CheckCircle2, Download, History, ImageIcon, Info, Pencil, PlusCircle, Trash2, Camera, Play, Video } from 'lucide-react';
 import { api, Atendimento, fmtData, fotoUrl } from '@/lib/api';
 import { fmtDia } from '@/lib/session';
 import Titulo from '@/components/Titulo';
@@ -36,14 +36,12 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
   const [ver, setVer] = useState<{ a: Atendimento; i: number } | null>(null);
   const [apagar, setApagar] = useState<number | null>(null); // id da foto em confirmação de exclusão
   const [apagando, setApagando] = useState(false);
-  const [ident, setIdent] = useState('');
   const [itens, setItens] = useState<Item[]>([]);
   const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [meus, setMeus] = useState<Atendimento[]>([]);
   const galeria = useRef<HTMLInputElement>(null);
   const camera = useRef<HTMLInputElement>(null);
-  const identRef = useRef<HTMLInputElement>(null);
 
   const carregar = useCallback(() => api<Atendimento[]>('/atendimentos/meus').then(setMeus).catch(() => null), []);
   useEffect(() => { carregar(); }, [carregar]);
@@ -90,7 +88,6 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
     setMsg(null);
     try {
       const fd = new FormData();
-      fd.append('identificador', ident.trim());
       itens.filter((i) => !i.video).forEach((i) => fd.append('fotos', i.file));
       const vids = itens.filter((i) => i.video);
       vids.forEach((i, k) => {
@@ -123,8 +120,8 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
     return () => document.removeEventListener('keydown', esc);
   }, [menuNovo]);
 
-  const cancelarEnvio = () => { itens.forEach(liberar); setItens([]); setIdent(''); setMsg(null); };
-  const pronto = ident.trim().length >= 2 && itens.length > 0 && !enviando;
+  const cancelarEnvio = () => { itens.forEach(liberar); setItens([]); setMsg(null); };
+  const pronto = itens.length > 0 && !enviando;
 
   // Todas as fotos (mais novas primeiro), cada uma com o atendimento a que pertence.
   const todas = meus.flatMap((a) => a.fotos.map((f) => ({ a, f })));
@@ -298,10 +295,6 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
           ))}
           {itens.length < MAX && <li className="shrink-0"><button type="button" disabled={enviando} onClick={() => abrirMenuNovo()} aria-label="Adicionar mais fotos ou vídeos" className="grid h-16 w-16 place-items-center rounded-xl border border-dashed border-gold-500/60 text-gold-600 transition hover:bg-ivory"><PlusCircle size={22} strokeWidth={1.6} /></button></li>}
         </ul>
-        <div className="relative mt-3">
-          <User size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink/50" aria-hidden />
-          <input ref={identRef} autoFocus aria-label="Identificador do paciente" value={ident} onChange={(e) => setIdent(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && pronto) enviar(); }} maxLength={80} placeholder="Paciente (ex.: P-4587)" className="field !mt-0" />
-        </div>
         {msg && !msg.ok && <p role="alert" className="mt-2.5 rounded-xl bg-[#fdf0ee] px-3 py-2 text-[0.8rem] font-medium text-[#b3261e]">{msg.texto}</p>}
         <div className="mt-3 flex gap-2.5">
           <button type="button" disabled={enviando} onClick={cancelarEnvio} className="btn btn-line !min-h-[48px] shrink-0 !px-5">Cancelar</button>
