@@ -132,16 +132,16 @@ export default function VisaoGeral({ recentes, irPara, abrir }: { recentes: Aten
 
   return (
     <div className="mt-5 space-y-4 sm:mt-6 sm:space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div role="tablist" aria-label="Período" className="inline-flex max-w-full overflow-x-auto rounded-xl border border-[#efe6d2] bg-white p-1 shadow-sm">
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
+        <div role="tablist" aria-label="Período" className="inline-flex min-w-0 overflow-x-auto rounded-xl border border-[#efe6d2] bg-white p-1 shadow-sm">
           {PERIODOS.map(([n, r]) => (
             <button key={n} type="button" role="tab" aria-selected={dias === n} onClick={() => setDias(n)}
-              className={`whitespace-nowrap rounded-lg px-4 py-2 text-[0.84rem] font-semibold transition ${dias === n ? 'text-white shadow-sm' : 'text-ink/70 hover:bg-ivory'}`}
+              className={`whitespace-nowrap rounded-lg px-2.5 py-2 text-[0.78rem] sm:px-4 sm:text-[0.84rem] font-semibold transition ${dias === n ? 'text-white shadow-sm' : 'text-ink/70 hover:bg-ivory'}`}
               style={dias === n ? { background: 'linear-gradient(180deg,#d9b04e,#a67c26)' } : undefined}>{r}</button>
           ))}
         </div>
-        <button type="button" onClick={exportar} disabled={exportando} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl px-5 text-[0.88rem] font-semibold text-white shadow-[0_10px_22px_-10px_rgba(150,100,10,.8)] transition hover:brightness-105 disabled:opacity-70" style={{ background: 'linear-gradient(180deg,#d9b04e,#a67c26)' }}>
-          {exportando ? <Spinner size={16} /> : <Download size={18} />}Exportar Excel
+        <button type="button" onClick={exportar} disabled={exportando} className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl px-3 text-[0.84rem] sm:gap-2 sm:px-5 sm:text-[0.88rem] font-semibold text-white shadow-[0_10px_22px_-10px_rgba(150,100,10,.8)] transition hover:brightness-105 disabled:opacity-70" style={{ background: 'linear-gradient(180deg,#d9b04e,#a67c26)' }}>
+          {exportando ? <Spinner size={16} /> : <Download size={18} />}<span className="sm:hidden">Excel</span><span className="hidden sm:inline">Exportar Excel</span>
         </button>
       </div>
 
