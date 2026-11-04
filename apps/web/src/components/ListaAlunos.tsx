@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, Fingerprint, IdCard, Images, Mail, MapPin, Search, X } from 'lucide-react';
+import IconeCpf from '@/components/IconeCpf';
+import { CalendarDays, ChevronLeft, ChevronRight, IdCard, Images, Mail, MapPin, Search, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { fmtDia, nomeLimpo } from '@/lib/session';
 import { mascaraCpf } from '@/lib/cpf';
@@ -89,7 +90,7 @@ export default function ListaAlunos({ cidades }: { cidades: Cid[] }) {
               <p className="mt-1 flex items-center gap-1.5 truncate text-[0.8rem] text-ink/65"><Mail size={13} className="shrink-0 text-gold-600" /><span className="truncate">{a.email}</span></p>
               <p className="mt-1 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[0.78rem] text-ink/60">
                 <span className="inline-flex items-center gap-1"><IdCard size={13} className="text-gold-600" />{a.matricula ?? 'Sem matrícula'}</span>
-                <span className="inline-flex items-center gap-1"><Fingerprint size={13} className="text-gold-600" />{a.cpf ? mascaraCpf(a.cpf) : 'CPF não informado'}</span>
+                <span className="inline-flex items-center gap-1"><IconeCpf size={13} className="text-gold-600" />{a.cpf ? mascaraCpf(a.cpf) : 'CPF não informado'}</span>
                 <span className="inline-flex items-center gap-1"><MapPin size={13} className="text-gold-600" />{a.cidade ?? 'Sem cidade'}</span>
                 <span className="inline-flex items-center gap-1"><CalendarDays size={13} className="text-gold-600" />Cadastro em {fmtDia(a.created_at)}</span>
               </p>

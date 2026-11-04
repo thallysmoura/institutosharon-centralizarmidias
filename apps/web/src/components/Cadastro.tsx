@@ -1,7 +1,8 @@
 'use client';
 import { FormEvent, useEffect, useRef, useState } from 'react';
+import IconeCpf from '@/components/IconeCpf';
 import { cpfValido, mascaraCpf, soDigitos } from '@/lib/cpf';
-import { ArrowLeft, BadgeCheck, Check, ChevronDown, CircleAlert, CircleCheck, Eye, EyeOff, IdCard, Fingerprint, Lock, Mail, MapPin, ShieldCheck, User, X } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, Check, ChevronDown, CircleAlert, CircleCheck, Eye, EyeOff, IdCard, Lock, Mail, MapPin, ShieldCheck, User, X } from 'lucide-react';
 import { api, Cidade } from '@/lib/api';
 import { ehToque } from '@/lib/pwa';
 import { pedirLocalizacao } from '@/lib/geo';
@@ -249,7 +250,7 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
                 </div>
                 <div>
                   <Rotulo id="cad-cpf">CPF</Rotulo>
-                  <Linha id="cad-cpf" icone={<Fingerprint size={18} />} erro={mostra('cpf')} ok={ok('cpf')}>
+                  <Linha id="cad-cpf" icone={<IconeCpf size={18} />} erro={mostra('cpf')} ok={ok('cpf')}>
                     <input id="cad-cpf" inputMode="numeric" suppressHydrationWarning autoComplete="off" maxLength={14} value={v.cpf} onChange={(e) => { e.target.value = mascaraCpf(e.target.value); set('cpf')(e); }} onBlur={blur('cpf')} placeholder="000.000.000-00" className={`${cls('cpf')} pr-10`} style={pad} {...a11y('cpf')} />
                   </Linha>
                 </div>
