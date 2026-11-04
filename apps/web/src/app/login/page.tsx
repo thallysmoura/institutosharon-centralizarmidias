@@ -32,6 +32,17 @@ const msgGoogle = (code: string) =>
     'auth/network-request-failed': 'Sem conexão com a internet. Tente novamente.',
   } as Record<string, string>)[code] ?? `Não foi possível entrar com o Google (${code}). Tente novamente.`;
 
+/** O login com Google abre uma janela (pop-up). Não funciona no navegador interno de apps (WhatsApp, Instagram...) nem no app instalado do iPhone. */
+function googleIndisponivel(): string | null {
+  const ua = navigator.userAgent;
+  const emApp = /FBAN|FBAV|Instagram|WhatsApp|Line\/|MicroMessenger|Messenger|Snapchat|TikTok|; wv\)/i.test(ua);
+  const iphoneInstalado = /iPhone|iPad|iPod/i.test(ua) && ((navigator as Navigator & { standalone?: boolean }).standalone === true || window.matchMedia?.('(display-mode: standalone)').matches);
+  if (emApp) return 'O login com Google não funciona dentro do navegador do WhatsApp ou de outros aplicativos. Abra este endereço no Chrome ou no Safari, ou entre com e-mail e senha.';
+  if (iphoneInstalado) return 'No iPhone, o login com Google não funciona no app instalado. Abra o endereço no Safari ou entre com e-mail e senha.';
+  return null;
+}
+const ehCelular = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
 const CHAVE_LEMBRAR = 'sharon_lembrar_email';
 
 export default function Login() {
@@ -137,6 +148,8 @@ export default function Login() {
 
   async function google() {
     setErro('');
+    const bloqueio = googleIndisponivel();
+    if (bloqueio) { setErro(bloqueio); return; }
     setErrs({});
     setVia('google');
     setFase('login');
@@ -154,7 +167,9 @@ export default function Login() {
       concluir(role);
     } catch (err) {
       const code = (err as { code?: string }).code;
-      if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') setErro(code?.startsWith('auth/') ? msgGoogle(code) : (err as Error).message);
+      // No celular a janela do Google muitas vezes fecha sem devolver o resultado: avisa em vez de voltar para o login sem explicação.
+      if (code === 'auth/popup-closed-by-user' && ehCelular()) setErro('A janela do Google foi fechada antes de terminar. Tente de novo e escolha sua conta; se continuar, abra o endereço no Chrome ou no Safari, ou entre com e-mail e senha.');
+      else if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') setErro(code?.startsWith('auth/') ? msgGoogle(code) : (err as Error).message);
       setLoading(false);
     }
   }

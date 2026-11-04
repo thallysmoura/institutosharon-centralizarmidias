@@ -46,7 +46,7 @@ const seguranca = [
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'Permissions-Policy', value: 'geolocation=(self), camera=(self), microphone=(), payment=(), usb=()' },
+  { key: 'Permissions-Policy', value: 'geolocation=(self), camera=(self), microphone=(self), payment=(), usb=()' },
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' }, // permite o popup do login com Google
   { key: 'Strict-Transport-Security', value: 'max-age=15552000; includeSubDomains' },
 ];
