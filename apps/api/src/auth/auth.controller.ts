@@ -272,10 +272,13 @@ export class AuthController {
 
   /** ATALHO DE DESENVOLVIMENTO: só existe com DEV_LOGIN=1 (nunca definido no Docker/produção) e só aceita chamadas da própria máquina. */
   @Post('dev-login')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @HttpCode(200)
   async devLogin(@Body() dto: { perfil?: string }, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
     const local = /^(::1|127\.0\.0\.1|::ffff:127\.0\.0\.1)$/.test(req.socket.remoteAddress ?? '');
-    if (process.env.DEV_LOGIN !== '1' || !local) throw new NotFoundException();
+    // DEV_LOGIN_PUBLICO=1 libera fora da máquina local, mas só até DEV_LOGIN_ATE (instante em ms): expira sozinho.
+    const publico = process.env.DEV_LOGIN_PUBLICO === '1' && Date.now() < Number(process.env.DEV_LOGIN_ATE ?? 0);
+    if (process.env.DEV_LOGIN !== '1' || !(local || publico)) throw new NotFoundException();
     const role = dto?.perfil === 'ADMIN' ? 'ADMIN' : 'ALUNO';
     const r = await this.db.query("SELECT id,role,cidade_id FROM sistema.users WHERE role=$1 ORDER BY (email LIKE 'aluno.acesso%') DESC, id LIMIT 1", [role]);
     if (!r.rows[0]) throw new NotFoundException('Sem usuário desse perfil.');
