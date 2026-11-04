@@ -182,21 +182,21 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
           <p className="mt-[0.7em] text-[0.95em] leading-snug text-[#6b5a3c]">Preencha os dados para começar</p>
         </header>
 
-        <ol aria-label="Etapas do cadastro" className="mt-4 flex items-center gap-2">
+        <ol aria-label="Etapas do cadastro" className="rise mt-7 flex items-center gap-3 px-[0.5em] min-[1100px]:px-[0.72em]" style={{ '--d': '250ms' } as React.CSSProperties}>
           {titulos.map((t, i) => {
             const n = i + 1;
             const ativo = n === passo;
             const feito = n < passo;
             return (
-              <li key={t} className={`flex items-center gap-2 ${n < 3 ? 'flex-1' : ''}`} aria-current={ativo ? 'step' : undefined}>
-                <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[0.75rem] font-bold transition ${ativo ? 'text-white shadow-[0_6px_14px_-6px_rgba(150,100,10,.7)]' : feito ? 'bg-[#e7f6ee] text-[#17794a]' : 'bg-[#f1e9d6] text-ink/45'}`} style={ativo ? { background: 'linear-gradient(180deg,#dcae3c,#a8761a)' } : undefined}>{feito ? <Check size={14} /> : n}</span>
-                {n < 3 && <span className={`h-[2px] flex-1 rounded-full transition ${feito ? 'bg-[#3aa56b]' : 'bg-[#e8dcc3]'}`} />}
+              <li key={t} className={`flex items-center gap-3 ${n < 3 ? 'flex-1' : ''}`} aria-current={ativo ? 'step' : undefined}>
+                <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-[0.9rem] font-bold transition-all duration-500 ${ativo ? 'text-white shadow-[0_6px_14px_-6px_rgba(150,100,10,.7)]' : feito ? 'bg-[#e7f6ee] text-[#17794a]' : 'bg-[#f1e9d6] text-ink/45'}`} style={ativo ? { background: 'linear-gradient(180deg,#dcae3c,#a8761a)' } : undefined}>{feito ? <Check size={14} /> : n}</span>
+                {n < 3 && <span className={`h-[3px] flex-1 rounded-full transition-all duration-500 ${feito ? 'bg-[#3aa56b]' : 'bg-[#e8dcc3]'}`} />}
               </li>
             );
           })}
         </ol>
 
-        <form ref={formRef} onSubmit={enviar} noValidate className="mt-4">
+        <form ref={formRef} onSubmit={enviar} noValidate className="mt-7">
           <div className="space-y-4">
             {passo === 1 && (
               <>
