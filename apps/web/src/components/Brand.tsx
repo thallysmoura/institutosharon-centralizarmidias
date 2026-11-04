@@ -15,11 +15,11 @@ export function Wordmark({ stacked = false, light = false }: { stacked?: boolean
     );
   return (
     <div className="flex select-none items-center gap-2.5">
-      <Image src="/img/emblem.png" alt="" width={958} height={1624} priority draggable={false} className="pointer-events-none h-10 w-auto" />
+      <Image src="/img/emblem.png" alt="" width={958} height={1624} priority draggable={false} className="pointer-events-none h-[34px] w-auto lg:h-10" />
       <div className="leading-none">
-        <p className={`font-display text-[0.5rem] tracking-[0.5em] ${txt}`}>INSTITUTO</p>
-        <p className={`mt-0.5 font-display text-[1.3rem] tracking-[0.16em] ${txt}`}>SHARON</p>
-        <p className="mt-0.5 text-[0.4rem] font-semibold tracking-[0.34em] text-gold-500">EDUCAÇÃO E SAÚDE</p>
+        <p className={`font-display text-[0.44rem] tracking-[0.5em] lg:text-[0.5rem] ${txt}`}>INSTITUTO</p>
+        <p className={`mt-0.5 font-display text-[1.12rem] tracking-[0.16em] lg:text-[1.3rem] ${txt}`}>SHARON</p>
+        <p className="mt-0.5 text-[0.35rem] font-semibold tracking-[0.34em] lg:text-[0.4rem] text-gold-500">EDUCAÇÃO E SAÚDE</p>
       </div>
     </div>
   );
