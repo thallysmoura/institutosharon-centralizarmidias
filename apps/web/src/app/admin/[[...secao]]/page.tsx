@@ -312,9 +312,6 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
   const Cab = ({ t, s }: { t: string; s: string }) => (
     <div className="flex items-start justify-between gap-4">
       <div><Titulo nivel={1} icone={NAV.find((n) => n[0] === vista)![2]}>{t}</Titulo><p className="mt-1.5 pl-[60px] text-[0.88rem] text-ink/65">{s}</p></div>
-      <div className="flex shrink-0 items-center gap-3">
-        <button type="button" onClick={atualizar} disabled={atualizando} aria-label="Atualizar" title="Atualizar" className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-line bg-white px-3.5 text-[0.82rem] font-semibold text-ink/80 transition hover:bg-ivory disabled:opacity-70"><RefreshCw size={16} className={atualizando ? 'animate-spin' : ''} /><span className="hidden sm:inline">Atualizar</span></button>
-      </div>
     </div>
   );
 
