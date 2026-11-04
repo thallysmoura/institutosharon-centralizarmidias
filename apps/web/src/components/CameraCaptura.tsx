@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { Camera, Check, RefreshCw, RotateCcw, TriangleAlert, X } from 'lucide-react';
 import { definirMeta, fmtDur, MAX_GRAVACAO_S } from '@/lib/midia';
 
-type Props = { total: number; max: number; onFoto: (f: File) => void; onVideo?: (f: File) => void; onFechar: () => void; onNativo: () => void };
+type Props = { modo?: 'foto' | 'video'; total: number; max: number; onFoto: (f: File) => void; onVideo?: (f: File) => void; onFechar: () => void; onNativo: () => void };
 type Previa = { file: File; url: string; largura: number; altura: number; aviso: string; tipo: 'foto' | 'video'; duracao?: number };
 
 const SEGURAR_MS = 400; // segurar o botão por este tempo vira vídeo (soltar antes disso tira foto)
@@ -53,7 +53,8 @@ async function avaliar(blob: Blob): Promise<{ largura: number; altura: number; a
  * Câmera dentro do app: pede a permissão nativa na 1ª vez (o navegador guarda a escolha), captura em alta resolução,
  * mostra uma revisão da foto (com aviso de nitidez/brilho) antes de aceitar e permite várias fotos seguidas.
  */
-export default function CameraCaptura({ total, max, onFoto, onVideo, onFechar, onNativo }: Props) {
+export default function CameraCaptura({ modo = 'foto', total, max, onFoto, onVideo, onFechar, onNativo }: Props) {
+  const soVideo = modo === 'video';
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const fotoRef = useRef(onFoto);
@@ -204,7 +205,7 @@ export default function CameraCaptura({ total, max, onFoto, onVideo, onFechar, o
   }
   // Botão do obturador: toque rápido = foto; segurar = vídeo (soltar encerra).
   function aoPressionar(e: React.PointerEvent<HTMLButtonElement>) {
-    if (estado !== 'ok' || total >= max || capturando || previa || e.button > 0) return;
+    if (soVideo || estado !== 'ok' || total >= max || capturando || previa || e.button > 0) return;
     pressionado.current = true;
     segurou.current = false;
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -217,6 +218,12 @@ export default function CameraCaptura({ total, max, onFoto, onVideo, onFechar, o
     if (gravandoRef.current) pararGravacao();
     else if (!segurou.current && !cancelado) tirar();
   }
+
+  const alternarGravacao = () => {
+    if (estado !== 'ok' || previa) return;
+    if (gravandoRef.current) pararGravacao();
+    else if (total < max) iniciarGravacao();
+  };
 
   const usar = () => {
     if (!previa) return;
@@ -240,7 +247,7 @@ export default function CameraCaptura({ total, max, onFoto, onVideo, onFechar, o
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <video ref={video} playsInline muted autoPlay className="h-full w-full object-cover" />
         {flash && <div className="pointer-events-none absolute inset-0 bg-white/80" aria-hidden />}
-        {estado === 'ok' && !previa && onVideo && <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-[0.78rem] font-medium text-white/85 [text-shadow:0_1px_4px_rgba(0,0,0,.7)]">{gravando ? 'Solte para parar a gravação' : 'Toque para foto · Segure para vídeo'}</p>}
+        {estado === 'ok' && !previa && onVideo && <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-[0.78rem] font-medium text-white/85 [text-shadow:0_1px_4px_rgba(0,0,0,.7)]">{soVideo ? (gravando ? 'Toque no botão para parar' : 'Toque no botão para gravar') : gravando ? 'Solte para parar a gravação' : 'Toque para foto · Segure para vídeo'}</p>}
         {estado === 'pedindo' && <p className="absolute inset-0 grid place-items-center px-8 text-center text-[0.9rem] text-white/80">Permita o uso da câmera quando o navegador perguntar.</p>}
         {estado === 'negada' && (
           <div className="absolute inset-0 grid place-items-center bg-black/80 px-8 text-center">
@@ -278,11 +285,11 @@ export default function CameraCaptura({ total, max, onFoto, onVideo, onFechar, o
         ) : (
           <>
             <span className="w-24" />
-            <button type="button" onPointerDown={aoPressionar} onPointerUp={() => aoSoltar()} onPointerCancel={() => aoSoltar(true)} onContextMenu={(e) => e.preventDefault()}
-              onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) { e.preventDefault(); tirar(); } }}
-              disabled={estado !== 'ok' || contados >= max || capturando} aria-label="Tirar foto (segure para gravar vídeo)"
+            <button type="button" onClick={soVideo ? alternarGravacao : undefined} onPointerDown={aoPressionar} onPointerUp={() => aoSoltar()} onPointerCancel={() => aoSoltar(true)} onContextMenu={(e) => e.preventDefault()}
+              onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) { e.preventDefault(); if (soVideo) alternarGravacao(); else tirar(); } }}
+              disabled={estado !== 'ok' || contados >= max || capturando} aria-label={soVideo ? (gravando ? 'Parar gravação' : 'Gravar vídeo') : 'Tirar foto (segure para gravar vídeo)'}
               className={`grid h-[74px] w-[74px] touch-none select-none place-items-center rounded-full border-4 transition disabled:opacity-40 [-webkit-touch-callout:none] ${gravando ? 'scale-110 border-[#e5484d]' : 'border-white active:scale-95'}`}>
-              <span className={`transition-all duration-200 ${gravando ? 'h-[30px] w-[30px] rounded-md bg-[#e5484d]' : 'h-[58px] w-[58px] rounded-full bg-white'}`} />
+              <span className={`transition-all duration-200 ${gravando ? 'h-[30px] w-[30px] rounded-md bg-[#e5484d]' : soVideo ? 'h-[58px] w-[58px] rounded-full bg-[#e5484d]' : 'h-[58px] w-[58px] rounded-full bg-white'}`} />
             </button>
             <button type="button" onClick={onFechar} disabled={total === 0} className="inline-flex min-h-[44px] w-24 items-center justify-center gap-1.5 rounded-full text-[0.85rem] font-semibold text-[#21180D] disabled:opacity-0" style={{ background: 'linear-gradient(180deg,#e7b23c,#c9a24a)' }}><Check size={16} />Concluir</button>
           </>
