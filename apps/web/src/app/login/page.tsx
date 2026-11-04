@@ -244,7 +244,7 @@ export default function Login() {
                 <h1 className="rise font-sans whitespace-nowrap text-[2.05em] font-medium leading-[1] min-[1100px]:text-[2.6em] tracking-[-0.02em] text-[#33240F]" style={{ '--d': '140ms' } as React.CSSProperties}>
           Fazer{' '}<span className="font-bold" style={{ background: 'linear-gradient(180deg,#d6a431,#a8761a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>login</span>
         </h1>
-                <p className="rise mt-[0.7em] text-[0.95em] leading-snug text-[#6b5a3c]" style={{ '--d': '200ms' } as React.CSSProperties}>Continue para o Sistema de Fotos Clínicas</p>
+                <p className="rise mt-[0.7em] text-[0.95em] leading-snug text-[#6b5a3c]" style={{ '--d': '200ms' } as React.CSSProperties}>Use sua conta para continuar</p>
               </div>
 
       {sucesso && <p role="status" className="rise mt-[1em] rounded-xl bg-[#e7f6ee] px-4 py-3 text-[0.9em] font-medium text-[#17794a]">{sucesso}</p>}
