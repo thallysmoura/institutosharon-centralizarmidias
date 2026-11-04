@@ -6,7 +6,7 @@ import { Eye, EyeOff, Layers, Lock, Mail, CircleAlert } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Emblema, Logo } from '@/components/Brand';
 import { ehToque } from '@/lib/pwa';
-import { entrarComGoogle } from '@/lib/firebase';
+import { entrarComGoogle, iniciarGoogleRedirecionamento, redirecionamentoPronto, tokenDoRedirecionamento } from '@/lib/firebase';
 import { msgLocalizacao, pedirLocalizacao } from '@/lib/geo';
 import Spinner from '@/components/Spinner';
 import RecuperarSenha from '@/components/RecuperarSenha';
@@ -36,11 +36,12 @@ const msgGoogle = (code: string) =>
 function googleIndisponivel(): string | null {
   const ua = navigator.userAgent;
   const emApp = /FBAN|FBAV|Instagram|WhatsApp|Line\/|MicroMessenger|Messenger|Snapchat|TikTok|; wv\)/i.test(ua);
-  const iphoneInstalado = /iPhone|iPad|iPod/i.test(ua) && ((navigator as Navigator & { standalone?: boolean }).standalone === true || window.matchMedia?.('(display-mode: standalone)').matches);
   if (emApp) return 'O login com Google não funciona dentro do navegador do WhatsApp ou de outros aplicativos. Abra este endereço no Chrome ou no Safari, ou entre com e-mail e senha.';
-  if (iphoneInstalado) return 'No iPhone, o login com Google não funciona no app instalado. Abra o endereço no Safari ou entre com e-mail e senha.';
   return null;
 }
+const appInstalado = () => (navigator as Navigator & { standalone?: boolean }).standalone === true || !!window.matchMedia?.('(display-mode: standalone)').matches;
+const ehIphone = () => /iPhone|iPad|iPod/i.test(navigator.userAgent);
+const CHAVE_REDIRECT = 'sharon_google_redirect';
 const ehCelular = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 const CHAVE_LEMBRAR = 'sharon_lembrar_email';
@@ -146,6 +147,42 @@ export default function Login() {
     }
   }
 
+  /** Depois de ter o ID token do Google (pela janela ou pelo redirecionamento): localização, sessão e entrada. */
+  async function finalizarGoogle(idToken: string, lembrarEscolha: boolean) {
+    const pos = await exigirLocalizacao();
+    if (!pos) return;
+    setFase('login');
+    const { role } = await api<{ role: 'ADMIN' | 'ALUNO' }>('/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken, lat: pos[0], lng: pos[1], lembrar: lembrarEscolha }),
+    });
+    concluir(role);
+  }
+
+  function erroGoogle(err: unknown) {
+    const code = (err as { code?: string }).code;
+    // No celular a janela do Google muitas vezes fecha sem devolver o resultado: avisa em vez de voltar para o login sem explicação.
+    if (code === 'auth/popup-closed-by-user' && ehCelular()) setErro('A janela do Google foi fechada antes de terminar. Tente de novo e escolha sua conta; se continuar, abra o endereço no Chrome ou no Safari, ou entre com e-mail e senha.');
+    else if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') setErro(code?.startsWith('auth/') ? msgGoogle(code) : (err as Error).message);
+    setLoading(false);
+  }
+
+  // Volta do login do Google no app instalado (redirecionamento): conclui a entrada.
+  useEffect(() => {
+    let pend: string | null = null;
+    try { pend = sessionStorage.getItem(CHAVE_REDIRECT); } catch { /* sem armazenamento */ }
+    if (!pend) return;
+    try { sessionStorage.removeItem(CHAVE_REDIRECT); } catch { /* ignora */ }
+    const lembrarEscolha = !!(JSON.parse(pend) as { lembrar?: boolean }).lembrar;
+    setVia('google');
+    setLoading(true);
+    tokenDoRedirecionamento()
+      .then((t) => (t ? finalizarGoogle(t, lembrarEscolha) : setLoading(false)))
+      .catch(erroGoogle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function google() {
     setErro('');
     const bloqueio = googleIndisponivel();
@@ -155,22 +192,19 @@ export default function Login() {
     setFase('login');
     setLoading(true);
     try {
+      // App instalado (tela cheia): a janela do Google não funciona; usa o redirecionamento, se o endereço já estiver liberado.
+      if (appInstalado()) {
+        if (await redirecionamentoPronto()) {
+          try { sessionStorage.setItem(CHAVE_REDIRECT, JSON.stringify({ lembrar })); } catch { /* ignora */ }
+          await iniciarGoogleRedirecionamento();
+          return;
+        }
+        if (ehIphone()) { setErro('No app instalado do iPhone, o login com Google ainda não está liberado. Abra o endereço no Safari ou entre com e-mail e senha.'); setLoading(false); return; }
+      }
       const idToken = await entrarComGoogle(); // o popup precisa abrir direto do clique
-      const pos = await exigirLocalizacao();
-      if (!pos) return;
-      setFase('login');
-      const { role } = await api<{ role: 'ADMIN' | 'ALUNO' }>('/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken, lat: pos[0], lng: pos[1], lembrar }),
-      });
-      concluir(role);
+      await finalizarGoogle(idToken, lembrar);
     } catch (err) {
-      const code = (err as { code?: string }).code;
-      // No celular a janela do Google muitas vezes fecha sem devolver o resultado: avisa em vez de voltar para o login sem explicação.
-      if (code === 'auth/popup-closed-by-user' && ehCelular()) setErro('A janela do Google foi fechada antes de terminar. Tente de novo e escolha sua conta; se continuar, abra o endereço no Chrome ou no Safari, ou entre com e-mail e senha.');
-      else if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') setErro(code?.startsWith('auth/') ? msgGoogle(code) : (err as Error).message);
-      setLoading(false);
+      erroGoogle(err);
     }
   }
 

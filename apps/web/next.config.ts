@@ -34,7 +34,7 @@ const csp = [
   `media-src 'self' blob: ${API_CSP} https://*.r2.cloudflarestorage.com https://*.r2.dev`,
   "font-src 'self' data:",
   `connect-src 'self' ${API_CSP} https://*.googleapis.com https://*.firebaseapp.com https://*.r2.cloudflarestorage.com${dev ? ' ws://localhost:* http://localhost:*' : ''}`,
-  "frame-src https://*.firebaseapp.com https://accounts.google.com",
+  "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -57,7 +57,9 @@ const nextConfig: NextConfig = {
     // Sem cache: páginas e service worker sempre revalidados (os arquivos /_next/static têm hash no nome e seguem imutáveis).
     const semCache = [{ key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' }];
     return [
-      { source: '/:path*', headers: seguranca },
+      { source: '/((?!__/).*)', headers: seguranca },
+      // páginas do Firebase servidas pelo próprio domínio (/__/auth): sem o CSP do app e podendo ser embutidas só por ele mesmo
+      { source: '/__/:path*', headers: [{ key: 'X-Frame-Options', value: 'SAMEORIGIN' }, { key: 'X-Content-Type-Options', value: 'nosniff' }, { key: 'Strict-Transport-Security', value: 'max-age=15552000; includeSubDomains' }] },
       { source: '/((?!_next/static|_next/image).*)', headers: semCache },
     ];
   },
@@ -65,7 +67,11 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Túnel/preview: com NEXT_PUBLIC_API_URL=/backend a API passa pela mesma origem do site.
   async rewrites() {
-    return API.startsWith('/') ? [{ source: '/backend/:path*', destination: `${process.env.API_PROXY_TARGET ?? 'http://localhost:3001'}/:path*` }] : [];
+    const firebase = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+    return [
+      ...(API.startsWith('/') ? [{ source: '/backend/:path*', destination: `${process.env.API_PROXY_TARGET ?? 'http://localhost:3001'}/:path*` }] : []),
+      ...(firebase ? [{ source: '/__/auth/:path*', destination: `https://${firebase}/__/auth/:path*` }, { source: '/__/firebase/:path*', destination: `https://${firebase}/__/firebase/:path*` }] : []),
+    ];
   },
 
   env: {
