@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict gricRily5vxHVAYTLtUWdgwB7a0VF8fgqnD6EaQJWjG6AVxUosiJuzU7QHf1GPy
+\restrict nvOTWmpyeIvixg183Rca1Pi0Qz9dIifH0iLHPQ0zfQpWWM7uK0zbcwvRYNfOlk0
 
 -- Dumped from database version 16.15
 -- Dumped by pg_dump version 16.15
@@ -318,6 +318,21 @@ CREATE TABLE sistema.pin_senha (
 
 
 --
+-- Name: pin_troca_senha; Type: TABLE; Schema: sistema; Owner: -
+--
+
+CREATE TABLE sistema.pin_troca_senha (
+    user_id integer NOT NULL,
+    nova_hash text,
+    pin_hash text NOT NULL,
+    expira timestamp with time zone NOT NULL,
+    tentativas integer DEFAULT 0 NOT NULL,
+    enviado_em timestamp with time zone DEFAULT now() NOT NULL,
+    verificado_ate timestamp with time zone
+);
+
+
+--
 -- Name: push_subs; Type: TABLE; Schema: sistema; Owner: -
 --
 
@@ -614,6 +629,14 @@ ALTER TABLE ONLY sistema.pin_senha
 
 
 --
+-- Name: pin_troca_senha pin_troca_senha_pkey; Type: CONSTRAINT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.pin_troca_senha
+    ADD CONSTRAINT pin_troca_senha_pkey PRIMARY KEY (user_id);
+
+
+--
 -- Name: push_subs push_subs_endpoint_key; Type: CONSTRAINT; Schema: sistema; Owner: -
 --
 
@@ -890,6 +913,14 @@ ALTER TABLE ONLY sistema.pin_senha
 
 
 --
+-- Name: pin_troca_senha pin_troca_senha_user_id_fkey; Type: FK CONSTRAINT; Schema: sistema; Owner: -
+--
+
+ALTER TABLE ONLY sistema.pin_troca_senha
+    ADD CONSTRAINT pin_troca_senha_user_id_fkey FOREIGN KEY (user_id) REFERENCES sistema.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: push_subs push_subs_user_id_fkey; Type: FK CONSTRAINT; Schema: sistema; Owner: -
 --
 
@@ -917,5 +948,5 @@ ALTER TABLE ONLY sistema.users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict gricRily5vxHVAYTLtUWdgwB7a0VF8fgqnD6EaQJWjG6AVxUosiJuzU7QHf1GPy
+\unrestrict nvOTWmpyeIvixg183Rca1Pi0Qz9dIifH0iLHPQ0zfQpWWM7uK0zbcwvRYNfOlk0
 
