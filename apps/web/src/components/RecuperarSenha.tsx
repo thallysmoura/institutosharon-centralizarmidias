@@ -125,6 +125,7 @@ export default function RecuperarSenha({ emailInicial, onFechar, onConcluido }: 
   return (
     <>
     <Casca onFechar={onFechar} rotulo="Recuperar acesso">
+      <button type="button" onClick={onFechar} className="mb-3 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-[#a9771a] hover:underline"><ArrowLeft size={16} />Voltar ao login</button>
       <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><Mail size={26} /></span>
       <h2 className="mt-4 text-center text-[1.9rem] font-bold">Recuperar <span className="text-gold-600">acesso</span></h2>
       <p className="mt-2 text-center text-[0.88rem] text-ink/65">Informe o e-mail da sua conta. Enviaremos um código de 4 números para você criar uma nova senha.</p>
