@@ -11,16 +11,16 @@ const JSON_H = { 'Content-Type': 'application/json' };
 /** Indicador das 3 etapas (e-mail, código, nova senha). */
 function Passos({ atual }: { atual: 1 | 2 | 3 }) {
   return (
-    <ol aria-label="Etapas da recuperação" className="mb-5 flex items-center justify-center gap-2">
+    <ol aria-label="Etapas da recuperação" className="rise mb-7 flex items-center justify-center gap-3" style={{ '--d': '200ms' } as React.CSSProperties}>
       {['E-mail', 'Código', 'Nova senha'].map((t, i) => {
         const n = i + 1;
         const ativo = n === atual;
         const feito = n < atual;
         return (
-          <li key={t} className="flex items-center gap-2" aria-current={ativo ? 'step' : undefined}>
-            <span className={`grid h-6 w-6 place-items-center rounded-full text-[0.7rem] font-bold ${ativo ? 'text-white' : feito ? 'bg-[#e7f6ee] text-[#17794a]' : 'bg-sand text-ink/45'}`} style={ativo ? { background: 'linear-gradient(180deg,#c9a24a,#a67c26)' } : undefined}>{feito ? <Check size={13} /> : n}</span>
-            <span className={`whitespace-nowrap text-[0.72rem] font-semibold ${ativo ? 'text-ink' : 'hidden text-ink/45 sm:inline'}`}>{t}</span>
-            {n < 3 && <span className="h-px w-4 bg-line sm:w-6" />}
+          <li key={t} className="flex items-center gap-3" aria-current={ativo ? 'step' : undefined}>
+            <span className={`grid h-9 w-9 place-items-center rounded-full text-[0.9rem] font-bold transition-all duration-500 ${ativo ? 'text-white' : feito ? 'bg-[#e7f6ee] text-[#17794a]' : 'bg-sand text-ink/45'}`} style={ativo ? { background: 'linear-gradient(180deg,#c9a24a,#a67c26)' } : undefined}>{feito ? <Check size={16} /> : n}</span>
+            <span className={`whitespace-nowrap text-[0.8rem] font-semibold ${ativo ? 'text-ink' : 'hidden text-ink/45 sm:inline'}`}>{t}</span>
+            {n < 3 && <span className={`h-[3px] w-6 rounded-full transition-all duration-500 sm:w-10 ${feito ? 'bg-[#3aa56b]' : 'bg-[#e8dcc3]'}`} />}
           </li>
         );
       })}
@@ -125,7 +125,7 @@ export default function RecuperarSenha({ emailInicial, onFechar, onConcluido }: 
         <form onSubmit={alterar} noValidate className="mt-6">
           <div className="relative">
             <Lock size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink/60" aria-hidden />
-            <input type={ver ? 'text' : 'password'} autoFocus autoComplete="new-password" aria-label="Nova senha" value={senha} onChange={(e) => { setSenha(e.target.value); setErro(''); }} placeholder="Nova senha" className="field pr-12" />
+            <input type={ver ? 'text' : 'password'} autoComplete="new-password" aria-label="Nova senha" value={senha} onChange={(e) => { setSenha(e.target.value); setErro(''); }} placeholder="Nova senha" className="field pr-12" />
             <button type="button" onClick={() => setVer((v) => !v)} aria-label={ver ? 'Ocultar senhas' : 'Mostrar senhas'} className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center text-ink/70">{ver ? <EyeOff size={19} /> : <Eye size={19} />}</button>
           </div>
           <div className="relative mt-3">
@@ -155,7 +155,7 @@ export default function RecuperarSenha({ emailInicial, onFechar, onConcluido }: 
       <form onSubmit={enviarEmail} noValidate className="mt-6">
         <div className="relative">
           <Mail size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink/60" aria-hidden />
-          <input type="email" autoFocus autoComplete="email" inputMode="email" aria-label="E-mail" aria-invalid={!!msgCampo} aria-describedby="rec-msg" value={email} onChange={(e) => { setEmail(e.target.value); setErro(''); }} onBlur={() => setTocado(true)} placeholder="Seu e-mail" className={`field pr-11 ${msgCampo ? '!border-[#d9534f]' : emailOk ? '!border-[#3aa56b]' : ''}`} />
+          <input type="email" autoComplete="email" inputMode="email" aria-label="E-mail" aria-invalid={!!msgCampo} aria-describedby="rec-msg" value={email} onChange={(e) => { setEmail(e.target.value); setErro(''); }} onBlur={() => setTocado(true)} placeholder="Seu e-mail" className={`field pr-11 ${msgCampo ? '!border-[#d9534f]' : emailOk ? '!border-[#3aa56b]' : ''}`} />
           {emailOk && !msgCampo && <CircleCheck size={19} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#22a35a]" aria-hidden />}
         </div>
         <div id="rec-msg" aria-live="polite">
