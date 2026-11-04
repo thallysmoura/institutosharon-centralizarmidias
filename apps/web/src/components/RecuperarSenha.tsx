@@ -8,26 +8,6 @@ import Spinner from './Spinner';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,24}$/;
 const JSON_H = { 'Content-Type': 'application/json' };
 
-/** Indicador das 3 etapas (e-mail, código, nova senha). */
-function Passos({ atual }: { atual: 1 | 2 | 3 }) {
-  return (
-    <ol aria-label="Etapas da recuperação" className="rise mb-7 flex items-center justify-center gap-3" style={{ '--d': '200ms' } as React.CSSProperties}>
-      {['E-mail', 'Código', 'Nova senha'].map((t, i) => {
-        const n = i + 1;
-        const ativo = n === atual;
-        const feito = n < atual;
-        return (
-          <li key={t} className="flex items-center gap-3" aria-current={ativo ? 'step' : undefined}>
-            <span className={`grid h-9 w-9 place-items-center rounded-full text-[0.9rem] font-bold transition-all duration-500 ${ativo ? 'text-white' : feito ? 'bg-[#e7f6ee] text-[#17794a]' : 'bg-sand text-ink/45'}`} style={ativo ? { background: 'linear-gradient(180deg,#c9a24a,#a67c26)' } : undefined}>{feito ? <Check size={16} /> : n}</span>
-            <span className={`whitespace-nowrap text-[0.8rem] font-semibold ${ativo ? 'text-ink' : 'hidden text-ink/45 sm:inline'}`}>{t}</span>
-            {n < 3 && <span className={`h-[3px] w-6 rounded-full transition-all duration-500 sm:w-10 ${feito ? 'bg-[#3aa56b]' : 'bg-[#e8dcc3]'}`} />}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
 /** Casca inline (dentro do cartão do login), com atalho para voltar. */
 function Casca({ children, onFechar, rotulo }: { children: React.ReactNode; onFechar: () => void; rotulo: string }) {
   return (
@@ -103,7 +83,6 @@ export default function RecuperarSenha({ emailInicial, onFechar, onConcluido }: 
       <PinModal
         email={email.trim()}
         titulo={<>Digite o <span className="text-gold-600">código</span></>}
-        topo={<Passos atual={2} />}
         aviso={aviso}
         onFechar={onFechar}
         onReenviar={pedir}
@@ -118,7 +97,6 @@ export default function RecuperarSenha({ emailInicial, onFechar, onConcluido }: 
   if (passo === 'nova')
     return (
       <Casca onFechar={onFechar} rotulo="Definir nova senha">
-        <Passos atual={3} />
         <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><KeyRound size={26} /></span>
         <h2 className="mt-4 text-center text-[1.9rem] font-bold">Crie a sua <span className="text-gold-600">nova senha</span></h2>
         <p className="mt-2 text-center text-[0.88rem] text-ink/65">Código confirmado. Defina uma senha segura para voltar a acessar o sistema.</p>
@@ -148,7 +126,6 @@ export default function RecuperarSenha({ emailInicial, onFechar, onConcluido }: 
   return (
     <>
     <Casca onFechar={onFechar} rotulo="Recuperar acesso">
-      <Passos atual={1} />
       <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><Mail size={26} /></span>
       <h2 className="mt-4 text-center text-[1.9rem] font-bold">Recuperar <span className="text-gold-600">acesso</span></h2>
       <p className="mt-2 text-center text-[0.88rem] text-ink/65">Informe o e-mail da sua conta. Enviaremos um código de 4 números para você criar uma nova senha.</p>
