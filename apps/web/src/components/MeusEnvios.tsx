@@ -259,15 +259,15 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
       <div role="menu" aria-label="Novo envio" className="pop fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] z-[66] mx-auto max-w-[380px] overflow-hidden rounded-2xl bg-white p-2 shadow-[0_24px_60px_-20px_rgba(33,24,13,.6)] lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-[7.5rem] lg:-translate-x-1/2">
         <p className="px-3 pb-1 pt-2 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-ink/45">Novo envio</p>
         <button type="button" role="menuitem" onClick={() => { setMenuNovo(false); if (typeof navigator.mediaDevices?.getUserMedia === 'function') { setCamModo('foto'); setCamAberta(true); } else camera.current?.click(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-left transition hover:bg-ivory active:scale-[0.99]">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-white" style={{ background: 'linear-gradient(180deg,#c9a24a,#a67c26)' }}><Camera size={22} strokeWidth={1.6} /></span>
+          <img src="/img/novo-foto.png" alt="" width={44} height={44} draggable={false} className="h-11 w-11 shrink-0" />
           <span className="leading-tight"><b className="block text-[0.95rem]">Tirar foto</b><span className="text-[0.78rem] text-ink/55">Abrir a câmera</span></span>
         </button>
         <button type="button" role="menuitem" onClick={() => { setMenuNovo(false); if (typeof navigator.mediaDevices?.getUserMedia === 'function' && typeof MediaRecorder !== 'undefined') { setCamModo('video'); setCamAberta(true); } else cameraVideo.current?.click(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-left transition hover:bg-ivory active:scale-[0.99]">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-white" style={{ background: 'linear-gradient(180deg,#c9a24a,#a67c26)' }}><Video size={22} strokeWidth={1.6} /></span>
+          <img src="/img/novo-video.png" alt="" width={44} height={44} draggable={false} className="h-11 w-11 shrink-0" />
           <span className="leading-tight"><b className="block text-[0.95rem]">Gravar vídeo</b><span className="text-[0.78rem] text-ink/55">Gravar com a câmera do aparelho</span></span>
         </button>
         <button type="button" role="menuitem" onClick={() => { setMenuNovo(false); galeria.current?.click(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-left transition hover:bg-ivory active:scale-[0.99]">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><ImageIcon size={22} strokeWidth={1.6} /></span>
+          <img src="/img/novo-galeria.png" alt="" width={44} height={44} draggable={false} className="h-11 w-11 shrink-0" />
           <span className="leading-tight"><b className="block text-[0.95rem]">Enviar do dispositivo</b><span className="text-[0.78rem] text-ink/55">Escolher fotos ou vídeos da galeria</span></span>
         </button>
       </div>
