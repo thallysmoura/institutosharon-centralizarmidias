@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { Activity, BarChart3, Calendar, Camera, ChevronRight, Clock, Crown, Download, GraduationCap, ImageIcon, MapPin, Medal, Smartphone, Trash2, Trophy, User, Users } from 'lucide-react';
+import { Activity, BarChart3, Calendar, Camera, ChevronRight, Clock, Download, GraduationCap, ImageIcon, MapPin, Smartphone, Trash2, User, Users } from 'lucide-react';
 import { API, api, Atendimento, fmtData, fotoUrl } from '@/lib/api';
 import { nomeLimpo } from '@/lib/session';
 import Titulo from './Titulo';
@@ -91,9 +91,8 @@ function AnelDispositivos({ pres }: { pres: Presenca[] }) {
   );
 }
 
-const MEDALHAS = ['#e7b23c', '#b9b0a0', '#c98a4b'];
 
-/** Visão geral do gestor: indicadores com variação, gráficos do período, ranking, atividade recente e exportação para Excel. */
+/** Visão geral do gestor: indicadores com variação, gráficos do período, alunos mais ativos, atividade recente e exportação para Excel. */
 export default function VisaoGeral({ recentes, irPara, abrir }: { recentes: Atendimento[]; irPara: (v: 'fotos' | 'exclusoes') => void; abrir: (a: Atendimento) => void }) {
   const [dias, setDias] = useState(30);
   const [d, setD] = useState<Painel | null>(null);
@@ -170,7 +169,7 @@ export default function VisaoGeral({ recentes, irPara, abrir }: { recentes: Aten
                 <ul className="space-y-4">
                   {d.porCidade.slice(0, 6).map((c, i) => (
                     <li key={c.cidade} className="flex items-start gap-3">
-                      <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-[0.78rem] font-bold text-white" style={{ background: MEDALHAS[i] ?? '#d9c8a0' }}>{i + 1}</span>
+                      <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-[0.78rem] font-bold text-white" style={{ background: 'linear-gradient(180deg,#e0bd63,#b98a2c)' }}>{i + 1}</span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline justify-between gap-3 text-[0.9rem]"><b className="truncate">{c.cidade}</b><span className="shrink-0 text-ink/70">{num(c.fotos)} fotos</span></div>
                         <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-[#f1ece1]"><div className="grow-bar h-full rounded-full" style={{ width: `${(c.fotos / maxCidade) * 100}%`, background: 'linear-gradient(90deg,#d9b04e,#a67c26)' }} /></div>
@@ -180,13 +179,13 @@ export default function VisaoGeral({ recentes, irPara, abrir }: { recentes: Aten
                 </ul>
               )}
             </Bloco>
-            <Bloco icone={Trophy} titulo="Ranking de alunos">
+            <Bloco icone={Users} titulo="Alunos mais ativos">
               {d.topAlunos.length === 0 ? <p className="py-4 text-center text-[0.85rem] text-ink/50">Sem dados no período.</p> : (
                 <ul className="divide-y divide-[#efe6d2]">
                   {d.topAlunos.slice(0, 5).map((a, i) => (
                     <li key={a.id} className="flex items-center gap-3 py-2.5">
                       <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[0.9rem] font-bold text-white" style={{ background: 'linear-gradient(180deg,#e7b23c,#c9a24a)' }}>{nomeLimpo(a.nome).charAt(0).toUpperCase()}</span>
-                      <span className="min-w-0 flex-1 truncate text-[0.92rem] font-semibold">{nomeLimpo(a.nome)}{i === 0 && <Crown size={15} className="ml-1.5 inline text-[#e7b23c]" fill="currentColor" aria-label="Primeiro lugar" />}{i > 0 && i < 3 && <Medal size={15} className="ml-1.5 inline" style={{ color: MEDALHAS[i] }} aria-hidden />}</span>
+                      <span className="min-w-0 flex-1 truncate text-[0.92rem] font-semibold">{nomeLimpo(a.nome)}</span>
                       <b className="shrink-0 text-[0.9rem]">{num(a.fotos)} fotos</b>
                     </li>
                   ))}

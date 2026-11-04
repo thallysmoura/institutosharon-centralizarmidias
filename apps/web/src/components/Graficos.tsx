@@ -97,7 +97,7 @@ export function Rosca({ itens }: { itens: { nome: string; n: number }[] }) {
   );
 }
 
-/** Barras horizontais com rótulo, valor e subtítulo opcional (cidades, ranking de alunos). */
+/** Barras horizontais com rótulo, valor e subtítulo opcional (cidades, alunos mais ativos). */
 export function BarrasH({ itens, vazio = 'Sem dados no período.' }: { itens: { rotulo: string; sub?: string; valor: number }[]; vazio?: string }) {
   const max = Math.max(1, ...itens.map((x) => x.valor));
   if (!itens.length) return <p className="py-6 text-center text-[0.85rem] text-ink/50">{vazio}</p>;
