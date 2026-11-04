@@ -110,7 +110,7 @@ export default function ControleAcesso({ meuId }: { meuId: number }) {
   const [, tick] = useState(0);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
 
-  const carregar = useCallback(() => api<Usuario[]>('/admin/acessos').then(setLista).finally(() => setLoading(false)), []);
+  const carregar = useCallback(() => api<Usuario[]>('/admin/acessos').then(setLista).catch(() => null).finally(() => setLoading(false)), []);
   useEffect(() => { carregar(); }, [carregar]);
 
   // Presença: consulta leve (só memória no servidor) a cada 10 s enquanto a aba está visível.

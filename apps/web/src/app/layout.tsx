@@ -3,6 +3,7 @@ import { Figtree, Poppins, Roboto } from 'next/font/google';
 import './globals.css';
 import PwaRegister from '@/components/PwaRegister';
 import InstalarApp from '@/components/InstalarApp';
+import ErrosGlobais from '@/components/ErrosGlobais';
 
 const display = Poppins({ subsets: ['latin'], weight: ['500', '600', '700'], style: ['normal', 'italic'], variable: '--font-display', display: 'swap' });
 const sans = Figtree({ subsets: ['latin'], weight: ['400', '500', '600', '700'], style: ['normal', 'italic'], variable: '--font-sans', display: 'swap' });
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <PwaRegister />
         <InstalarApp />
+        <ErrosGlobais />
       </body>
     </html>
   );

@@ -40,7 +40,13 @@ export async function api<T = unknown>(path: string, init: RequestInit = {}, ten
   const headers = new Headers(init.headers);
   const metodo = (init.method ?? 'GET').toUpperCase();
   if (metodo !== 'GET' && csrf) headers.set('X-CSRF-Token', csrf);
-  const res = await fetch(`${API}${path}`, { credentials: 'include', ...init, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${API}${path}`, { credentials: 'include', ...init, headers });
+  } catch (e) {
+    if ((e as { name?: string })?.name === 'AbortError') throw e;
+    throw Object.assign(new Error('Sem conexão com o servidor. Verifique sua internet e tente novamente.'), { status: 0 });
+  }
   if (res.status === 401 && !tentouRenovar && !path.startsWith('/auth/login') && !path.startsWith('/auth/google') && !path.startsWith('/auth/refresh') && (await renovarSessao())) return api<T>(path, init, true);
   if (res.status === 403 && !tentouRenovar && metodo !== 'GET' && !path.startsWith('/auth/')) {
     // token CSRF ausente/desatualizado (ex.: página recarregada): busca de novo e repete uma vez
@@ -50,7 +56,8 @@ export async function api<T = unknown>(path: string, init: RequestInit = {}, ten
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    const e = new Error(Array.isArray(data?.message) ? data.message[0] : (data?.message ?? 'Erro inesperado.')) as Error & { status: number };
+    const amigavel = res.status >= 500 ? 'Algo deu errado do nosso lado. Tente novamente em instantes.' : res.status === 429 ? 'Muitas tentativas em pouco tempo. Aguarde um instante e tente de novo.' : null;
+    const e = new Error(amigavel ?? (Array.isArray(data?.message) ? data.message[0] : (data?.message ?? 'Erro inesperado.'))) as Error & { status: number };
     e.status = res.status;
     throw e;
   }
