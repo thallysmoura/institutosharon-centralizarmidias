@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSecao } from '@/lib/rota';
-import { Bell, Download, Eye, GraduationCap, HardDrive, RotateCcw, Trash2, House, ImageIcon, LogOut, MapPin, ShieldCheck, Users, Smartphone, RefreshCw, Settings, ChevronsUpDown, SlidersHorizontal, ChevronDown, LayoutGrid, Menu, X, Search, ScrollText, Megaphone, PlusCircle, History } from 'lucide-react';
+import { Play, Bell, Download, Eye, GraduationCap, HardDrive, RotateCcw, Trash2, House, ImageIcon, LogOut, MapPin, ShieldCheck, Users, Smartphone, RefreshCw, Settings, ChevronsUpDown, SlidersHorizontal, ChevronDown, LayoutGrid, Menu, X, Search, ScrollText, Megaphone, PlusCircle, History } from 'lucide-react';
 import { API, api, Atendimento, fotoUrl, fmtData, Me } from '@/lib/api';
 
 type Pagina = { itens: Atendimento[]; proximo: string | null };
@@ -13,6 +13,7 @@ import ControleAcesso from '@/components/ControleAcesso';
 import VisaoGeral from '@/components/VisaoGeral';
 import Titulo from '@/components/Titulo';
 import MostrarMais, { PASSO } from '@/components/MostrarMais';
+import { fmtDur } from '@/lib/midia';
 import CartaoAluno, { FotoPerfil } from '@/components/CartaoAluno';
 import BuscaAluno from '@/components/BuscaAluno';
 import ListaAlunos from '@/components/ListaAlunos';
@@ -415,7 +416,8 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
                 <li key={p.id} className={`group relative aspect-square overflow-hidden rounded-xl bg-sand shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${novos.has(a.id) ? 'novo-envio' : ''}`}>
                   <button type="button" onClick={() => setAberta({ a, i: a.fotos.findIndex((x) => x.id === p.id) })} aria-label={`Ver foto de ${a.identificador_paciente}`} className="absolute inset-0 block text-left">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={fotoUrl(p.id, true)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                    <img src={fotoUrl(p.id, true)} alt="" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                    {p.tipo === 'video' && <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[0.68rem] font-semibold text-white backdrop-blur-sm"><Play size={11} fill="currentColor" />{fmtDur(p.duracao) || 'Vídeo'}</span>}
                     <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2.5 pb-2 pt-8 text-white">
                       <span className="block truncate text-[0.78rem] font-semibold">{a.identificador_paciente}</span>
                       <span className="block truncate text-[0.68rem] text-white/80">{fmtDia(p.created_at)}</span>
@@ -546,7 +548,9 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
           <div className="flex min-h-0 flex-1 flex-col lg:flex-row" onClick={(e) => e.stopPropagation()}>
           <div className="relative flex min-h-0 flex-1 items-center justify-center px-2 pb-4" onClick={() => setAberta(null)}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={fotoUrl(aberta.a.fotos[aberta.i].id)} alt="" onClick={(e) => e.stopPropagation()} className="max-h-full max-w-full rounded-lg object-contain" />
+            {aberta.a.fotos[aberta.i].tipo === 'video'
+              ? <video key={aberta.a.fotos[aberta.i].id} src={fotoUrl(aberta.a.fotos[aberta.i].id)} controls autoPlay playsInline onClick={(e) => e.stopPropagation()} className="max-h-full max-w-full rounded-lg bg-black" />
+              : <img src={fotoUrl(aberta.a.fotos[aberta.i].id)} alt="" onClick={(e) => e.stopPropagation()} className="max-h-full max-w-full rounded-lg object-contain" />}
             {aberta.a.fotos.length > 1 && (
               <>
                 <button type="button" aria-label="Anterior" onClick={(e) => { e.stopPropagation(); setAberta({ a: aberta.a, i: (aberta.i - 1 + aberta.a.fotos.length) % aberta.a.fotos.length }); }} className="absolute left-2 grid h-11 w-11 place-items-center rounded-full bg-white/15 text-2xl text-white backdrop-blur-sm">‹</button>

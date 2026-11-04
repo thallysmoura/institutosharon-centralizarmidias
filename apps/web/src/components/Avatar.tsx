@@ -19,7 +19,7 @@ function Silhueta({ size }: { size: number }) {
 }
 
 /** Visualizador com zoom (botões, roda do mouse, duplo clique) e arraste da imagem ampliada. */
-export function Ampliada({ src, onFechar, nav, baixar, excluir }: { src: string; onFechar: () => void; nav?: { atual: number; total: number; ir: (i: number) => void }; baixar?: string; excluir?: () => void }) {
+export function Ampliada({ src, onFechar, nav, baixar, excluir, video }: { video?: boolean; src: string; onFechar: () => void; nav?: { atual: number; total: number; ir: (i: number) => void }; baixar?: string; excluir?: () => void }) {
   const [pronta, setPronta] = useState(false); // controles só aparecem depois que a imagem é exibida
   const [z, setZ] = useState(1);
   const [p, setP] = useState({ x: 0, y: 0 });
@@ -60,8 +60,21 @@ export function Ampliada({ src, onFechar, nav, baixar, excluir }: { src: string;
           </>
         )}
         {!pronta && <span className="absolute inset-0 grid place-items-center text-[#e7b23c]"><Spinner size={34} /></span>}
+        {video && (
+          <video
+            key={src}
+            src={src}
+            controls
+            autoPlay
+            playsInline
+            onLoadedData={() => setPronta(true)}
+            onError={() => setPronta(true)}
+            onClick={(e) => e.stopPropagation()}
+            className={`${pronta ? 'opacity-100' : 'opacity-0'} max-h-[calc(100dvh-11rem)] max-w-full rounded-2xl bg-black transition-opacity duration-300`}
+          />
+        )}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        {!video && <img
           src={src}
           alt="Foto ampliada"
           onLoad={() => setPronta(true)}
@@ -72,7 +85,7 @@ export function Ampliada({ src, onFechar, nav, baixar, excluir }: { src: string;
           onPointerDown={(e) => { if (z > 1) { arrasto.current = { x: e.clientX, y: e.clientY, px: p.x, py: p.y }; (e.target as HTMLElement).setPointerCapture(e.pointerId); } }}
           className={`${pronta ? 'opacity-100' : 'opacity-0'} max-h-[calc(100dvh-11rem)] max-w-full select-none rounded-2xl object-contain transition-opacity duration-300 shadow-[0_30px_80px_-30px_rgba(0,0,0,.8)] ${z > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-zoom-in'}`}
           style={{ transform: `translate(${p.x}px, ${p.y}px) scale(${z})`, transition: arrasto.current ? 'none' : 'transform .2s ease', touchAction: 'none' }}
-        />
+        />}
       </div>
       <div className={`${pronta ? 'fade-in' : 'invisible'} flex items-center justify-center gap-3 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4`} onClick={(e) => e.stopPropagation()}>
         <button type="button" onClick={() => ajusta(z - 0.5)} disabled={z <= 1} aria-label="Reduzir" className={btn}><Minus size={20} /></button>

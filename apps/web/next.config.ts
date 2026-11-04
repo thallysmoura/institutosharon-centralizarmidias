@@ -31,6 +31,7 @@ const csp = [
   `script-src 'self' 'unsafe-inline' https://apis.google.com${dev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${API_CSP} https://*.googleusercontent.com https://*.r2.cloudflarestorage.com https://*.r2.dev`,
+  `media-src 'self' blob: ${API_CSP} https://*.r2.cloudflarestorage.com https://*.r2.dev`,
   "font-src 'self' data:",
   `connect-src 'self' ${API_CSP} https://*.googleapis.com https://*.firebaseapp.com https://*.r2.cloudflarestorage.com${dev ? ' ws://localhost:* http://localhost:*' : ''}`,
   "frame-src https://*.firebaseapp.com https://accounts.google.com",

@@ -1,14 +1,16 @@
 'use client';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, CheckCircle2, Download, History, ImageIcon, Info, Pencil, PlusCircle, Trash2, User, Camera } from 'lucide-react';
+import { X, CheckCircle2, Download, History, ImageIcon, Info, Pencil, PlusCircle, Trash2, User, Camera, Play } from 'lucide-react';
 import { api, Atendimento, fmtData, fotoUrl } from '@/lib/api';
 import { fmtDia } from '@/lib/session';
 import Titulo from '@/components/Titulo';
 import { Ampliada } from '@/components/Avatar';
 import CameraCaptura from '@/components/CameraCaptura';
+import { ehVideo, fmtDur, MAX_VIDEO_BYTES, MAX_VIDEOS, metaDe, prepararVideo, TIPOS_VIDEO } from '@/lib/midia';
 
-type Item = { file: File; url: string };
+type Item = { file: File; url: string; video?: boolean; thumb?: string; dur?: number };
+const liberar = (i: Item) => { URL.revokeObjectURL(i.url); if (i.thumb) URL.revokeObjectURL(i.thumb); };
 export type MeusEnviosHandle = { abrirMenu: () => void };
 
 const MAX = 10;
@@ -45,21 +47,33 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
   const carregar = useCallback(() => api<Atendimento[]>('/atendimentos/meus').then(setMeus).catch(() => null), []);
   useEffect(() => { carregar(); }, [carregar]);
 
-  function adicionar(lista: FileList | File[] | null) {
+  async function adicionar(lista: FileList | File[] | null) {
     if (!lista) return;
     const novos: Item[] = [];
     let aviso = '';
+    let nVideos = itens.filter((i) => i.video).length;
+    let bytesVideos = itens.filter((i) => i.video).reduce((t, i) => t + i.file.size, 0);
     for (const f of Array.from(lista)) {
-      if (!TIPOS.includes(f.type)) aviso = 'Use imagens JPEG, PNG ou WebP.';
+      if (itens.length + novos.length >= MAX) { aviso = `Máximo de ${MAX} arquivos por envio.`; break; }
+      if (ehVideo(f)) {
+        if (f.type && !TIPOS_VIDEO.includes(f.type)) aviso = 'Use vídeos MP4, MOV ou WebM.';
+        else if (nVideos >= MAX_VIDEOS) aviso = `Máximo de ${MAX_VIDEOS} vídeos por envio.`;
+        else if (bytesVideos + f.size > MAX_VIDEO_BYTES) aviso = 'Os vídeos passam de 90 MB. Grave um vídeo mais curto ou envie em partes.';
+        else {
+          const m = metaDe(f) ?? (await prepararVideo(f));
+          nVideos++;
+          bytesVideos += f.size;
+          novos.push({ file: f, url: URL.createObjectURL(f), video: true, thumb: m.poster ? URL.createObjectURL(m.poster) : undefined, dur: m.duracao });
+        }
+      } else if (!TIPOS.includes(f.type)) aviso = 'Use fotos JPEG, PNG ou WebP, ou vídeos MP4, MOV ou WebM.';
       else if (f.size > MAX_BYTES) aviso = 'Cada foto deve ter no máximo 10 MB.';
-      else if (itens.length + novos.length >= MAX) aviso = `Máximo de ${MAX} fotos por envio.`;
       else novos.push({ file: f, url: URL.createObjectURL(f) });
     }
     setItens((v) => [...v, ...novos]);
     setMsg(aviso ? { ok: false, texto: aviso } : null);
   }
 
-  const remover = (i: number) => setItens((v) => { URL.revokeObjectURL(v[i].url); return v.filter((_, k) => k !== i); });
+  const remover = (i: number) => setItens((v) => { liberar(v[i]); return v.filter((_, k) => k !== i); });
 
   async function enviar() {
     setEnviando(true);
@@ -67,11 +81,18 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
     try {
       const fd = new FormData();
       fd.append('identificador', ident.trim());
-      itens.forEach((i) => fd.append('fotos', i.file));
+      itens.filter((i) => !i.video).forEach((i) => fd.append('fotos', i.file));
+      const vids = itens.filter((i) => i.video);
+      vids.forEach((i, k) => {
+        fd.append('videos', i.file);
+        const m = metaDe(i.file);
+        if (m?.poster) fd.append('posters', m.poster, `${k}.jpg`);
+      });
+      if (vids.length) fd.append('duracoes', JSON.stringify(vids.map((i) => Math.round((metaDe(i.file)?.duracao ?? 0) * 10) / 10)));
       const r = await api<{ enviadas: number }>('/atendimentos', { method: 'POST', body: fd });
-      itens.forEach((i) => URL.revokeObjectURL(i.url));
+      itens.forEach(liberar);
       setItens([]);
-      setMsg({ ok: true, texto: `${r.enviadas} foto(s) enviada(s) com sucesso.` });
+      setMsg({ ok: true, texto: `${r.enviadas} arquivo(s) enviado(s) com sucesso.` });
       carregar();
     } catch (e) {
       setMsg({ ok: false, texto: (e as Error).message || 'Não foi possível enviar. Tente novamente.' });
@@ -92,7 +113,7 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
     return () => document.removeEventListener('keydown', esc);
   }, [menuNovo]);
 
-  const cancelarEnvio = () => { itens.forEach((i) => URL.revokeObjectURL(i.url)); setItens([]); setIdent(''); setMsg(null); };
+  const cancelarEnvio = () => { itens.forEach(liberar); setItens([]); setIdent(''); setMsg(null); };
   const pronto = ident.trim().length >= 2 && itens.length > 0 && !enviando;
 
   // Todas as fotos (mais novas primeiro), cada uma com o atendimento a que pertence.
@@ -142,7 +163,8 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
             <li key={f.id}>
               <button type="button" onClick={() => abrirDetalhe(f.id)} aria-label={`Ver foto de ${a.identificador_paciente}`} className="group relative block aspect-square w-full overflow-hidden rounded-xl bg-sand shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={fotoUrl(f.id, true)} alt="" loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                <img src={fotoUrl(f.id, true)} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                {f.tipo === 'video' && <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[0.62rem] font-semibold text-white backdrop-blur-sm"><Play size={10} fill="currentColor" />{fmtDur(f.duracao) || 'Vídeo'}</span>}
                 <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-5 text-left text-white">
                   <span className="block truncate text-[0.72rem] font-semibold">{a.identificador_paciente}</span>
                   <span className="block truncate text-[0.62rem] text-white/80">{fmtDia(f.created_at)}</span>
@@ -161,10 +183,14 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
       <div className="pop flex h-full w-full flex-col overflow-hidden bg-white sm:h-auto sm:max-h-[94dvh] sm:max-w-[860px] sm:rounded-3xl sm:shadow-2xl lg:flex-row" onClick={(e) => e.stopPropagation()}>
         <div className="relative h-[44dvh] shrink-0 bg-[#21180D] lg:h-auto lg:min-h-[340px] lg:flex-1">
           <button type="button" onClick={() => setDet(null)} aria-label="Fechar" className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm transition hover:bg-black/70"><X size={20} /></button>
+          {atual.f.tipo === 'video'
+            ? <video key={atual.f.id} src={fotoUrl(atual.f.id)} poster={fotoUrl(atual.f.id, true)} controls playsInline className="h-full w-full bg-black object-contain" />
+            : (
           <button type="button" onClick={() => setVer({ a: atual.a, i: Math.max(0, atual.a.fotos.findIndex((x) => x.id === atual.f.id)) })} aria-label="Ampliar foto" className="block h-full w-full cursor-zoom-in">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={fotoUrl(atual.f.id)} alt="" className="h-full w-full object-contain" />
           </button>
+            )}
           {todas.length > 1 && (
             <>
               <button type="button" aria-label="Anterior" onClick={() => { setDet((det! - 1 + todas.length) % todas.length); setEditando(false); }} className="absolute left-2 grid h-10 w-10 place-items-center rounded-full bg-white/15 text-2xl text-white backdrop-blur-sm">‹</button>
@@ -203,8 +229,9 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
               ['Cidade', atual.a.cidade],
               ['Dispositivo', atual.f.dispositivo ? `${atual.f.dispositivo} · ${atual.f.so} · ${atual.f.navegador}` : 'Não registrado'],
               ['Tamanho', tam(atual.f.bytes)],
+              ...(atual.f.tipo === 'video' ? [['Duração', fmtDur(atual.f.duracao) || '-'] as [string, string]] : []),
               ['Dimensões', atual.f.width && atual.f.height ? `${atual.f.width} × ${atual.f.height} px` : '-'],
-              ['Foto', `${atual.a.fotos.findIndex((x) => x.id === atual.f.id) + 1} de ${atual.a.fotos.length} deste atendimento`],
+              [atual.f.tipo === 'video' ? 'Vídeo' : 'Foto', `${atual.a.fotos.findIndex((x) => x.id === atual.f.id) + 1} de ${atual.a.fotos.length} deste atendimento`],
             ] as const).map(([k, v]) => <div key={k} className="py-2"><dt className="text-[0.7rem] font-semibold uppercase tracking-[0.06em] text-ink/50">{k}</dt><dd className="mt-0.5 break-words text-[0.88rem] font-medium">{v}</dd></div>)}
           </dl>
 
@@ -226,11 +253,11 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
         <p className="px-3 pb-1 pt-2 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-ink/45">Novo envio</p>
         <button type="button" role="menuitem" onClick={() => { setMenuNovo(false); if (typeof navigator.mediaDevices?.getUserMedia === 'function') setCamAberta(true); else camera.current?.click(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-left transition hover:bg-ivory active:scale-[0.99]">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-white" style={{ background: 'linear-gradient(180deg,#c9a24a,#a67c26)' }}><Camera size={22} strokeWidth={1.6} /></span>
-          <span className="leading-tight"><b className="block text-[0.95rem]">Tirar foto</b><span className="text-[0.78rem] text-ink/55">Abrir a câmera do aparelho</span></span>
+          <span className="leading-tight"><b className="block text-[0.95rem]">Tirar foto ou vídeo</b><span className="text-[0.78rem] text-ink/55">Toque para foto, segure para vídeo</span></span>
         </button>
         <button type="button" role="menuitem" onClick={() => { setMenuNovo(false); galeria.current?.click(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-left transition hover:bg-ivory active:scale-[0.99]">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><ImageIcon size={22} strokeWidth={1.6} /></span>
-          <span className="leading-tight"><b className="block text-[0.95rem]">Enviar do dispositivo</b><span className="text-[0.78rem] text-ink/55">Escolher fotos da galeria ou arquivos</span></span>
+          <span className="leading-tight"><b className="block text-[0.95rem]">Enviar do dispositivo</b><span className="text-[0.78rem] text-ink/55">Escolher fotos ou vídeos da galeria</span></span>
         </button>
       </div>
     </>
@@ -241,14 +268,17 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
     <div role="dialog" aria-modal="true" aria-label="Enviar fotos" className="fade-in fixed inset-0 z-[60] flex items-end justify-center bg-black/50 sm:items-center sm:p-6" onClick={() => !enviando && cancelarEnvio()}>
       <div className="pop w-full max-w-[460px] rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-[1.35rem] font-bold leading-none">Enviar <span className="italic text-gold-600">fotos</span></h2>
+          <h2 className="text-[1.35rem] font-bold leading-none">Enviar <span className="italic text-gold-600">{itens.some((i) => i.video) ? 'arquivos' : 'fotos'}</span></h2>
           <span className="text-[0.72rem] font-semibold text-ink/45">{itens.length}/{MAX}</span>
         </div>
         <ul className="mt-3 flex gap-2 overflow-x-auto pb-1">
           {itens.map((i, k) => (
             <li key={i.url} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-sand ring-1 ring-line">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={i.url} alt={`Pré-visualização ${k + 1}`} className="h-full w-full object-cover" />
+              {i.video && !i.thumb
+                ? <span className="grid h-full w-full place-items-center text-gold-600"><Play size={20} /></span>
+                // eslint-disable-next-line @next/next/no-img-element
+                : <img src={i.thumb ?? i.url} alt={`Pré-visualização ${k + 1}`} className="h-full w-full object-cover" />}
+              {i.video && <span className="absolute bottom-0.5 left-0.5 inline-flex items-center gap-0.5 rounded bg-black/65 px-1 py-px text-[0.6rem] font-semibold text-white"><Play size={8} fill="currentColor" />{fmtDur(i.dur)}</span>}
               <button type="button" disabled={enviando} onClick={() => remover(k)} aria-label="Remover foto" className="absolute right-0.5 top-0.5 grid h-5 w-5 place-items-center rounded-full bg-ink/75 text-[0.8rem] leading-none text-white">×</button>
             </li>
           ))}
@@ -277,12 +307,12 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
   return (
     <>
       {!semLista && painelEnvios}
-      <input ref={galeria} type="file" accept="image/*" multiple hidden onChange={(e) => { adicionar(e.target.files); e.target.value = ''; }} />
-      <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { adicionar(e.target.files); e.target.value = ''; }} />
+      <input ref={galeria} type="file" accept="image/*,video/*" multiple hidden onChange={(e) => { adicionar(e.target.files); e.target.value = ''; }} />
+      <input ref={camera} type="file" accept="image/*,video/*" capture="environment" hidden onChange={(e) => { adicionar(e.target.files); e.target.value = ''; }} />
       {modalDetalhe}
       {menuNovoUI}
       {folhaEnvio}
-      {camAberta && <CameraCaptura total={itens.length} max={MAX} onFoto={(f) => adicionar([f])} onFechar={() => setCamAberta(false)} onNativo={() => { setCamAberta(false); camera.current?.click(); }} />}
+      {camAberta && <CameraCaptura total={itens.length} max={MAX} onFoto={(f) => adicionar([f])} onVideo={(f) => adicionar([f])} onFechar={() => setCamAberta(false)} onNativo={() => { setCamAberta(false); camera.current?.click(); }} />}
       {apagar !== null && createPortal(
         <div role="dialog" aria-modal="true" aria-label="Excluir foto" className="pop fixed inset-0 z-[140] grid place-items-center bg-[#120d06]/70 p-5 backdrop-blur-sm" onClick={() => !apagando && setApagar(null)}>
           <div className="w-full max-w-[340px] rounded-2xl bg-white p-5 shadow-[0_30px_80px_-30px_rgba(0,0,0,.7)]" onClick={(e) => e.stopPropagation()}>
@@ -297,7 +327,7 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
         </div>,
         document.body,
       )}
-      {ver && createPortal(<Ampliada src={fotoUrl(ver.a.fotos[ver.i].id)} baixar={`${fotoUrl(ver.a.fotos[ver.i].id)}?download=1`} excluir={() => setApagar(ver.a.fotos[ver.i].id)} onFechar={() => setVer(null)} nav={{ atual: ver.i, total: ver.a.fotos.length, ir: (n) => setVer({ a: ver.a, i: n }) }} />, document.body)}
+      {ver && createPortal(<Ampliada video={ver.a.fotos[ver.i].tipo === 'video'} src={fotoUrl(ver.a.fotos[ver.i].id)} baixar={`${fotoUrl(ver.a.fotos[ver.i].id)}?download=1`} excluir={() => setApagar(ver.a.fotos[ver.i].id)} onFechar={() => setVer(null)} nav={{ atual: ver.i, total: ver.a.fotos.length, ir: (n) => setVer({ a: ver.a, i: n }) }} />, document.body)}
     </>
   );
 });

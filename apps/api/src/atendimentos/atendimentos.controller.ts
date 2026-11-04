@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Patch, ParseIntPipe, Post, Query, Req, Res, NotFoundException, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
-import { IsIn, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import type { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { memoryStorage } from 'multer';
@@ -15,6 +15,17 @@ import { AuthGuard, Me, Roles, SessionUser } from '../common/auth';
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const MAX_FILES = 10;
+const MAX_VIDEOS = 3;
+const MAX_VIDEO_BYTES = 120 * 1024 * 1024;
+const MAX_POSTER_BYTES = 3 * 1024 * 1024;
+
+/** Vídeo MP4/MOV (caixa `ftyp`) ou WebM (EBML), pelo conteúdo; devolve o tipo e a extensão, ou null. */
+function videoValido(b: Buffer): { mime: string; ext: string } | null {
+  if (b.length < 16) return null;
+  if (b.toString('ascii', 4, 8) === 'ftyp') return b.toString('ascii', 8, 12) === 'qt  ' ? { mime: 'video/quicktime', ext: 'mov' } : { mime: 'video/mp4', ext: 'mp4' };
+  if (b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return { mime: 'video/webm', ext: 'webm' };
+  return null;
+}
 
 /** Valida o formato real pelo conteúdo (JPEG, PNG ou WebP), não pelo nome/mimetype informado. */
 function formatoValido(b: Buffer) {
@@ -35,12 +46,13 @@ class EditarDto {
 
 class CriarDto {
   @IsString() @MinLength(2) @MaxLength(80) @Matches(/^[^<>{}`$\\]+$/, { message: 'O identificador não pode ter < > { } ` $ ou barra invertida.' }) identificador!: string;
+  @IsOptional() @IsString() @MaxLength(200) duracoes?: string; // JSON com a duração (s) de cada vídeo, na ordem enviada
 }
 
 const SELECT_ATEND = `
   SELECT a.id, a.identificador_paciente, a.created_at, c.nome AS cidade,
          json_build_object('id', u.id, 'nome', u.nome, 'matricula', u.matricula, 'email', u.email, 'foto', CASE WHEN u.foto_key IS NOT NULL OR u.foto_url IS NOT NULL THEN '/users/' || u.id || '/foto?v=' || u.foto_v END) AS aluno,
-         COALESCE(json_agg(json_build_object('id', f.id, 'created_at', f.created_at, 'oculta', f.oculta_em IS NOT NULL, 'bytes', f.bytes, 'width', f.width, 'height', f.height, 'dispositivo', f.dispositivo, 'so', f.so, 'navegador', f.navegador) ORDER BY f.id) FILTER (WHERE f.id IS NOT NULL), '[]') AS fotos
+         COALESCE(json_agg(json_build_object('id', f.id, 'created_at', f.created_at, 'oculta', f.oculta_em IS NOT NULL, 'bytes', f.bytes, 'width', f.width, 'height', f.height, 'tipo', f.tipo, 'duracao', f.duracao, 'dispositivo', f.dispositivo, 'so', f.so, 'navegador', f.navegador) ORDER BY f.id) FILTER (WHERE f.id IS NOT NULL), '[]') AS fotos
   FROM sistema.atendimentos a
   JOIN sistema.users u ON u.id = a.aluno_id
   JOIN sistema.cidades c ON c.id = a.cidade_id
@@ -68,10 +80,19 @@ export class AtendimentosController {
   constructor(private readonly db: DbService, private readonly storage: StorageService, private readonly eventos: EventosService, private readonly aud: AuditoriaService) {}
 
   @Post()
-  @UseInterceptors(FilesInterceptor('fotos', MAX_FILES, { storage: memoryStorage(), limits: { fileSize: MAX_BYTES, files: MAX_FILES } }))
-  async criar(@Me() u: SessionUser, @Body() dto: CriarDto, @UploadedFiles() files: Express.Multer.File[], @Req() req: Request) {
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'fotos', maxCount: MAX_FILES }, { name: 'videos', maxCount: MAX_VIDEOS }, { name: 'posters', maxCount: MAX_VIDEOS }], { storage: memoryStorage(), limits: { fileSize: MAX_VIDEO_BYTES, files: MAX_FILES + MAX_VIDEOS * 2 } }))
+  async criar(@Me() u: SessionUser, @Body() dto: CriarDto, @UploadedFiles() enviados: { fotos?: Express.Multer.File[]; videos?: Express.Multer.File[]; posters?: Express.Multer.File[] }, @Req() req: Request) {
     const disp = dispositivoDe(req.headers['user-agent'] ?? '');
-    if (!files?.length) throw new BadRequestException('Envie ao menos uma foto.');
+    const files = enviados?.fotos ?? [];
+    const videos = enviados?.videos ?? [];
+    const posters = enviados?.posters ?? [];
+    if (!files.length && !videos.length) throw new BadRequestException('Envie ao menos uma foto ou vídeo.');
+    if (files.some((f) => f.size > MAX_BYTES)) throw new BadRequestException('Cada foto deve ter no máximo 10 MB.');
+    if (posters.some((f) => f.size > MAX_POSTER_BYTES)) throw new BadRequestException('Prévia do vídeo muito grande.');
+    const infoVideos = videos.map((v) => videoValido(v.buffer));
+    if (infoVideos.some((i) => !i)) throw new BadRequestException('Vídeo inválido. Use MP4, MOV ou WebM.');
+    let duracoes: number[] = [];
+    try { duracoes = JSON.parse(dto.duracoes ?? '[]'); } catch { duracoes = []; }
     // A cidade vem da sessão (localização do login) e não pode ser escolhida no envio.
     let cidadeId = u.cidade_id;
     if (!cidadeId && u.role === 'ADMIN') {
@@ -106,9 +127,36 @@ export class AtendimentosController {
         [atendimentoId, key, thumbKey, full.data.length, thumb.length, full.info.width, full.info.height, disp.dispositivo, disp.so, disp.navegador],
       );
     }
+    for (const [k, v] of videos.entries()) {
+      const info = infoVideos[k]!;
+      const id = randomUUID();
+      const key = `${u.id}/${atendimentoId}/${id}.${info.ext}`;
+      // a prévia vem do aparelho (um quadro do vídeo); o nome do arquivo traz o índice do vídeo a que pertence
+      const poster = posters.find((p) => p.originalname.startsWith(`${k}.`)) ?? posters[k];
+      let thumbKey: string | null = null;
+      let thumbBytes = 0;
+      let largura: number | null = null;
+      let altura: number | null = null;
+      if (poster && formatoValido(poster.buffer)) {
+        const base = sharp(poster.buffer, { failOn: 'none' }).rotate();
+        const meta = await base.clone().metadata();
+        largura = meta.width ?? null;
+        altura = meta.height ?? null;
+        const thumb = await base.clone().resize({ width: 480, height: 480, fit: 'inside', withoutEnlargement: true }).webp({ quality: 76 }).toBuffer();
+        thumbKey = `${u.id}/${atendimentoId}/${id}-t.webp`;
+        thumbBytes = thumb.length;
+        await this.storage.put(thumbKey, thumb, 'image/webp');
+      }
+      await this.storage.put(key, v.buffer, info.mime);
+      const dur = Number(duracoes[k]);
+      await this.db.query(
+        "INSERT INTO sistema.fotos (atendimento_id, storage_key, thumb_key, bytes, thumb_bytes, width, height, dispositivo, so, navegador, tipo, duracao, mime) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'video',$11,$12)",
+        [atendimentoId, key, thumbKey, v.buffer.length, thumbBytes, largura, altura, disp.dispositivo, disp.so, disp.navegador, Number.isFinite(dur) && dur > 0 && dur < 86400 ? dur : null, info.mime],
+      );
+    }
     this.eventos.novoAtendimento(atendimentoId); // painel do administrador atualiza em tempo real
-    this.aud.registrar('envio_fotos', { ator: u.id, atendimento: atendimentoId, req, detalhe: { paciente: ident, quantidade: files.length } });
-    return { atendimentoId, enviadas: files.length };
+    this.aud.registrar('envio_fotos', { ator: u.id, atendimento: atendimentoId, req, detalhe: { paciente: ident, quantidade: files.length, videos: videos.length } });
+    return { atendimentoId, enviadas: files.length + videos.length };
   }
 
   /** O aluno corrige o nome/identificador do paciente de um atendimento dele (vale para todas as fotos do atendimento). */
@@ -366,17 +414,31 @@ export class FotosController {
    *  `variant=thumb` devolve a miniatura. No R2, responde com redirecionamento para URL assinada (5 min). */
   @Get(':id/arquivo')
   async arquivo(@Me() u: SessionUser, @Param('id', ParseIntPipe) id: number, @Query('download') download: string | undefined, @Query('variant') variant: string | undefined, @Res() res: Response) {
-    const r = await this.db.query('SELECT f.storage_key, f.thumb_key, f.oculta_em, a.aluno_id FROM sistema.fotos f JOIN sistema.atendimentos a ON a.id=f.atendimento_id WHERE f.id=$1', [id]);
+    const r = await this.db.query('SELECT f.storage_key, f.thumb_key, f.oculta_em, f.tipo, f.mime, a.aluno_id FROM sistema.fotos f JOIN sistema.atendimentos a ON a.id=f.atendimento_id WHERE f.id=$1', [id]);
     const f = r.rows[0];
     if (!f || (u.role !== 'ADMIN' && (f.aluno_id !== u.id || f.oculta_em))) throw new NotFoundException();
-    const key: string = variant === 'thumb' && f.thumb_key ? f.thumb_key : f.storage_key;
-    const url = await this.storage.urlAssinada(key, download ? `sharon-${id}.webp` : undefined);
+    const miniatura = variant === 'thumb' && f.thumb_key;
+    if (variant === 'thumb' && f.tipo === 'video' && !f.thumb_key) throw new NotFoundException(); // vídeo sem prévia: o front mostra um ícone
+    const key: string = miniatura ? f.thumb_key : f.storage_key;
+    const video = f.tipo === 'video' && !miniatura;
+    const ext = video ? (String(f.mime).includes('webm') ? 'webm' : String(f.mime).includes('quicktime') ? 'mov' : 'mp4') : 'webp';
+    const url = await this.storage.urlAssinada(key, download ? `sharon-${id}.${ext}` : undefined);
     if (url) {
       res.set({ 'Cache-Control': 'private, max-age=240' });
       return res.redirect(302, url);
     }
-    res.set({ 'Content-Type': 'image/webp', 'Cache-Control': 'private, max-age=300', 'X-Content-Type-Options': 'nosniff', ...(download ? { 'Content-Disposition': `attachment; filename="sharon-${id}.webp"` } : {}) });
-    res.send(await this.storage.get(key));
+    const corpo = await this.storage.get(key);
+    res.set({ 'Content-Type': video ? f.mime : 'image/webp', 'Cache-Control': 'private, max-age=300', 'X-Content-Type-Options': 'nosniff', 'Accept-Ranges': 'bytes', ...(download ? { 'Content-Disposition': `attachment; filename="sharon-${id}.${ext}"` } : {}) });
+    const faixa = /^bytes=(\d*)-(\d*)$/.exec(String(res.req.headers.range ?? ''));
+    if (video && faixa && (faixa[1] || faixa[2])) {
+      const ini = faixa[1] ? Number(faixa[1]) : Math.max(0, corpo.length - Number(faixa[2]));
+      const fim = faixa[1] && faixa[2] ? Math.min(Number(faixa[2]), corpo.length - 1) : corpo.length - 1;
+      if (ini > fim || ini >= corpo.length) { res.status(416).set('Content-Range', `bytes */${corpo.length}`).end(); return; }
+      res.status(206).set({ 'Content-Range': `bytes ${ini}-${fim}/${corpo.length}`, 'Content-Length': String(fim - ini + 1) });
+      res.send(corpo.subarray(ini, fim + 1));
+      return;
+    }
+    res.send(corpo);
   }
 
 }
