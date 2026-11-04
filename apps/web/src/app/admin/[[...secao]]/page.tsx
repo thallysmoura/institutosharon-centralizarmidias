@@ -12,6 +12,7 @@ import PageLoader from '@/components/PageLoader';
 import ControleAcesso from '@/components/ControleAcesso';
 import VisaoGeral from '@/components/VisaoGeral';
 import Titulo from '@/components/Titulo';
+import OndasDouradas from '@/components/OndasDouradas';
 import MostrarMais, { PASSO } from '@/components/MostrarMais';
 import { fmtDur } from '@/lib/midia';
 import CartaoAluno, { FotoPerfil } from '@/components/CartaoAluno';
@@ -401,7 +402,8 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
         </div>
       </aside>
 
-      <main className={`min-w-0 flex-1 bg-page bg-[radial-gradient(ellipse_70%_40%_at_75%_0%,rgba(231,178,60,.22),transparent_70%)] px-3 py-5 sm:px-8 sm:py-6 lg:py-8 ${vista === 'fotos' ? 'pb-28 sm:pb-28 lg:pb-28' : ''}`}>
+      <main className={`relative isolate min-w-0 flex-1 overflow-x-clip bg-page px-3 py-5 sm:px-8 sm:py-6 lg:py-8 ${vista === 'fotos' ? 'pb-28 sm:pb-28 lg:pb-28' : ''}`}>
+        <OndasDouradas />
         <Cab t={vista === 'geral' ? 'Painel do Administrador' : NAV.find((n) => n[0] === vista)![1]} s="Gestão centralizada das fotografias clínicas" />
 
         {vista === 'geral' && <VisaoGeral key={rk} recentes={lista} irPara={(v) => setVista(v)} abrir={(a) => setAberta({ a, i: 0 })} />}
