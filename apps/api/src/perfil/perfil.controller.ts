@@ -29,7 +29,7 @@ class EmailDto {
   @IsEmail() @MaxLength(160) email!: string;
 }
 
-class SenhaSolicitarDto {
+class SenhaAlterarDto {
   @IsOptional() @IsString() @MaxLength(100) senhaAtual?: string; // contas criadas pelo Google não têm senha atual
   @IsString() @MinLength(8, { message: 'A senha deve ter ao menos 8 caracteres.' }) @MaxLength(100)
   @Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/, { message: 'A senha deve ter 1 letra maiúscula, 1 número e 1 caractere especial.' }) novaSenha!: string;
@@ -105,40 +105,31 @@ export class PerfilController {
     return { ok: true, email: r.novo_email };
   }
 
-  /** Passo 1 da troca de senha: confere a senha atual e a regra da nova, e envia um PIN ao e-mail da conta. A nova senha fica guardada só como hash até o PIN ser confirmado. */
-  @Post('perfil/senha/solicitar')
+  /** Troca de senha, passo 1: envia um PIN ao e-mail da conta (prova de que é o dono). Ainda não recebe nenhuma senha. */
+  @Post('perfil/senha/pin')
   @AllowPendente()
   @Throttle({ default: { limit: 6, ttl: 60_000 } })
   @HttpCode(200)
-  async solicitarSenha(@Me() u: SessionUser, @Body() dto: SenhaSolicitarDto) {
-    if (excedeu(`senha-atual:${u.id}`, 6, 15 * 60_000)) throw new HttpException('Muitas tentativas. Aguarde alguns minutos e tente de novo.', 429);
-    const atual = (await this.db.query('SELECT password_hash FROM sistema.users WHERE id=$1', [u.id])).rows[0]?.password_hash as string | undefined;
-    if (!atual) throw new NotFoundException();
-    if (u.origem !== 'google') {
-      if (!dto.senhaAtual || !(await bcrypt.compare(dto.senhaAtual, atual))) throw new BadRequestException('Senha atual incorreta.');
-    }
-    if (await bcrypt.compare(dto.novaSenha, atual)) throw new BadRequestException('A nova senha deve ser diferente da atual.');
-    const fraca = senhaFraca(dto.novaSenha, u.email, u.nome);
-    if (fraca) throw new BadRequestException(fraca);
+  async pinSenha(@Me() u: SessionUser) {
     const ult = (await this.db.query('SELECT EXTRACT(EPOCH FROM (now()-enviado_em))::int AS seg FROM sistema.pin_troca_senha WHERE user_id=$1', [u.id])).rows[0];
     if (ult && ult.seg < PIN_INTERVALO_S) throw new HttpException(`Aguarde ${PIN_INTERVALO_S - ult.seg}s para pedir um novo código.`, 429);
     const pin = String(randomInt(0, 10000)).padStart(4, '0');
     await this.db.query(
-      `INSERT INTO sistema.pin_troca_senha (user_id, nova_hash, pin_hash, expira, tentativas, enviado_em) VALUES ($1,$2,$3, now() + interval '${PIN_VALIDADE_MIN} minutes', 0, now())
-       ON CONFLICT (user_id) DO UPDATE SET nova_hash=EXCLUDED.nova_hash, pin_hash=EXCLUDED.pin_hash, expira=EXCLUDED.expira, tentativas=0, enviado_em=now()`,
-      [u.id, await bcrypt.hash(dto.novaSenha, 10), this.hashPin(u.id, pin)],
+      `INSERT INTO sistema.pin_troca_senha (user_id, nova_hash, pin_hash, expira, tentativas, enviado_em, verificado_ate) VALUES ($1,NULL,$2, now() + interval '${PIN_VALIDADE_MIN} minutes', 0, now(), NULL)
+       ON CONFLICT (user_id) DO UPDATE SET nova_hash=NULL, pin_hash=EXCLUDED.pin_hash, expira=EXCLUDED.expira, tentativas=0, enviado_em=now(), verificado_ate=NULL`,
+      [u.id, this.hashPin(u.id, pin)],
     );
     await this.mail.enviarPin(u.email, u.nome, pin, await fotoDoUsuario(this.db, this.storage, u.id), 'troca');
     return { ok: true, email: u.email, validadeMin: PIN_VALIDADE_MIN };
   }
 
-  /** Passo 2: confere o PIN (máx. 5 tentativas, 10 min), grava a nova senha, desconecta os outros aparelhos e avisa por e-mail. */
-  @Post('perfil/senha/confirmar')
+  /** Passo 2: confere o PIN (máx. 5 tentativas, 10 min). Se estiver certo, libera a nova senha por 10 minutos (uso único). */
+  @Post('perfil/senha/verificar')
   @AllowPendente()
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
-  async confirmarSenha(@Me() u: SessionUser, @Body() dto: PinDto, @Req() req: Request & { sid?: string }) {
-    const r = (await this.db.query('SELECT nova_hash, pin_hash, tentativas, (expira < now()) AS vencido FROM sistema.pin_troca_senha WHERE user_id=$1', [u.id])).rows[0];
+  async verificarPinSenha(@Me() u: SessionUser, @Body() dto: PinDto) {
+    const r = (await this.db.query('SELECT pin_hash, tentativas, (expira < now()) AS vencido FROM sistema.pin_troca_senha WHERE user_id=$1', [u.id])).rows[0];
     if (!r) throw new BadRequestException('Peça um novo código para alterar a senha.');
     if (r.vencido || r.tentativas >= PIN_TENTATIVAS) {
       await this.db.query('DELETE FROM sistema.pin_troca_senha WHERE user_id=$1', [u.id]);
@@ -148,12 +139,30 @@ export class PerfilController {
       await this.db.query('UPDATE sistema.pin_troca_senha SET tentativas = tentativas + 1 WHERE user_id=$1', [u.id]);
       throw new BadRequestException(`Código incorreto. Restam ${PIN_TENTATIVAS - r.tentativas - 1} tentativa(s).`);
     }
-    await this.db.query('UPDATE sistema.users SET password_hash=$2 WHERE id=$1', [u.id, r.nova_hash]);
+    await this.db.query(`UPDATE sistema.pin_troca_senha SET verificado_ate = now() + interval '${PIN_VALIDADE_MIN} minutes', pin_hash='-' WHERE user_id=$1`, [u.id]);
+    return { ok: true, pedeSenhaAtual: u.origem !== 'google' };
+  }
+
+  /** Passo 3: com o PIN já validado, confere a senha atual (bcrypt), aplica a regra da nova (8+, maiúscula, número, especial), grava o hash, desconecta os outros aparelhos e avisa por e-mail. */
+  @Post('perfil/senha/alterar')
+  @AllowPendente()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @HttpCode(200)
+  async alterarSenha(@Me() u: SessionUser, @Body() dto: SenhaAlterarDto, @Req() req: Request & { sid?: string }) {
+    const lib = (await this.db.query('SELECT (verificado_ate IS NOT NULL AND verificado_ate > now()) AS ok FROM sistema.pin_troca_senha WHERE user_id=$1', [u.id])).rows[0];
+    if (!lib?.ok) throw new BadRequestException('Confirme o código enviado ao seu e-mail antes de alterar a senha.');
+    if (excedeu(`senha-atual:${u.id}`, 6, 15 * 60_000)) throw new HttpException('Muitas tentativas. Aguarde alguns minutos e tente de novo.', 429);
+    const atual = (await this.db.query('SELECT password_hash FROM sistema.users WHERE id=$1', [u.id])).rows[0]?.password_hash as string | undefined;
+    if (!atual) throw new NotFoundException();
+    if (u.origem !== 'google' && (!dto.senhaAtual || !(await bcrypt.compare(dto.senhaAtual, atual)))) throw new BadRequestException('Senha atual incorreta.');
+    if (await bcrypt.compare(dto.novaSenha, atual)) throw new BadRequestException('A nova senha deve ser diferente da atual.');
+    const fraca = senhaFraca(dto.novaSenha, u.email, u.nome);
+    if (fraca) throw new BadRequestException(fraca);
+    await this.db.query('UPDATE sistema.users SET password_hash=$2 WHERE id=$1', [u.id, await bcrypt.hash(dto.novaSenha, 12)]);
     await this.db.query('DELETE FROM sistema.pin_troca_senha WHERE user_id=$1', [u.id]);
     await this.db.query('UPDATE sistema.refresh_tokens SET revogado=true WHERE user_id=$1 AND familia <> $2', [u.id, req.sid ?? '']); // mantém só esta sessão
     this.aud.registrar('senha_alterada', { ator: u.id, email: u.email, req });
-    const ua = String(req.headers['user-agent'] ?? '');
-    const disp = dispositivoDe(ua);
+    const disp = dispositivoDe(String(req.headers['user-agent'] ?? ''));
     void this.mail.enviarSenhaAlterada(u.email, u.nome, {
       quando: new Date().toLocaleString('pt-BR', { timeZone: 'America/Manaus', dateStyle: 'long', timeStyle: 'short' }) + ' (horário de Manaus)',
       dispositivo: [disp.dispositivo, disp.so, disp.navegador].filter(Boolean).join(' · ') || 'Não identificado',

@@ -59,7 +59,7 @@ class ConfirmarSenhaDto extends EmailDto {
 class RedefinirDto extends EmailDto {
   @IsString() @MinLength(20) @MaxLength(200) token!: string;
   @IsString() @MinLength(8, { message: 'A senha deve ter ao menos 8 caracteres.' }) @MaxLength(100)
-  @Matches(/^(?=.*[A-Za-z])(?=.*\d).+$/, { message: 'A senha deve ter letras e números.' }) senha!: string;
+  @Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/, { message: 'A senha deve ter 1 letra maiúscula, 1 número e 1 caractere especial.' }) senha!: string;
 }
 
 const NOME_RE = /^[A-Za-zÀ-ÖØ-öø-ÿ' .-]+$/;

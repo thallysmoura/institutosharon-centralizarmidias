@@ -53,6 +53,8 @@ ALTER TABLE sistema.users ADD COLUMN IF NOT EXISTS cpf TEXT;
 CREATE TABLE IF NOT EXISTS sistema.pin_troca_senha (
   user_id INT PRIMARY KEY REFERENCES sistema.users(id) ON DELETE CASCADE, nova_hash TEXT NOT NULL, pin_hash TEXT NOT NULL,
   expira TIMESTAMPTZ NOT NULL, tentativas INT NOT NULL DEFAULT 0, enviado_em TIMESTAMPTZ NOT NULL DEFAULT now());
+ALTER TABLE sistema.pin_troca_senha ALTER COLUMN nova_hash DROP NOT NULL;
+ALTER TABLE sistema.pin_troca_senha ADD COLUMN IF NOT EXISTS verificado_ate TIMESTAMPTZ;
 CREATE UNIQUE INDEX IF NOT EXISTS users_cpf_uq ON sistema.users (cpf) WHERE cpf IS NOT NULL;
 CREATE INDEX IF NOT EXISTS users_role_nome_idx ON sistema.users (role, nome, id);
 CREATE INDEX IF NOT EXISTS users_role_criado_idx ON sistema.users (role, created_at DESC, id DESC);

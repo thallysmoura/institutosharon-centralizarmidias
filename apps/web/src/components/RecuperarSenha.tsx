@@ -58,7 +58,9 @@ export default function RecuperarSenha({ emailInicial, onFechar, onConcluido }: 
 
   const regras: [string, boolean][] = [
     ['Pelo menos 8 caracteres', senha.length >= 8],
-    ['Letras e números', /[A-Za-z]/.test(senha) && /\d/.test(senha)],
+    ['Uma letra maiúscula', /[A-Z]/.test(senha)],
+    ['Um número', /\d/.test(senha)],
+    ['Um caractere especial', /[^A-Za-z0-9]/.test(senha)],
     ['As duas senhas são iguais', senha.length > 0 && senha === conf],
   ];
   const valida = regras.every(([, ok]) => ok);
