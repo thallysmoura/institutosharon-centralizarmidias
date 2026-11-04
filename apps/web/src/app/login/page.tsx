@@ -241,8 +241,8 @@ export default function Login() {
   const formulario = (
     <>
       <div className="px-[0.5em] min-[1100px]:px-[0.72em]">
-                <h1 className="rise font-sans text-[2.5em] font-medium leading-[0.92] min-[1100px]:text-[3em] tracking-[-0.02em] text-[#33240F]" style={{ '--d': '140ms' } as React.CSSProperties}>
-          Acesse o<br /><span className="font-bold italic" style={{ background: 'linear-gradient(180deg,#d6a431,#a8761a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>sistema</span>
+                <h1 className="rise font-sans whitespace-nowrap text-[2.05em] font-medium leading-[1] min-[1100px]:text-[2.6em] tracking-[-0.02em] text-[#33240F]" style={{ '--d': '140ms' } as React.CSSProperties}>
+          Acesse o{' '}<span className="font-bold italic" style={{ background: 'linear-gradient(180deg,#d6a431,#a8761a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>sistema</span>
         </h1>
               </div>
 
