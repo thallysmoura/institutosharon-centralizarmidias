@@ -28,6 +28,21 @@ class LoginDto extends Posicao {
   @IsString() @MinLength(3) @MaxLength(100) senha!: string;
 }
 
+/** Vínculo entre o app instalado e a janela onde o Google terminou o login (o iPhone separa o armazenamento das duas). */
+class VinculoConcluirDto {
+  @IsString() @Matches(/^[0-9a-f]{20}$/) codigo!: string;
+  @IsString() @MinLength(20) @MaxLength(4096) idToken!: string;
+}
+class VinculoStatusDto {
+  @IsString() @Matches(/^[0-9a-f]{20}$/) codigo!: string;
+  @IsString() @Matches(/^[0-9a-f]{48}$/) segredo!: string;
+  @IsOptional() @IsNumber() @Min(-90) @Max(90) lat?: number;
+  @IsOptional() @IsNumber() @Min(-180) @Max(180) lng?: number;
+  @IsOptional() @IsBoolean() lembrar?: boolean;
+}
+const vinculos = new Map<string, { segredo: string; userId?: number; expira: number }>();
+const limparVinculos = () => { const t = Date.now(); for (const [k, v] of vinculos) if (v.expira < t) vinculos.delete(k); };
+
 class GoogleDto extends Posicao {
   @IsString() @MinLength(20) @MaxLength(4096) idToken!: string;
 }
@@ -288,11 +303,9 @@ export class AuthController {
 
   /** Login com Google: o ID token do Firebase é validado no servidor. E-mail novo entra como ALUNO com nome e foto do Google
    *  e matrícula vazia (primeiro acesso): precisa informar a matrícula antes de enviar fotos. */
-  @Post('google')
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  @HttpCode(200)
-  async google(@Body() dto: GoogleDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
-    const { email, nome, foto } = await this.firebase.emailGoogle(dto.idToken);
+  /** Localiza (ou cria) o usuário do e-mail validado pelo Google. */
+  private async usuarioGoogle(idToken: string) {
+    const { email, nome, foto } = await this.firebase.emailGoogle(idToken);
     let r = await this.db.query('SELECT id,role FROM sistema.users WHERE lower(email)=lower($1) OR lower(google_email)=lower($1)', [email]);
     if (!r.rows[0]) {
       // senha aleatória e inutilizável: quem entra pelo Google não tem login por senha
@@ -304,10 +317,61 @@ export class AuthController {
     } else if (foto) {
       await this.db.query('UPDATE sistema.users SET foto_url=$2 WHERE id=$1 AND foto_key IS NULL AND foto_url IS DISTINCT FROM $2', [r.rows[0].id, foto]);
     }
-    await this.db.query('UPDATE sistema.users SET ultimo_acesso=now() WHERE id=$1', [r.rows[0].id]);
-    const csrf = await this.iniciarSessao(res, r.rows[0].id, dto);
-    this.aud.registrar('login', { ator: r.rows[0].id, email, req, detalhe: { metodo: 'google' } });
-    return { role: r.rows[0].role, csrf };
+    return { id: r.rows[0].id as number, role: r.rows[0].role as string, email };
+  }
+
+  @Post('google')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @HttpCode(200)
+  async google(@Body() dto: GoogleDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
+    const u = await this.usuarioGoogle(dto.idToken);
+    await this.db.query('UPDATE sistema.users SET ultimo_acesso=now() WHERE id=$1', [u.id]);
+    const csrf = await this.iniciarSessao(res, u.id, dto);
+    this.aud.registrar('login', { ator: u.id, email: u.email, req, detalhe: { metodo: 'google' } });
+    return { role: u.role, csrf };
+  }
+
+  /** App instalado: cria um vínculo (código público + segredo que só o app conhece) para receber o login feito em outra janela. */
+  @Post('google/vinculo')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @HttpCode(200)
+  vinculo() {
+    limparVinculos();
+    const codigo = randomBytes(10).toString('hex');
+    const segredo = randomBytes(24).toString('hex');
+    vinculos.set(codigo, { segredo, expira: Date.now() + 10 * 60_000 });
+    return { codigo, segredo };
+  }
+
+  /** A janela onde o Google concluiu o login entrega o ID token e fica registrado de quem é o vínculo. */
+  @Post('google/vinculo/concluir')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @HttpCode(200)
+  async vinculoConcluir(@Body() dto: VinculoConcluirDto) {
+    const v = vinculos.get(dto.codigo);
+    if (!v || v.expira < Date.now()) throw new UnauthorizedException('Este pedido de login expirou. Volte ao app e tente novamente.');
+    v.userId = (await this.usuarioGoogle(dto.idToken)).id;
+    return { ok: true };
+  }
+
+  /** O app instalado consulta o vínculo: sem localização informa só se já está pronto; com localização abre a sessão (uso único). */
+  @Post('google/vinculo/status')
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @HttpCode(200)
+  async vinculoStatus(@Body() dto: VinculoStatusDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
+    const v = vinculos.get(dto.codigo);
+    const a = Buffer.from(v?.segredo ?? '');
+    const b = Buffer.from(dto.segredo);
+    if (!v || v.expira < Date.now() || a.length !== b.length || !timingSafeEqual(a, b)) throw new UnauthorizedException('Este pedido de login expirou. Tente novamente.');
+    if (v.userId == null) return { pronto: false };
+    if (dto.lat == null || dto.lng == null) return { pronto: true };
+    vinculos.delete(dto.codigo);
+    const u = (await this.db.query('SELECT id,role,email FROM sistema.users WHERE id=$1', [v.userId])).rows[0];
+    if (!u) throw new UnauthorizedException();
+    await this.db.query('UPDATE sistema.users SET ultimo_acesso=now() WHERE id=$1', [u.id]);
+    const csrf = await this.iniciarSessao(res, u.id, { lat: dto.lat, lng: dto.lng, lembrar: dto.lembrar });
+    this.aud.registrar('login', { ator: u.id, email: u.email, req, detalhe: { metodo: 'google', via: 'app instalado' } });
+    return { pronto: true, role: u.role, csrf };
   }
 
   @Post('refresh')

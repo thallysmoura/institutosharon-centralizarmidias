@@ -41,7 +41,11 @@ function googleIndisponivel(): string | null {
 }
 const appInstalado = () => (navigator as Navigator & { standalone?: boolean }).standalone === true || !!window.matchMedia?.('(display-mode: standalone)').matches;
 const ehIphone = () => /iPhone|iPad|iPod/i.test(navigator.userAgent);
-const CHAVE_REDIRECT = 'sharon_google_redirect';
+const CHAVE_VINCULO = 'sharon_google_vinculo'; // app instalado: vínculo à espera do login feito no Google
+type Vinculo = { codigo: string; segredo: string; lembrar: boolean; ate: number };
+const lerVinculo = (): Vinculo | null => { try { const v = JSON.parse(localStorage.getItem(CHAVE_VINCULO) ?? 'null') as Vinculo | null; return v && v.ate > Date.now() ? v : null; } catch { return null; } };
+const guardarVinculo = (v: Vinculo | null) => { try { if (v) localStorage.setItem(CHAVE_VINCULO, JSON.stringify(v)); else localStorage.removeItem(CHAVE_VINCULO); } catch { /* ignora */ } };
+const esperar = (ms: number) => new Promise<void>((ok) => { const t = setTimeout(ok, ms); document.addEventListener('visibilitychange', () => { clearTimeout(t); ok(); }, { once: true }); });
 const ehCelular = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 const CHAVE_LEMBRAR = 'sharon_lembrar_email';
@@ -168,18 +172,42 @@ export default function Login() {
     setLoading(false);
   }
 
-  // Volta do login do Google no app instalado (redirecionamento): conclui a entrada.
+  /** App instalado: espera o login do Google (feito no redirecionamento, às vezes em outra janela) e abre a sessão aqui. */
+  async function aguardarVinculo(v: Vinculo) {
+    setVia('google');
+    setLoading(true);
+    setSucesso('');
+    for (;;) {
+      if (Date.now() > v.ate) { guardarVinculo(null); throw new Error('O tempo para entrar com o Google acabou. Toque em Entrar com Google para tentar de novo.'); }
+      if (!lerVinculo()) { setLoading(false); return; } // cancelado
+      const r = await api<{ pronto: boolean }>('/auth/google/vinculo/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ codigo: v.codigo, segredo: v.segredo }) });
+      if (r.pronto) break;
+      await esperar(2000);
+    }
+    const pos = await exigirLocalizacao();
+    if (!pos) { guardarVinculo(null); return; }
+    setFase('login');
+    const { role } = await api<{ role: 'ADMIN' | 'ALUNO' }>('/auth/google/vinculo/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ codigo: v.codigo, segredo: v.segredo, lat: pos[0], lng: pos[1], lembrar: v.lembrar }) });
+    guardarVinculo(null);
+    concluir(role);
+  }
+
+  // Volta do Google (app instalado): conclui o vínculo; se esta janela não for a do app, avisa para voltar a ele.
   useEffect(() => {
-    let pend: string | null = null;
-    try { pend = sessionStorage.getItem(CHAVE_REDIRECT); } catch { /* sem armazenamento */ }
-    if (!pend) return;
-    try { sessionStorage.removeItem(CHAVE_REDIRECT); } catch { /* ignora */ }
-    const lembrarEscolha = !!(JSON.parse(pend) as { lembrar?: boolean }).lembrar;
+    const codigoUrl = new URLSearchParams(window.location.search).get('vinculo');
+    const local = lerVinculo();
+    if (!codigoUrl) { if (local) aguardarVinculo(local).catch((e) => erroGoogle(e)); return; }
     setVia('google');
     setLoading(true);
     tokenDoRedirecionamento()
-      .then((t) => (t ? finalizarGoogle(t, lembrarEscolha) : setLoading(false)))
-      .catch(erroGoogle);
+      .then(async (t) => {
+        window.history.replaceState(null, '', '/login');
+        if (!t) { if (local) await aguardarVinculo(local); else setLoading(false); return; }
+        await api('/auth/google/vinculo/concluir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ codigo: codigoUrl, idToken: t }) });
+        if (local && local.codigo === codigoUrl) await aguardarVinculo(local);
+        else { setLoading(false); setSucesso('Login com Google concluído. Feche esta janela (Concluído) e volte ao app para continuar.'); }
+      })
+      .catch((e) => erroGoogle(e));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -195,7 +223,9 @@ export default function Login() {
       // App instalado (tela cheia): a janela do Google não funciona; usa o redirecionamento, se o endereço já estiver liberado.
       if (appInstalado()) {
         if (await redirecionamentoPronto()) {
-          try { sessionStorage.setItem(CHAVE_REDIRECT, JSON.stringify({ lembrar })); } catch { /* ignora */ }
+          const v = await api<{ codigo: string; segredo: string }>('/auth/google/vinculo', { method: 'POST' });
+          guardarVinculo({ ...v, lembrar, ate: Date.now() + 10 * 60_000 });
+          window.history.replaceState(null, '', `/login?vinculo=${v.codigo}`); // o Google devolve para este endereço
           await iniciarGoogleRedirecionamento();
           return;
         }
