@@ -66,7 +66,7 @@ function baixar(a: Atendimento) {
   );
 }
 
-function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConfig: () => void }) {
+function Painel({ me, sair, recarregar }: { me: Me; sair: () => void; recarregar: () => void }) {
   const [menuUsuario, setMenuUsuario] = useState(false);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [menuMovel, setMenuMovel] = useState(false);
@@ -110,7 +110,10 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
     document.addEventListener('mousedown', fecha); document.addEventListener('keydown', esc);
     return () => { document.removeEventListener('mousedown', fecha); document.removeEventListener('keydown', esc); };
   }, [menuUsuario]);
-  const [vista, setVista] = useSecao<Vista>('/admin', SECOES, 'geral');
+  const [vista, setVistaBase] = useSecao<Vista>('/admin', SECOES, 'geral');
+  const [config, setConfig] = useState(false);
+  const setVista = (v: Vista) => { setConfig(false); setVistaBase(v); };
+  const abrirConfig = () => setConfig(true);
   const [fotosAba, setFotosAba] = useState<'todas' | 'meus'>('todas');
   const envios = useRef<MeusEnviosHandle>(null);
   const [totalEnvios, setTotalEnvios] = useState(0);
@@ -401,6 +404,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
 
       <main className={`relative isolate min-w-0 flex-1 overflow-x-clip bg-page px-3 py-5 sm:px-8 sm:py-6 lg:py-8 ${vista === 'fotos' ? 'pb-28 sm:pb-28 lg:pb-28' : ''}`}>
         <OndasDouradas />
+        {config ? <PerfilInicial modo="config" embutido me={me} sair={sair} recarregar={recarregar} /> : <>
         <Cab t={NAV.find((n) => n[0] === vista)![1]} s={vista === 'geral' ? 'Indicadores consolidados da operação de fotografias clínicas' : 'Gestão centralizada das fotografias clínicas'} />
 
         {vista === 'geral' && <VisaoGeral key={rk} recentes={lista} irPara={(v) => setVista(v)} abrir={(a) => setAberta({ a, i: 0 })} />}
@@ -499,6 +503,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
         {vista === 'alunos' && <ListaAlunos key={rk} cidades={cidades} />}
         {vista === 'pacientes' && <ListaPacientes key={rk} cidades={cidades} />}
         {vista === 'cidades' && <ListaCidades cidades={cidades} onVerFotos={(id) => irFotos({ cidade: String(id) })} />}
+        </>}
       </main>
 
       <div aria-live="polite" className="pointer-events-none fixed right-4 top-4 z-[90] flex w-[min(92vw,360px)] flex-col gap-2">
@@ -598,8 +603,6 @@ function DetalhesFoto({ a, i }: { a: Atendimento; i: number }) {
 
 export default function AdminPage() {
   const { me, sair, recarregar } = useSession('ADMIN');
-  const [config, setConfig] = useState(false);
   if (!me) return <PageLoader />;
-  if (config) return <PerfilInicial modo="config" me={me} sair={sair} recarregar={recarregar} onVoltar={() => setConfig(false)} />;
-  return <Painel me={me} sair={sair} abrirConfig={() => setConfig(true)} />;
+  return <Painel me={me} sair={sair} recarregar={recarregar} />;
 }

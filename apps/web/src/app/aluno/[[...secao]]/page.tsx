@@ -20,8 +20,11 @@ const MAX = 10;
 const MAX_BYTES = 10 * 1024 * 1024;
 const TIPOS = ['image/jpeg', 'image/png', 'image/webp'];
 
-function Envio({ me, sair, recarregar, abrirConfig }: { me: Me; sair: () => void; recarregar: () => void; abrirConfig: () => void }) {
-  const [aba, setAba] = useSecao<Aba>('/aluno', ABAS, 'inicio');
+function Envio({ me, sair, recarregar }: { me: Me; sair: () => void; recarregar: () => void }) {
+  const [aba, setAbaBase] = useSecao<Aba>('/aluno', ABAS, 'inicio');
+  const [config, setConfig] = useState(false);
+  const setAba = (k: Aba) => { setConfig(false); setAbaBase(k); };
+  const abrirConfig = () => setConfig(true);
   const envios = useRef<MeusEnviosHandle>(null);
   const [total, setTotal] = useState(0); // quantidade de envios, para o selo do Histórico
   const [menuMovel, setMenuMovel] = useState(false);
@@ -148,7 +151,7 @@ function Envio({ me, sair, recarregar, abrirConfig }: { me: Me; sair: () => void
           const ativo = k === 'novo' ? aba === 'inicio' : aba === k;
           return (
             <button key={k} type="button" aria-current={ativo ? 'page' : undefined}
-              onClick={() => { if (k === 'novo') { if (aba === 'inicio') envios.current?.abrirMenu(); else setAba('inicio'); } else setAba(k); }}
+              onClick={() => { if (k === 'novo') { if (aba === 'inicio' && !config) envios.current?.abrirMenu(); else setAba('inicio'); } else setAba(k); }}
               className={`relative z-10 flex flex-col items-center gap-0.5 rounded-xl py-1.5 transition-colors duration-300 text-[0.7rem] font-semibold lg:flex-row lg:justify-center lg:gap-2 lg:py-2 lg:text-[0.82rem] ${ativo ? 'text-white' : 'text-ink/70'}`}
               >
               <span className="relative"><Icon size={20} strokeWidth={1.7} />{k === 'historico' && total > 0 && <span className="absolute -right-3.5 -top-2 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#b3261e] px-1 text-[0.62rem] font-bold leading-none text-white ring-2 ring-white">{total > 99 ? '99+' : total}</span>}</span>{l}
@@ -159,6 +162,7 @@ function Envio({ me, sair, recarregar, abrirConfig }: { me: Me; sair: () => void
       </nav>
 
       <main className="order-3 mx-auto flex min-h-0 w-full max-w-[1120px] flex-1 flex-col gap-3 px-3 py-3 lg:mx-0 lg:max-w-none lg:gap-5 lg:overflow-y-auto lg:px-8 lg:py-8">
+        {config ? <PerfilInicial modo="config" embutido me={me} sair={sair} recarregar={recarregar} /> : <>
         <div className="hidden shrink-0 lg:block">
           <Titulo nivel={1} icone={GraduationCap}>Olá, {primeiro}</Titulo>
           <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 pl-[60px] text-[0.88rem] text-ink/65">
@@ -168,6 +172,7 @@ function Envio({ me, sair, recarregar, abrirConfig }: { me: Me; sair: () => void
           </p>
         </div>
         <MeusEnvios ref={envios} modo={aba === 'inicio' ? 'recentes' : 'historico'} onTotal={setTotal} onVerTodos={() => setAba('historico')} />
+        </>}
       </main>
     </div>
   );
@@ -175,9 +180,7 @@ function Envio({ me, sair, recarregar, abrirConfig }: { me: Me; sair: () => void
 
 export default function AlunoPage() {
   const { me, sair, recarregar } = useSession('ALUNO');
-  const [config, setConfig] = useState(false);
   if (!me) return <PageLoader />;
   if (me.primeiro_acesso) return <PerfilInicial me={me} sair={sair} recarregar={recarregar} />;
-  if (config) return <PerfilInicial modo="config" me={me} sair={sair} recarregar={recarregar} onVoltar={() => setConfig(false)} />;
-  return <Envio me={me} sair={sair} recarregar={recarregar} abrirConfig={() => setConfig(true)} />;
+  return <Envio me={me} sair={sair} recarregar={recarregar} />;
 }

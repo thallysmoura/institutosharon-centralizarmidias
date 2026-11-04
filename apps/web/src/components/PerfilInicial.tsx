@@ -14,7 +14,7 @@ import AlterarSenha from './AlterarSenha';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,24}$/;
 
 /** Primeiro acesso do aluno: mostra os dados do perfil (foto do Google, e-mail, cidade) e exige a matrícula antes de liberar o envio de mídias. */
-export default function PerfilInicial({ me, sair, recarregar, modo = 'primeiro', onVoltar }: { me: Me; sair: () => void; recarregar: () => Promise<unknown> | void; modo?: 'primeiro' | 'config'; onVoltar?: () => void }) {
+export default function PerfilInicial({ me, sair, recarregar, modo = 'primeiro', onVoltar, embutido = false }: { me: Me; sair: () => void; recarregar: () => Promise<unknown> | void; modo?: 'primeiro' | 'config'; onVoltar?: () => void; embutido?: boolean }) {
   const config = modo === 'config';
   const [salvo, setSalvo] = useState(false);
   const [nome, setNome] = useState(me.nome.replace(/ \(.*\)$/, ''));
@@ -105,9 +105,10 @@ const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/
     </div>
   );
 
+  const Raiz = embutido ? 'div' : 'main';
   return (
-    <main className="relative isolate flex min-h-dvh flex-col items-center overflow-hidden bg-[#fbf6ea] px-5 pb-8 pt-[clamp(1.8rem,6vw,3.2rem)]">
-      <svg aria-hidden className="pointer-events-none absolute inset-0 -z-10 h-full w-full md:hidden" viewBox="0 0 1024 1536" preserveAspectRatio="xMidYMid slice">
+    <Raiz className={embutido ? 'relative mx-auto flex w-full flex-col items-center pb-4 pt-1' : 'relative isolate flex min-h-dvh flex-col items-center overflow-hidden bg-[#fbf6ea] px-5 pb-8 pt-[clamp(1.8rem,6vw,3.2rem)]'}>
+      {!embutido && <svg aria-hidden className="pointer-events-none absolute inset-0 -z-10 h-full w-full md:hidden" viewBox="0 0 1024 1536" preserveAspectRatio="xMidYMid slice">
         <defs>
           <linearGradient id="p1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#e6bf62" /><stop offset=".6" stopColor="#f1d890" stopOpacity=".75" /><stop offset="1" stopColor="#f7e7b9" stopOpacity=".2" /></linearGradient>
           <linearGradient id="p2" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#f8ecc6" stopOpacity=".1" /><stop offset=".6" stopColor="#dfb85a" stopOpacity=".7" /><stop offset="1" stopColor="#c8962b" stopOpacity=".85" /></linearGradient>
@@ -118,8 +119,8 @@ const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/
         <path d="M1024 1010C930 1110 840 1230 760 1380" fill="none" stroke="#e1bd63" strokeOpacity=".45" strokeWidth="2" />
         <path d="M1024 1180C900 1290 780 1420 690 1536H1024Z" fill="url(#p2)" opacity=".55" />
         <path d="M1024 1330C940 1400 850 1470 800 1536H1024Z" fill="url(#p2)" />
-      </svg>
-      <svg aria-hidden className="pointer-events-none absolute inset-0 -z-10 hidden h-full w-full md:block" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+      </svg>}
+      {!embutido && <svg aria-hidden className="pointer-events-none absolute inset-0 -z-10 hidden h-full w-full md:block" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
         <defs>
           <linearGradient id="d1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#e6bf62" /><stop offset=".6" stopColor="#f1d890" stopOpacity=".7" /><stop offset="1" stopColor="#f7e7b9" stopOpacity=".15" /></linearGradient>
           <linearGradient id="d2" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#f8ecc6" stopOpacity=".1" /><stop offset=".6" stopColor="#dfb85a" stopOpacity=".7" /><stop offset="1" stopColor="#c8962b" stopOpacity=".85" /></linearGradient>
@@ -133,11 +134,11 @@ const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/
         <path d="M1600 700C1470 780 1330 850 1250 900H1600Z" fill="url(#d2)" />
         <path d="M1600 380C1440 520 1290 660 1190 900" fill="none" stroke="#e1bd63" strokeOpacity=".5" strokeWidth="2" />
         <path d="M1600 240C1500 360 1400 480 1320 620" fill="none" stroke="#e1bd63" strokeOpacity=".35" strokeWidth="1.5" />
-      </svg>
+      </svg>}
 
-      <div className="rise"><Logo style={{ fontSize: 'clamp(17px,5.6vw,28px)' }} /></div>
+      {!embutido && <div className="rise"><Logo style={{ fontSize: 'clamp(17px,5.6vw,28px)' }} /></div>}
 
-      <section className="rise relative z-10 mt-[clamp(1.4rem,4vw,2.2rem)] w-full max-w-[460px] rounded-[2em] border border-white/80 p-[1.4em] pt-[1.7em] text-[16px] shadow-[0_2em_4.5em_-2.2em_rgba(120,80,20,.28),0_.2em_.7em_rgba(120,80,20,.06)] backdrop-blur-sm sm:max-w-[520px] sm:rounded-[2.2em] sm:p-[2.4em] sm:text-[17px]" style={{ background: 'linear-gradient(180deg,rgba(255,254,250,.96),rgba(252,248,240,.93))', '--d': '80ms' } as React.CSSProperties}>
+      <section className={`rise relative z-10 ${embutido ? '' : 'mt-[clamp(1.4rem,4vw,2.2rem)]'} w-full max-w-[460px] rounded-[2em] border border-white/80 p-[1.4em] pt-[1.7em] text-[16px] shadow-[0_2em_4.5em_-2.2em_rgba(120,80,20,.28),0_.2em_.7em_rgba(120,80,20,.06)] backdrop-blur-sm sm:max-w-[520px] sm:rounded-[2.2em] sm:p-[2.4em] sm:text-[17px]`} style={{ background: 'linear-gradient(180deg,rgba(255,254,250,.96),rgba(252,248,240,.93))', '--d': '80ms' } as React.CSSProperties}>
         {!config && <span aria-hidden className="grow-bar block h-[0.3em] w-[3.4em] rounded-full" style={{ background: 'linear-gradient(90deg,#d9a936,#b3801f)' }} />}
         <h1 className={`rise font-sans ${config ? '' : 'mt-[0.7em]'} text-[2.1em] font-bold leading-[1.05] tracking-[-0.02em] text-[#33240F]`} style={{ '--d': '120ms' } as React.CSSProperties}>{config ? 'Configurações' : 'Primeiro acesso'}</h1>
         <p className="rise mt-[0.35em] text-[0.95em] leading-snug text-[#5a5048]" style={{ '--d': '180ms' } as React.CSSProperties}>{config ? 'Edite os seus dados sempre que precisar.' : 'Complete seus dados para continuar.'}</p>
@@ -210,9 +211,9 @@ const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/
           )}
         </form>
         {config && <AlterarSenha me={me} />}
-        {config ? (
+        {config ? (embutido ? null : (
           <button type="button" onClick={onVoltar} className="mx-auto mt-[1em] flex items-center gap-1.5 text-[0.88em] font-medium text-[#4f453b] underline underline-offset-2"><ArrowLeft size="1.1em" />Voltar</button>
-        ) : (
+        )) : (
           <button type="button" onClick={sair} style={{ '--d': '520ms' } as React.CSSProperties} className="rise mx-auto mt-[1em] flex items-center gap-1.5 text-[0.88em] font-medium text-[#4f453b] underline underline-offset-2"><LogOut size="1.1em" />Sair</button>
         )}
       </section>
@@ -224,6 +225,6 @@ const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/
           onConfirmar={async (pin) => { await api('/perfil/email/confirmar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) }); await emailConfirmado(); }}
         />
       )}
-    </main>
+    </Raiz>
   );
 }
