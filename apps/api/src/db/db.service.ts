@@ -84,6 +84,7 @@ ALTER TABLE sistema.fotos ADD COLUMN IF NOT EXISTS width INT;
 ALTER TABLE sistema.fotos ADD COLUMN IF NOT EXISTS height INT;
 CREATE TABLE IF NOT EXISTS sistema.r2_uso (mes TEXT PRIMARY KEY, classe_a INT NOT NULL DEFAULT 0, classe_b INT NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS atend_aluno_idx ON sistema.atendimentos (aluno_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS atend_paciente_idx ON sistema.atendimentos (lower(identificador_paciente));
 CREATE INDEX IF NOT EXISTS atend_recentes_idx ON sistema.atendimentos (created_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS atend_cidade_idx ON sistema.atendimentos (cidade_id, created_at DESC);
 CREATE TABLE IF NOT EXISTS sistema.fotos (

@@ -257,11 +257,30 @@ export class AdminController {
     return { itens: r.map(({ total: _t, ...x }) => x), total, porPagina: POR };
   }
 
+  /** Pacientes: busca (código/nome), cidade e ordem no servidor, paginado (20 por página), com as fotos mais recentes de cada um como prévia. */
   @Get('pacientes')
-  async pacientes() {
-    return (await this.db.query(
-      'SELECT min(a.identificador_paciente) AS identificador, count(DISTINCT a.aluno_id)::int AS alunos, count(f.id)::int AS fotos, max(a.created_at) AS ultima FROM sistema.atendimentos a LEFT JOIN sistema.fotos f ON f.atendimento_id=a.id GROUP BY lower(a.identificador_paciente) ORDER BY max(a.created_at) DESC LIMIT 500',
-    )).rows;
+  async pacientes(@Query('q') q = '', @Query('cidade') cidade = '', @Query('ordem') ordem = 'recentes', @Query('pagina') pagina = '0') {
+    const POR = 20;
+    const p: unknown[] = [];
+    const w: string[] = [];
+    const t = q.trim().slice(0, 80);
+    if (t) { p.push(`%${t.replace(/[\\%_]/g, (c) => `\\${c}`)}%`); w.push(`a.identificador_paciente ILIKE $${p.length}`); }
+    if (/^\d+$/.test(cidade)) { p.push(Number(cidade)); w.push(`a.cidade_id = $${p.length}`); }
+    const ord = ordem === 'fotos' ? 'fotos DESC, ultima DESC' : ordem === 'atendimentos' ? 'atendimentos DESC, ultima DESC' : ordem === 'nome' ? 'chave' : 'ultima DESC';
+    const pg = Math.max(0, Math.min(100000, parseInt(pagina, 10) || 0));
+    const r = (await this.db.query(
+      `WITH pag AS (
+         SELECT lower(a.identificador_paciente) AS chave, min(a.identificador_paciente) AS identificador, count(DISTINCT a.id)::int AS atendimentos,
+                count(DISTINCT a.aluno_id)::int AS alunos, count(f.id)::int AS fotos, max(a.created_at) AS ultima, count(*) OVER()::int AS total
+           FROM sistema.atendimentos a LEFT JOIN sistema.fotos f ON f.atendimento_id=a.id AND f.oculta_em IS NULL
+          ${w.length ? 'WHERE ' + w.join(' AND ') : ''} GROUP BY lower(a.identificador_paciente) ORDER BY ${ord} LIMIT ${POR} OFFSET ${pg * POR})
+       SELECT pag.*, COALESCE((SELECT json_agg(x) FROM (SELECT f.id FROM sistema.fotos f JOIN sistema.atendimentos a ON a.id=f.atendimento_id
+                WHERE lower(a.identificador_paciente)=pag.chave AND f.oculta_em IS NULL ${w.length > 1 || (w.length === 1 && cidade) ? (cidade && /^\d+$/.test(cidade) ? `AND a.cidade_id = $${p.length}` : '') : ''}
+                ORDER BY f.created_at DESC, f.id DESC LIMIT 8) x), '[]') AS previas
+         FROM pag ORDER BY ${ord}`, p)).rows;
+    let total = r[0]?.total ?? 0;
+    if (!r.length && pg > 0) total = (await this.db.query(`SELECT count(DISTINCT lower(a.identificador_paciente))::int AS n FROM sistema.atendimentos a ${w.length ? 'WHERE ' + w.join(' AND ') : ''}`, p)).rows[0].n;
+    return { itens: r.map(({ total: _t, chave: _c, ...x }) => x), total, porPagina: POR };
   }
 
   /** Canal de tempo real (SSE) do painel: avisa quando chegam novos envios. */
@@ -312,7 +331,7 @@ export class AdminController {
   }
 
   @Get('atendimentos')
-  async listar(@Query('ids') ids?: string, @Query('cidade') cidade?: string, @Query('aluno') aluno?: string, @Query('aluno_id') alunoId?: string, @Query('de') de?: string, @Query('ate') ate?: string, @Query('q') q?: string, @Query('cursor') cursor?: string, @Query('limite') limite?: string) {
+  async listar(@Query('ids') ids?: string, @Query('cidade') cidade?: string, @Query('aluno') aluno?: string, @Query('aluno_id') alunoId?: string, @Query('de') de?: string, @Query('ate') ate?: string, @Query('q') q?: string, @Query('cursor') cursor?: string, @Query('limite') limite?: string, @Query('paciente') paciente?: string) {
     const w: string[] = [];
     const p: unknown[] = [];
     const add = (sql: string, v: unknown) => { p.push(v); w.push(sql.replace('?', `$${p.length}`)); };
@@ -323,6 +342,7 @@ export class AdminController {
     if (de && /^\d{4}-\d{2}-\d{2}$/.test(de)) add('a.created_at >= ?::date', de);
     if (ate && /^\d{4}-\d{2}-\d{2}$/.test(ate)) add("a.created_at < (?::date + interval '1 day')", ate);
     if (q?.trim()) add('a.identificador_paciente ILIKE ?', `%${q.trim()}%`);
+    if (paciente?.trim()) add('lower(a.identificador_paciente) = lower(?)', paciente.trim());
     const m = cursor && /^(\d{4}-\d{2}-\d{2}T[\d:.]+Z)_(\d+)$/.exec(cursor);
     if (m) { p.push(m[1], Number(m[2])); w.push(`(a.created_at, a.id) < ($${p.length - 1}::timestamptz, $${p.length}::int)`); }
     const n = Math.min(Math.max(parseInt(limite ?? '', 10) || 30, 1), 60);

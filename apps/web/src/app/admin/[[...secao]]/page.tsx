@@ -16,6 +16,7 @@ import MostrarMais, { PASSO } from '@/components/MostrarMais';
 import CartaoAluno, { FotoPerfil } from '@/components/CartaoAluno';
 import BuscaAluno from '@/components/BuscaAluno';
 import ListaAlunos from '@/components/ListaAlunos';
+import ListaPacientes from '@/components/ListaPacientes';
 import ListaCidades, { CidadeInfo } from '@/components/ListaCidades';
 import Avatar from '@/components/Avatar';
 import PerfilInicial from '@/components/PerfilInicial';
@@ -29,7 +30,6 @@ type Vista = 'geral' | 'fotos' | 'alunos' | 'pacientes' | 'cidades' | 'armazenam
 type Excl = { id: number; atendimento_id: number; oculta_em: string; identificador_paciente: string; cidade: string; aluno: { id: number; nome: string; matricula: string | null } };
 type Resumo = { fotos: number; pacientes: number; alunos: number; cidades: number; pendentes: number; ocultas?: number };
 type Cidade = CidadeInfo;
-type Paciente = { identificador: string; alunos: number; fotos: number; ultima: string };
 type Filtros = { cidade: string; aluno_id: string; q: string; de: string; ate: string };
 const VAZIO: Filtros = { cidade: '', aluno_id: '', q: '', de: '', ate: '' };
 
@@ -116,7 +116,6 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
   const [carregandoMais, setCarregandoMais] = useState(false);
   const maisBusy = useRef(false);
   const [cartao, setCartao] = useState<{ a: Atendimento; rect: DOMRect } | null>(null);
-  const [nPac, setNPac] = useState(PASSO);
   const [nExcl, setNExcl] = useState(PASSO);
   const sentinela = useRef<HTMLDivElement>(null);
   const [rk, setRk] = useState(0);
@@ -126,7 +125,6 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
   const [resumo, setResumo] = useState<Resumo>();
   const [cidades, setCidades] = useState<Cidade[]>([]);
   const [rotAluno, setRotAluno] = useState<string | undefined>(); // nome do aluno filtrado (vindo da lista de alunos ou do cartão)
-  const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [lista, setLista] = useState<Atendimento[]>([]);
   const [loading, setLoading] = useState(true);
   const [aberta, setAberta] = useState<{ a: Atendimento; i: number } | null>(null);
@@ -144,7 +142,6 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
   useEffect(() => {
     api<Resumo>('/admin/resumo').then(setResumo).catch(() => null);
     api<Cidade[]>('/admin/cidades').then(setCidades).catch(() => null);
-    api<Paciente[]>('/admin/pacientes').then(setPacientes).catch(() => null);
   }, []);
 
   const buscar = useCallback(async (filtros: Filtros) => {
@@ -287,7 +284,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
           <BuscaAluno valor={f.aluno_id} rotuloExterno={f.aluno_id ? rotAluno : undefined} onChange={(id) => setF((x) => ({ ...x, aluno_id: id }))} />
         </div>
         <label className="text-[0.78rem] font-semibold text-ink/70">Paciente
-          <select value={f.q} onChange={set('q')} className="field-plain mt-1"><option value="">Todos</option>{pacientes.map((p) => <option key={p.identificador} value={p.identificador}>{p.identificador}</option>)}</select>
+          <input value={f.q} onChange={set('q')} placeholder="Código ou nome do paciente" className="field-plain mt-1" />
         </label>
         <div className="text-[0.78rem] font-semibold text-ink/70">Período
           <div className="mt-1 flex items-center gap-1.5">
@@ -306,7 +303,6 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
     setRk((n) => n + 1);
     atualizarResumo();
     api<Cidade[]>('/admin/cidades').then(setCidades).catch(() => null);
-    api<Paciente[]>('/admin/pacientes').then(setPacientes).catch(() => null);
     carregarExcl();
     Promise.resolve(buscar(f)).finally(() => setTimeout(() => setAtualizando(false), 500));
   }
@@ -500,17 +496,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
         )}
 
         {vista === 'alunos' && <ListaAlunos key={rk} cidades={cidades} />}
-        {vista === 'pacientes' && (
-          <ul className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {pacientes.slice(0, nPac).map((p) => (
-              <li key={p.identificador}><button type="button" onClick={() => irFotos({ q: p.identificador })} className="card w-full p-4 text-left transition hover:border-gold-500">
-                <p className="font-bold">{p.identificador}</p><p className="text-[0.82rem] text-ink/60">Último envio: {fmtDia(p.ultima)}</p>
-                <p className="mt-2 text-[0.82rem] text-gold-700">{p.fotos} foto(s) · {p.alunos} aluno(s)</p>
-              </button></li>
-            ))}
-          <li className="sm:col-span-2 xl:col-span-3"><MostrarMais temMais={pacientes.length > nPac} onClick={() => setNPac((n) => n + PASSO)} /></li>
-          </ul>
-        )}
+        {vista === 'pacientes' && <ListaPacientes key={rk} cidades={cidades} />}
         {vista === 'cidades' && <ListaCidades cidades={cidades} onVerFotos={(id) => irFotos({ cidade: String(id) })} />}
       </main>
 
