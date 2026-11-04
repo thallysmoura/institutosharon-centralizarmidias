@@ -1,5 +1,5 @@
 'use client';
-import { FormEvent, useRef, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import IconeCpf from '@/components/IconeCpf';
 import { cpfValido, mascaraCpf, soDigitos } from '@/lib/cpf';
 import { ArrowLeft, ArrowRight, Check, CircleAlert, GraduationCap, LogOut, Mail, MapPin, Pencil, User } from 'lucide-react';
@@ -12,6 +12,21 @@ import Spinner from './Spinner';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,24}$/;
 
 /** Primeiro acesso do aluno: mostra os dados do perfil (foto do Google, e-mail, cidade) e exige a matrícula antes de liberar o envio de mídias. */
+/** Mensagem de erro de um campo: aparece suavemente, fica alguns segundos e some com fade. Reaparece quando `texto` ou `chave` mudam. */
+function MsgErro({ texto, chave, onSumir }: { texto?: string; chave?: string; onSumir?: () => void }) {
+  const [fase, setFase] = useState<'visivel' | 'saindo' | 'oculto'>('visivel');
+  useEffect(() => {
+    if (!texto) return;
+    setFase('visivel');
+    const a = setTimeout(() => setFase('saindo'), 4200);
+    const b = setTimeout(() => { setFase('oculto'); onSumir?.(); }, 4800);
+    return () => { clearTimeout(a); clearTimeout(b); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [texto, chave]);
+  if (!texto || fase === 'oculto') return null;
+  return <p role="alert" className={`${fase === 'saindo' ? 'opacity-0' : 'fade-in'} mt-1.5 px-[1.2em] text-[0.76em] font-medium leading-snug text-[#b3261e] transition-opacity duration-500`}>{texto}</p>;
+}
+
 export default function PerfilInicial({ me, sair, recarregar, modo = 'primeiro', onVoltar }: { me: Me; sair: () => void; recarregar: () => Promise<unknown> | void; modo?: 'primeiro' | 'config'; onVoltar?: () => void }) {
   const config = modo === 'config';
   const [salvo, setSalvo] = useState(false);
@@ -20,6 +35,9 @@ export default function PerfilInicial({ me, sair, recarregar, modo = 'primeiro',
   const [cpf, setCpf] = useState(me.cpf ? mascaraCpf(me.cpf) : '');
   const cpfEstado = soDigitos(cpf).length === 11 ? (cpfValido(cpf) ? 'ok' : 'erro') : null; // verificação ao vivo
   const [erro, setErro] = useState('');
+  const [errosCampo, setErrosCampo] = useState<Record<string, string>>({});
+  const falha = (campo: string, msg: string) => { setErro(''); setErrosCampo({ [campo]: msg }); };
+  const limpar = (campo: string) => setErrosCampo((x) => { if (!x[campo]) return x; const r = { ...x }; delete r[campo]; return r; });
   const [busy, setBusy] = useState(false);
   const [editEmail, setEditEmail] = useState(false);
   const [novoEmail, setNovoEmail] = useState('');
@@ -33,12 +51,13 @@ export default function PerfilInicial({ me, sair, recarregar, modo = 'primeiro',
     e.preventDefault();
     const m = matricula.trim();
     const n = nome.trim().replace(/\s+/g, ' ');
-    if (n.length < 2 || !/^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ' .()-]*$/.test(n)) return setErro('Informe o seu nome completo, apenas com letras.');
-    if (!m) return setErro('Informe a sua matrícula.');
-    if (m.length < 3) return setErro('A matrícula deve ter ao menos 3 caracteres.');
-    if (!/^[A-Za-z0-9._\-/]+$/.test(m)) return setErro('Use apenas letras, números e - . _ /');
-    if (!cpfValido(cpf)) return setErro('Informe um CPF válido.');
+    if (n.length < 2 || !/^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ' .()-]*$/.test(n)) return falha('nome', 'Informe o seu nome completo, apenas com letras.');
+    if (!m) return falha('matricula', 'Informe a sua matrícula.');
+    if (m.length < 3) return falha('matricula', 'A matrícula deve ter ao menos 3 caracteres.');
+    if (!/^[A-Za-z0-9._\-/]+$/.test(m)) return falha('matricula', 'Use apenas letras, números e - . _ /');
+    if (!cpfValido(cpf)) return falha('cpf', 'Informe um CPF válido');
     setErro('');
+    setErrosCampo({});
     setBusy(true);
     try {
       await api('/perfil', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matricula: m, nome: n, cpf: soDigitos(cpf) }) });
@@ -49,7 +68,8 @@ export default function PerfilInicial({ me, sair, recarregar, modo = 'primeiro',
         setTimeout(() => setSalvo(false), 3500);
       }
     } catch (err) {
-      setErro((err as Error).message);
+      const m = (err as Error).message;
+      if (/cpf/i.test(m)) falha('cpf', m); else if (/matr[ií]cula/i.test(m)) falha('matricula', m); else { setErrosCampo({}); setErro(m); }
       setBusy(false);
     }
   }
@@ -140,14 +160,15 @@ const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/
         </div>
 
         <div className="mt-[1.1em] space-y-[0.7em]">
-          <label htmlFor="nome" className={`${PILULA} lift rise cursor-text py-[0.6em] transition focus-within:border-[#c9a24a] focus-within:ring-4 focus-within:ring-[#c9a24a]/15`} style={{ '--d': '240ms' } as React.CSSProperties}>
+          <label htmlFor="nome" className={`${PILULA} lift rise cursor-text py-[0.6em] transition focus-within:border-[#c9a24a] focus-within:ring-4 focus-within:ring-[#c9a24a]/15 ${errosCampo.nome ? '!border-[#d9534f]' : ''}`} style={{ '--d': '240ms' } as React.CSSProperties}>
             <User size="1.3em" strokeWidth={1.7} className="shrink-0 text-[#b8902f]" aria-hidden />
             <div className="min-w-0 flex-1 leading-tight">
               <p className="text-[0.68em] font-semibold uppercase tracking-[0.14em] text-[#8a7a62]">Nome completo</p>
-              <input id="nome" value={nome} onChange={(e) => { setNome(e.target.value); setErro(''); }} onBlur={() => setNome((x) => x.trim().replace(/\s+/g, ' '))} maxLength={100} autoComplete="name" className="w-full bg-transparent text-[1em] font-medium text-[#33240F] outline-none" />
+              <input id="nome" value={nome} onChange={(e) => { setNome(e.target.value); limpar('nome'); }} onBlur={() => setNome((x) => x.trim().replace(/\s+/g, ' '))} maxLength={100} autoComplete="name" className="w-full bg-transparent text-[1em] font-medium text-[#33240F] outline-none" />
             </div>
             <Pencil size="1.05em" className="shrink-0 text-[#b8902f]/70" aria-hidden />
           </label>
+          <MsgErro texto={errosCampo.nome} onSumir={() => limpar('nome')} />
           {!editEmail ? (
             campo(Mail, 'E-mail', me.email, okEmail ? 'E-mail confirmado com sucesso.' : undefined,
               <button type="button" onClick={() => { setNovoEmail(me.email); setEditEmail(true); setOkEmail(false); }} aria-label="Alterar e-mail" className="flex shrink-0 items-center gap-1.5 border-l border-[#e4d9c5] pl-[0.9em] text-[0.85em] font-semibold text-[#a9771a] hover:underline"><Pencil size="1.1em" />Alterar</button>, 300)
@@ -174,25 +195,25 @@ const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/
         </div>
 
         <form onSubmit={salvar} noValidate className="rise mt-[0.7em]" style={{ '--d': '420ms' } as React.CSSProperties}>
-          <label htmlFor="matricula" className={`${PILULA} cursor-text py-[0.6em] transition focus-within:border-[#c9a24a] focus-within:ring-4 focus-within:ring-[#c9a24a]/15 ${erro || (config && !matricula.trim()) ? '!border-[#d9534f] focus-within:!ring-[#d9534f]/20' : ''}`}>
+          <label htmlFor="matricula" className={`${PILULA} cursor-text py-[0.6em] transition focus-within:border-[#c9a24a] focus-within:ring-4 focus-within:ring-[#c9a24a]/15 ${errosCampo.matricula || (config && !matricula.trim()) ? '!border-[#d9534f] focus-within:!ring-[#d9534f]/20' : ''}`}>
             <GraduationCap size="1.3em" strokeWidth={1.7} className="shrink-0 text-[#b8902f]" aria-hidden />
             <div className="min-w-0 flex-1 leading-tight">
               <p className="text-[0.68em] font-semibold uppercase tracking-[0.14em] text-[#8a7a62]">Matrícula</p>
-              <input id="matricula" ref={matRef} value={matricula} onChange={(e) => { setMatricula(e.target.value); setErro(''); }} maxLength={30} autoComplete="off" aria-invalid={!!erro} className="w-full bg-transparent text-[1em] font-medium text-[#33240F] outline-none" />
+              <input id="matricula" ref={matRef} value={matricula} onChange={(e) => { setMatricula(e.target.value); limpar('matricula'); }} maxLength={30} autoComplete="off" aria-invalid={!!erro} className="w-full bg-transparent text-[1em] font-medium text-[#33240F] outline-none" />
             </div>
           </label>
-          <label htmlFor="cpf" className={`${PILULA} mt-[0.7em] cursor-text py-[0.6em] transition focus-within:border-[#c9a24a] focus-within:ring-4 focus-within:ring-[#c9a24a]/15 ${cpfEstado === 'erro' ? '!border-[#d9534f] !bg-[#fff6f5]' : cpfEstado === 'ok' ? '!border-[#3aa56b]' : ''}`}>
+          <MsgErro texto={errosCampo.matricula} onSumir={() => limpar('matricula')} />
+          <label htmlFor="cpf" className={`${PILULA} mt-[0.7em] cursor-text py-[0.6em] transition focus-within:border-[#c9a24a] focus-within:ring-4 focus-within:ring-[#c9a24a]/15 ${errosCampo.cpf || cpfEstado === 'erro' ? '!border-[#d9534f] !bg-[#fff6f5]' : cpfEstado === 'ok' ? '!border-[#3aa56b]' : ''}`}>
             <IconeCpf size="1.3em" strokeWidth={1.7} className="shrink-0 text-[#b8902f]" aria-hidden />
             <div className="min-w-0 flex-1 leading-tight">
               <p className="text-[0.68em] font-semibold uppercase tracking-[0.14em] text-[#8a7a62]">CPF</p>
-              <input id="cpf" inputMode="numeric" value={cpf} onChange={(e) => { setCpf(mascaraCpf(e.target.value)); setErro(''); }} maxLength={14} autoComplete="off" placeholder="000.000.000-00" className="w-full bg-transparent text-[1em] font-medium text-[#33240F] outline-none placeholder:text-[#33240F]/30" />
+              <input id="cpf" inputMode="numeric" value={cpf} onChange={(e) => { setCpf(mascaraCpf(e.target.value)); limpar('cpf'); }} maxLength={14} autoComplete="off" placeholder="000.000.000-00" className="w-full bg-transparent text-[1em] font-medium text-[#33240F] outline-none placeholder:text-[#33240F]/30" />
             </div>
             {cpfEstado === 'ok' && <Check size="1.3em" className="shrink-0 text-[#22a35a]" aria-label="CPF válido" />}
             {cpfEstado === 'erro' && <CircleAlert size="1.3em" className="shrink-0 text-[#d9534f]" aria-label="CPF inválido" />}
           </label>
-          {cpfEstado === 'erro' && <p role="alert" className="mt-1.5 px-[1.2em] text-[0.74em] font-medium text-[#b3261e]">Informe um CPF válido</p>}
-          {cpfEstado === 'ok' && <p className="mt-1.5 px-[1.2em] text-[0.74em] font-medium text-[#17794a]">CPF válido</p>}
-          {erro && <p role="alert" className="mt-1.5 text-[0.82em] font-medium text-[#b3261e]">{erro}</p>}
+          <MsgErro texto={errosCampo.cpf ?? (cpfEstado === 'erro' ? 'Informe um CPF válido' : undefined)} chave={cpf} onSumir={() => limpar('cpf')} />
+          <MsgErro texto={erro} onSumir={() => setErro('')} />
           {salvo && <p role="status" className="pop mt-2 flex items-center gap-1.5 rounded-xl bg-[#e7f6ee] px-3 py-2 text-[0.85em] font-medium text-[#17794a]"><Check size="1.1em" />Dados salvos com sucesso.</p>}
           {(!config || pronto || busy) && (
             <button type="submit" disabled={busy || !pronto} className="fade-in mt-[1.3em] flex h-[3.2em] w-full items-center justify-center gap-[0.6em] rounded-[0.85em] text-[1.05em] font-semibold text-white active:scale-[.985] transition-all duration-300 disabled:cursor-not-allowed" style={pronto || busy ? (config ? { background: 'linear-gradient(180deg,#3bb273 0%,#25995c 55%,#1b7a48 100%)', boxShadow: '0 0.55em 1.1em -0.5em rgba(27,122,72,.6)' } : { background: 'linear-gradient(180deg,#dcae3c 0%,#bf8a22 55%,#9e6f15 100%)', boxShadow: '0 0.55em 1.1em -0.5em rgba(150,100,10,.65)' }) : { background: '#d9d6d0', color: '#8d877d', boxShadow: 'none' }}>
