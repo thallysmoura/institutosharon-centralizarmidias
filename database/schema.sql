@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict rg4BlFgKnTDZhinqyQq4BVuMURhaqPHUGpCmDmJ03Q7n11m4Ryw8Omh559y7u8e
+\restrict 61L4Pek5WqMchVkbSoo416Yb7cnpCdTPz4DFOmN076OB28QrFda9KuhddlfHwki
 
 -- Dumped from database version 16.15
 -- Dumped by pg_dump version 16.15
@@ -246,7 +246,10 @@ CREATE TABLE sistema.fotos (
     oculta_por integer,
     dispositivo text,
     so text,
-    navegador text
+    navegador text,
+    tipo text DEFAULT 'foto'::text NOT NULL,
+    duracao real,
+    mime text
 );
 
 
@@ -665,6 +668,27 @@ CREATE INDEX atend_aluno_idx ON sistema.atendimentos USING btree (aluno_id, crea
 
 
 --
+-- Name: atend_cidade_idx; Type: INDEX; Schema: sistema; Owner: -
+--
+
+CREATE INDEX atend_cidade_idx ON sistema.atendimentos USING btree (cidade_id, created_at DESC);
+
+
+--
+-- Name: atend_paciente_idx; Type: INDEX; Schema: sistema; Owner: -
+--
+
+CREATE INDEX atend_paciente_idx ON sistema.atendimentos USING btree (lower(identificador_paciente));
+
+
+--
+-- Name: atend_recentes_idx; Type: INDEX; Schema: sistema; Owner: -
+--
+
+CREATE INDEX atend_recentes_idx ON sistema.atendimentos USING btree (created_at DESC, id DESC);
+
+
+--
 -- Name: auditoria_acao_idx; Type: INDEX; Schema: sistema; Owner: -
 --
 
@@ -707,6 +731,13 @@ CREATE INDEX avisos_created_idx ON sistema.avisos USING btree (created_at DESC);
 
 
 --
+-- Name: fotos_atend_idx; Type: INDEX; Schema: sistema; Owner: -
+--
+
+CREATE INDEX fotos_atend_idx ON sistema.fotos USING btree (atendimento_id);
+
+
+--
 -- Name: fotos_oculta_idx; Type: INDEX; Schema: sistema; Owner: -
 --
 
@@ -746,6 +777,20 @@ CREATE UNIQUE INDEX users_email_uq ON sistema.users USING btree (lower(email));
 --
 
 CREATE UNIQUE INDEX users_matricula_uq ON sistema.users USING btree (lower(matricula)) WHERE ((matricula IS NOT NULL) AND (matricula <> ''::text));
+
+
+--
+-- Name: users_role_criado_idx; Type: INDEX; Schema: sistema; Owner: -
+--
+
+CREATE INDEX users_role_criado_idx ON sistema.users USING btree (role, created_at DESC, id DESC);
+
+
+--
+-- Name: users_role_nome_idx; Type: INDEX; Schema: sistema; Owner: -
+--
+
+CREATE INDEX users_role_nome_idx ON sistema.users USING btree (role, nome, id);
 
 
 --
@@ -864,5 +909,5 @@ ALTER TABLE ONLY sistema.users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict rg4BlFgKnTDZhinqyQq4BVuMURhaqPHUGpCmDmJ03Q7n11m4Ryw8Omh559y7u8e
+\unrestrict 61L4Pek5WqMchVkbSoo416Yb7cnpCdTPz4DFOmN076OB28QrFda9KuhddlfHwki
 
