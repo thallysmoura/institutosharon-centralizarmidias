@@ -1,11 +1,11 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, Camera, Clock, FileSpreadsheet, GraduationCap, ImageIcon, MapPin, Minus, Smartphone, Trash2, Trophy, Users } from 'lucide-react';
-import { API, api, Atendimento, fmtData } from '@/lib/api';
+import { Activity, BarChart3, Calendar, Camera, ChevronRight, Clock, Crown, Download, GraduationCap, ImageIcon, MapPin, Medal, Smartphone, Trash2, Trophy, User, Users } from 'lucide-react';
+import { API, api, Atendimento, fmtData, fotoUrl } from '@/lib/api';
 import { nomeLimpo } from '@/lib/session';
 import Titulo from './Titulo';
 import Spinner from './Spinner';
-import { BarrasH, GraficoDias, GraficoHoras, Rosca } from './Graficos';
+import { GraficoDias, GraficoHoras } from './Graficos';
 
 type Painel = {
   dias: number;
@@ -21,49 +21,91 @@ const PERIODOS: [number, string][] = [[7, '7 dias'], [30, '30 dias'], [90, '90 d
 const num = (n: number) => n.toLocaleString('pt-BR');
 const mb = (b: string) => { const n = Number(b); return n >= 1073741824 ? `${(n / 1073741824).toFixed(2)} GB` : `${(n / 1048576).toFixed(n < 10485760 ? 1 : 0)} MB`; };
 
-/** Variação percentual contra o período anterior de mesmo tamanho. */
+/** Variação percentual contra o período anterior de mesmo tamanho, em formato de selo. */
 function Delta({ atual, anterior }: { atual: number; anterior: number }) {
-  if (!anterior && !atual) return <span className="inline-flex items-center gap-0.5 text-[0.72rem] font-semibold text-ink/40"><Minus size={13} />sem dados</span>;
-  if (!anterior) return <span className="inline-flex items-center gap-0.5 text-[0.72rem] font-semibold text-[#17794a]"><ArrowUpRight size={14} />novo</span>;
+  if (!anterior && !atual) return null;
+  if (!anterior) return <span className="inline-flex items-center gap-0.5 rounded-full bg-[#e7f6ee] px-2 py-0.5 text-[0.7rem] font-bold text-[#17794a]">novo</span>;
   const p = Math.round(((atual - anterior) / anterior) * 100);
-  if (p === 0) return <span className="inline-flex items-center gap-0.5 text-[0.72rem] font-semibold text-ink/50"><Minus size={13} />estável</span>;
-  const sobe = p > 0;
-  return <span className={`inline-flex items-center gap-0.5 text-[0.72rem] font-semibold ${sobe ? 'text-[#17794a]' : 'text-[#b3261e]'}`}>{sobe ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}{Math.abs(p)}%</span>;
+  if (p === 0) return <span className="inline-flex items-center rounded-full bg-sand px-2 py-0.5 text-[0.7rem] font-bold text-ink/55">— 0%</span>;
+  return <span className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[0.7rem] font-bold ${p > 0 ? 'bg-[#e7f6ee] text-[#17794a]' : 'bg-[#fdf0ee] text-[#b3261e]'}`}>{p > 0 ? '↑ +' : '↓ '}{p}%</span>;
 }
 
+const CARTAO = 'rounded-2xl border border-[#efe6d2] bg-gradient-to-b from-white to-[#fdfaf3] shadow-[0_14px_34px_-22px_rgba(120,80,10,.45)]';
+
 function Kpi({ icone: Icone, rotulo, valor, sub, extra, tom = 'ouro', onClick }: { icone: typeof Camera; rotulo: string; valor: string; sub?: string; extra?: React.ReactNode; tom?: 'ouro' | 'vermelho'; onClick?: () => void }) {
-  const cor = tom === 'vermelho' ? 'bg-[#fdf0ee] text-[#b3261e]' : 'bg-[#f6efe0] text-gold-600';
+  const cor = tom === 'vermelho' ? 'bg-[#fdf0ee] text-[#b3261e]' : 'bg-[#f7ecd3] text-gold-600';
   const conteudo = (
     <>
-      <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${cor}`}><Icone size={19} strokeWidth={1.7} /></span>
+      <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl ${cor}`}><Icone size={24} strokeWidth={1.6} /></span>
       <span className="min-w-0 flex-1 leading-tight">
-        <span className="block truncate text-[0.74rem] font-semibold uppercase tracking-[0.05em] text-ink/55">{rotulo}</span>
-        <span className="mt-0.5 block text-[1.55rem] font-bold text-[#33240F]">{valor}</span>
-        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[0.72rem] text-ink/55">{extra}{sub}</span>
+        <span className="block truncate text-[0.82rem] font-semibold text-ink/70">{rotulo}</span>
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1"><span className="text-[1.7rem] font-bold leading-none text-[#33240F]">{valor}</span>{extra}</span>
+        {sub && <span className="mt-1.5 block truncate text-[0.74rem] text-ink/55">{sub}</span>}
       </span>
     </>
   );
-  const cls = 'card flex items-start gap-3 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-soft';
+  const cls = `${CARTAO} flex items-center gap-3.5 p-4 text-left transition hover:-translate-y-0.5`;
   return onClick ? <button type="button" onClick={onClick} className={cls}>{conteudo}</button> : <div className={cls}>{conteudo}</div>;
 }
 
-function Bloco({ icone, titulo, children, className = '' }: { icone: typeof Camera; titulo: string; children: React.ReactNode; className?: string }) {
+function Bloco({ icone: Icone, titulo, children, className = '', acao }: { icone: typeof Camera; titulo: string; children: React.ReactNode; className?: string; acao?: React.ReactNode }) {
   return (
-    <section className={`card min-w-0 p-4 sm:p-5 ${className}`}>
-      <Titulo nivel={3} icone={icone}>{titulo}</Titulo>
+    <section className={`${CARTAO} min-w-0 p-4 sm:p-5 ${className}`}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#f7ecd3] text-gold-600"><Icone size={20} strokeWidth={1.7} /></span><h3 className="truncate text-[1.1rem] font-bold text-[#33240F]">{titulo}</h3></div>
+        {acao}
+      </div>
       <div className="mt-4">{children}</div>
     </section>
   );
 }
 
+type Presenca = { id: number; estado: 'online' | 'ausente' | 'offline' };
+
+/** Anel de dispositivos por situação (online, ausente, offline), com o total conectado no centro. */
+function AnelDispositivos({ pres }: { pres: Presenca[] }) {
+  const n = { online: 0, ausente: 0, offline: 0 };
+  pres.forEach((p) => { n[p.estado]++; });
+  const total = pres.length;
+  const R = 54, C = 2 * Math.PI * R;
+  const itens: [string, number, string][] = [['Online', n.online, '#3aa56b'], ['Ausentes', n.ausente, '#e7b23c'], ['Offline', n.offline, '#b9b0a0']];
+  let acc = 0;
+  return (
+    <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-around">
+      <svg viewBox="0 0 150 150" className="h-[150px] w-[150px] shrink-0" role="img" aria-label="Dispositivos por situação">
+        <defs><linearGradient id="anel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#e7b23c" /><stop offset="1" stopColor="#a67c26" /></linearGradient></defs>
+        <circle cx="75" cy="75" r={R} fill="none" stroke="#f1ece1" strokeWidth="16" />
+        {total === 0 ? null : itens.map(([nome, v, cor]) => {
+          const len = (v / total) * C;
+          const el = v ? <circle key={nome} cx="75" cy="75" r={R} fill="none" stroke={nome === 'Online' ? 'url(#anel)' : cor} strokeWidth="16" strokeDasharray={`${Math.max(0, len - 2)} ${C}`} strokeDashoffset={-acc} transform="rotate(-90 75 75)" /> : null;
+          acc += len;
+          return el;
+        })}
+        <text x="75" y="76" textAnchor="middle" fontSize="30" fontWeight="700" fill="#33240F">{n.online + n.ausente}</text>
+        <text x="75" y="95" textAnchor="middle" fontSize="11" fill="#8a7a62">conectados</text>
+      </svg>
+      <ul className="w-full max-w-[220px] space-y-3 text-[0.9rem]">
+        {itens.map(([nome, v, cor]) => <li key={nome} className="flex items-center gap-2.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: cor }} /><span className="flex-1 font-semibold"><b>{v}</b> {nome.toLowerCase()}</span></li>)}
+      </ul>
+    </div>
+  );
+}
+
+const MEDALHAS = ['#e7b23c', '#b9b0a0', '#c98a4b'];
+
 /** Visão geral do gestor: indicadores com variação, gráficos do período, ranking, atividade recente e exportação para Excel. */
 export default function VisaoGeral({ recentes, irPara, abrir }: { recentes: Atendimento[]; irPara: (v: 'fotos' | 'exclusoes') => void; abrir: (a: Atendimento) => void }) {
   const [dias, setDias] = useState(30);
   const [d, setD] = useState<Painel | null>(null);
+  const [pres, setPres] = useState<Presenca[]>([]);
   const [erro, setErro] = useState('');
   const [exportando, setExportando] = useState(false);
 
-  const carregar = useCallback((n: number) => { setErro(''); return api<Painel>(`/admin/dashboard?dias=${n}`).then(setD).catch((e) => setErro((e as Error).message)); }, []);
+  const carregar = useCallback((n: number) => {
+    setErro('');
+    api<Presenca[]>('/admin/presenca').then(setPres).catch(() => null);
+    return api<Painel>(`/admin/dashboard?dias=${n}`).then(setD).catch((e) => setErro((e as Error).message));
+  }, []);
   useEffect(() => { carregar(dias); }, [dias, carregar]);
 
   async function exportar() {
@@ -82,68 +124,98 @@ export default function VisaoGeral({ recentes, irPara, abrir }: { recentes: Aten
 
   const k = d?.kpi;
   const rotuloPeriodo = PERIODOS.find((p) => p[0] === dias)![1];
+  const maxCidade = Math.max(1, ...(d?.porCidade.map((c) => c.fotos) ?? [1]));
 
   return (
     <div className="mt-5 space-y-4 sm:mt-6 sm:space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div role="tablist" aria-label="Período" className="inline-flex max-w-full overflow-x-auto rounded-xl border border-line bg-white p-1">
+        <div role="tablist" aria-label="Período" className="inline-flex max-w-full overflow-x-auto rounded-xl border border-[#efe6d2] bg-white p-1 shadow-sm">
           {PERIODOS.map(([n, r]) => (
             <button key={n} type="button" role="tab" aria-selected={dias === n} onClick={() => setDias(n)}
-              className={`whitespace-nowrap rounded-lg px-3.5 py-2 text-[0.82rem] font-semibold transition ${dias === n ? 'text-white shadow-sm' : 'text-ink/65 hover:bg-ivory'}`}
-              style={dias === n ? { background: 'linear-gradient(180deg,#c9a24a,#a67c26)' } : undefined}>{r}</button>
+              className={`whitespace-nowrap rounded-lg px-4 py-2 text-[0.84rem] font-semibold transition ${dias === n ? 'text-white shadow-sm' : 'text-ink/70 hover:bg-ivory'}`}
+              style={dias === n ? { background: 'linear-gradient(180deg,#d9b04e,#a67c26)' } : undefined}>{r}</button>
           ))}
         </div>
-        <button type="button" onClick={exportar} disabled={exportando} className="inline-flex min-h-[42px] items-center gap-2 rounded-xl px-4 text-[0.85rem] font-semibold text-white shadow-[0_10px_22px_-12px_rgba(23,121,74,.8)] transition hover:brightness-105 active:scale-[0.98] disabled:opacity-70" style={{ background: 'linear-gradient(180deg,#22a35a,#17794a)' }}>
-          {exportando ? <Spinner size={16} /> : <FileSpreadsheet size={17} />}Exportar Excel
+        <button type="button" onClick={exportar} disabled={exportando} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl px-5 text-[0.88rem] font-semibold text-white shadow-[0_10px_22px_-10px_rgba(150,100,10,.8)] transition hover:brightness-105 disabled:opacity-70" style={{ background: 'linear-gradient(180deg,#d9b04e,#a67c26)' }}>
+          {exportando ? <Spinner size={16} /> : <Download size={18} />}Exportar Excel
         </button>
       </div>
 
       {erro && <p role="alert" className="rounded-xl bg-[#fdf0ee] px-4 py-3 text-[0.85rem] font-medium text-[#b3261e]">{erro}</p>}
 
       {!d && !erro && (
-        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-3" aria-hidden>{[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="card h-[104px] animate-pulse !bg-sand" />)}</div>
+        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-5" aria-hidden>{[0, 1, 2, 3, 4].map((i) => <div key={i} className={`${CARTAO} h-[100px] animate-pulse !bg-sand`} />)}</div>
       )}
 
       {d && k && (
         <>
-          <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-            <Kpi icone={ImageIcon} rotulo={`Fotos · ${rotuloPeriodo}`} valor={num(k.fotos_periodo)} extra={<Delta atual={k.fotos_periodo} anterior={k.fotos_anterior} />} sub={`${num(k.fotos)} no total`} />
-            <Kpi icone={Activity} rotulo={`Atendimentos · ${rotuloPeriodo}`} valor={num(k.atend_periodo)} extra={<Delta atual={k.atend_periodo} anterior={k.atend_anterior} />} sub={`${num(k.atendimentos)} no total`} />
+          <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-5">
+            <Kpi icone={ImageIcon} rotulo="Fotos" valor={num(k.fotos_periodo)} extra={<Delta atual={k.fotos_periodo} anterior={k.fotos_anterior} />} sub={`no período (${rotuloPeriodo})`} />
+            <Kpi icone={Activity} rotulo="Atendimentos" valor={num(k.atend_periodo)} extra={<Delta atual={k.atend_periodo} anterior={k.atend_anterior} />} sub={`no período (${rotuloPeriodo})`} />
             <Kpi icone={GraduationCap} rotulo="Alunos ativos" valor={num(k.alunos_ativos)} sub={`de ${num(k.alunos)} cadastrados`} />
-            <Kpi icone={Users} rotulo="Pacientes" valor={num(k.pacientes)} sub={`${num(k.cidades)} cidade(s)`} />
-            <Kpi icone={Camera} rotulo="Fotos hoje" valor={num(k.fotos_hoje)} sub={`${mb(k.bytes)} armazenados`} />
-            <Kpi icone={Trash2} tom={k.ocultas ? 'vermelho' : 'ouro'} rotulo="Excluídas por alunos" valor={num(k.ocultas)} sub={k.ocultas ? 'aguardando decisão' : 'nenhuma pendente'} onClick={() => irPara('exclusoes')} />
+            <Kpi icone={Users} rotulo="Pacientes" valor={num(k.pacientes)} sub={`em ${num(k.cidades)} cidade(s)`} />
+            {k.ocultas > 0
+              ? <Kpi icone={Trash2} tom="vermelho" rotulo="Excluídas por alunos" valor={num(k.ocultas)} sub="aguardando decisão" onClick={() => irPara('exclusoes')} />
+              : <Kpi icone={Smartphone} rotulo="Dispositivos" valor={num(pres.length)} sub="cadastrados" />}
           </div>
 
           <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
             <Bloco icone={BarChart3} titulo={`Envios por dia · ${rotuloPeriodo}`} className="lg:col-span-2"><GraficoDias dados={d.porDia} /></Bloco>
-            <Bloco icone={Smartphone} titulo="Dispositivos"><Rosca itens={d.dispositivos} /></Bloco>
+            <Bloco icone={Smartphone} titulo="Dispositivos"><AnelDispositivos pres={pres} /></Bloco>
           </div>
 
           <div className="grid gap-4 sm:gap-5 lg:grid-cols-2 2xl:grid-cols-3">
-            <Bloco icone={MapPin} titulo="Fotos por cidade"><BarrasH itens={d.porCidade.map((c) => ({ rotulo: c.cidade, valor: c.fotos, sub: `${num(c.atendimentos)} atendimento(s) · ${num(c.alunos)} aluno(s)` }))} /></Bloco>
-            <Bloco icone={Trophy} titulo="Ranking de alunos"><BarrasH itens={d.topAlunos.map((a) => ({ rotulo: nomeLimpo(a.nome), valor: a.fotos, sub: `${a.matricula ?? 'sem matrícula'}${a.cidade ? ` · ${a.cidade}` : ''} · ${num(a.atendimentos)} atendimento(s)` }))} /></Bloco>
+            <Bloco icone={MapPin} titulo="Fotos por cidade">
+              {d.porCidade.length === 0 ? <p className="py-4 text-center text-[0.85rem] text-ink/50">Sem dados no período.</p> : (
+                <ul className="space-y-4">
+                  {d.porCidade.slice(0, 6).map((c, i) => (
+                    <li key={c.cidade} className="flex items-start gap-3">
+                      <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-[0.78rem] font-bold text-white" style={{ background: MEDALHAS[i] ?? '#d9c8a0' }}>{i + 1}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-3 text-[0.9rem]"><b className="truncate">{c.cidade}</b><span className="shrink-0 text-ink/70">{num(c.fotos)} fotos</span></div>
+                        <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-[#f1ece1]"><div className="grow-bar h-full rounded-full" style={{ width: `${(c.fotos / maxCidade) * 100}%`, background: 'linear-gradient(90deg,#d9b04e,#a67c26)' }} /></div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Bloco>
+            <Bloco icone={Trophy} titulo="Ranking de alunos">
+              {d.topAlunos.length === 0 ? <p className="py-4 text-center text-[0.85rem] text-ink/50">Sem dados no período.</p> : (
+                <ul className="divide-y divide-[#efe6d2]">
+                  {d.topAlunos.slice(0, 5).map((a, i) => (
+                    <li key={a.id} className="flex items-center gap-3 py-2.5">
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[0.9rem] font-bold text-white" style={{ background: 'linear-gradient(180deg,#e7b23c,#c9a24a)' }}>{nomeLimpo(a.nome).charAt(0).toUpperCase()}</span>
+                      <span className="min-w-0 flex-1 truncate text-[0.92rem] font-semibold">{nomeLimpo(a.nome)}{i === 0 && <Crown size={15} className="ml-1.5 inline text-[#e7b23c]" fill="currentColor" aria-label="Primeiro lugar" />}{i > 0 && i < 3 && <Medal size={15} className="ml-1.5 inline" style={{ color: MEDALHAS[i] }} aria-hidden />}</span>
+                      <b className="shrink-0 text-[0.9rem]">{num(a.fotos)} fotos</b>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Bloco>
             <Bloco icone={Clock} titulo="Horário de maior movimento" className="lg:col-span-2 2xl:col-span-1"><GraficoHoras dados={d.porHora} /></Bloco>
           </div>
 
-          <Bloco icone={Activity} titulo="Últimos atendimentos">
+          <Bloco icone={Activity} titulo="Últimos atendimentos" acao={<button type="button" onClick={() => irPara('fotos')} className="inline-flex shrink-0 items-center gap-1 text-[0.85rem] font-semibold text-gold-700 underline underline-offset-2">Ver todos os atendimentos<ChevronRight size={15} /></button>}>
             {recentes.length === 0 ? <p className="py-4 text-center text-[0.85rem] text-ink/50">Nenhum atendimento recebido ainda.</p> : (
-              <ul className="divide-y divide-line">
-                {recentes.slice(0, 6).map((a) => (
+              <ul className="divide-y divide-[#efe6d2]">
+                {recentes.slice(0, 5).map((a) => (
                   <li key={a.id}>
-                    <button type="button" onClick={() => abrir(a)} className="flex w-full items-center gap-3 py-3 text-left transition hover:bg-ivory sm:px-2">
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><Camera size={18} strokeWidth={1.7} /></span>
-                      <span className="min-w-0 flex-1 leading-tight">
-                        <span className="block truncate text-[0.92rem] font-semibold">{a.identificador_paciente}</span>
-                        <span className="block truncate text-[0.76rem] text-ink/55">{nomeLimpo(a.aluno.nome)} · {a.cidade}</span>
+                    <button type="button" onClick={() => abrir(a)} className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-x-4 gap-y-1 py-3 text-left transition hover:bg-ivory sm:px-2 lg:grid-cols-[auto_1.1fr_1.3fr_1fr_1fr_auto_auto]">
+                      <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#f7ecd3] text-gold-600">
+                        {a.fotos[0] ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={fotoUrl(a.fotos[0].id, true)} alt="" loading="lazy" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : <Camera size={18} />}
                       </span>
-                      <span className="shrink-0 text-right text-[0.74rem] leading-tight text-ink/55"><b className="block text-[0.82rem] text-ink">{a.fotos.length} foto(s)</b>{fmtData(a.created_at)}</span>
+                      <span className="min-w-0 truncate text-[0.95rem] font-bold">{a.identificador_paciente}</span>
+                      <span className="hidden items-center gap-1.5 text-[0.82rem] text-ink/65 lg:flex"><Calendar size={15} className="shrink-0 text-ink/45" />{fmtData(a.created_at)}</span>
+                      <span className="hidden min-w-0 items-center gap-1.5 truncate text-[0.82rem] text-ink/65 lg:flex"><User size={15} className="shrink-0 text-ink/45" />{nomeLimpo(a.aluno.nome)}</span>
+                      <span className="hidden min-w-0 items-center gap-1.5 truncate text-[0.82rem] text-ink/65 lg:flex"><MapPin size={15} className="shrink-0 text-ink/45" />{a.cidade}</span>
+                      <span className="inline-flex shrink-0 items-center rounded-full bg-[#e7f6ee] px-3 py-1 text-[0.76rem] font-bold text-[#17794a]">{a.fotos.length} foto(s)</span>
+                      <ChevronRight size={18} className="hidden text-ink/40 lg:block" aria-hidden />
                     </button>
                   </li>
                 ))}
               </ul>
             )}
-            <button type="button" onClick={() => irPara('fotos')} className="mt-3 text-[0.85rem] font-semibold text-gold-700 underline underline-offset-2">Ver todas as fotos</button>
           </Bloco>
         </>
       )}
