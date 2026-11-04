@@ -8,25 +8,12 @@ import Avatar from './Avatar';
 import { Logo } from './Brand';
 import PinModal from './PinModal';
 import Spinner from './Spinner';
+import MsgErro from './MsgErro';
+import AlterarSenha from './AlterarSenha';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,24}$/;
 
 /** Primeiro acesso do aluno: mostra os dados do perfil (foto do Google, e-mail, cidade) e exige a matrícula antes de liberar o envio de mídias. */
-/** Mensagem de erro de um campo: aparece suavemente, fica alguns segundos e some com fade. Reaparece quando `texto` ou `chave` mudam. */
-function MsgErro({ texto, chave, onSumir }: { texto?: string; chave?: string; onSumir?: () => void }) {
-  const [fase, setFase] = useState<'visivel' | 'saindo' | 'oculto'>('visivel');
-  useEffect(() => {
-    if (!texto) return;
-    setFase('visivel');
-    const a = setTimeout(() => setFase('saindo'), 4200);
-    const b = setTimeout(() => { setFase('oculto'); onSumir?.(); }, 4800);
-    return () => { clearTimeout(a); clearTimeout(b); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [texto, chave]);
-  if (!texto || fase === 'oculto') return null;
-  return <p role="alert" className={`${fase === 'saindo' ? 'opacity-0' : 'fade-in'} mt-1.5 px-[1.2em] text-[0.76em] font-medium leading-snug text-[#b3261e] transition-opacity duration-500`}>{texto}</p>;
-}
-
 export default function PerfilInicial({ me, sair, recarregar, modo = 'primeiro', onVoltar }: { me: Me; sair: () => void; recarregar: () => Promise<unknown> | void; modo?: 'primeiro' | 'config'; onVoltar?: () => void }) {
   const config = modo === 'config';
   const [salvo, setSalvo] = useState(false);
@@ -222,6 +209,7 @@ const alterado = nome.trim().replace(/\s+/g, ' ') !== me.nome.replace(/ \(.*\)$/
           </button>
           )}
         </form>
+        {config && <AlterarSenha me={me} />}
         {config ? (
           <button type="button" onClick={onVoltar} className="mx-auto mt-[1em] flex items-center gap-1.5 text-[0.88em] font-medium text-[#4f453b] underline underline-offset-2"><ArrowLeft size="1.1em" />Voltar</button>
         ) : (

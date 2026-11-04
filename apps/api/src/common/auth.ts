@@ -12,6 +12,7 @@ export type SessionUser = {
   role: 'ADMIN' | 'ALUNO';
   matricula: string | null;
   cpf: string | null;
+  origem: string | null;
   cidade_id: number | null;
   cidade: string | null;
   foto_url: string | null;
@@ -45,7 +46,7 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
     const r = await this.db.query<SessionUser>(
-      `SELECT u.id,u.nome,u.email,u.role,u.matricula,u.cpf,COALESCE($2::int, u.cidade_id) AS cidade_id,c.nome AS cidade,CASE WHEN u.foto_key IS NOT NULL OR u.foto_url IS NOT NULL THEN '/users/' || u.id || '/foto?v=' || u.foto_v END AS foto_url,(u.role='ALUNO' AND COALESCE(u.matricula,'')='') AS primeiro_acesso FROM sistema.users u LEFT JOIN sistema.cidades c ON c.id=COALESCE($2::int, u.cidade_id) WHERE u.id=$1`,
+      `SELECT u.id,u.nome,u.email,u.role,u.matricula,u.cpf,u.origem,COALESCE($2::int, u.cidade_id) AS cidade_id,c.nome AS cidade,CASE WHEN u.foto_key IS NOT NULL OR u.foto_url IS NOT NULL THEN '/users/' || u.id || '/foto?v=' || u.foto_v END AS foto_url,(u.role='ALUNO' AND COALESCE(u.matricula,'')='') AS primeiro_acesso FROM sistema.users u LEFT JOIN sistema.cidades c ON c.id=COALESCE($2::int, u.cidade_id) WHERE u.id=$1`,
       [sub, cid],
     );
     if (!r.rows[0]) throw new UnauthorizedException();

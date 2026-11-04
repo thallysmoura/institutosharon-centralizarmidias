@@ -8,10 +8,11 @@ const SANS = "'Segoe UI',Arial,Helvetica,sans-serif";
 
 const linha = `<td width="20%" style="border-bottom:1px solid ${GOLD_L};height:1px;line-height:1px;font-size:1px">&nbsp;</td>`;
 
-export function emailPin(o: { nome: string; pin: string; appUrl?: string; ano: number; validadeMin: number; tipo?: 'email' | 'senha' | 'cadastro' }) {
+export function emailPin(o: { nome: string; pin: string; appUrl?: string; ano: number; validadeMin: number; tipo?: 'email' | 'senha' | 'cadastro' | 'troca' }) {
   const T = {
     email: { rotulo: 'Confirmação de e-mail', corpo: 'Recebemos um pedido para alterar o e-mail da sua conta no <strong>sistema de fotos clínicas do Instituto Sharon</strong>. Para concluir, digite o código abaixo na tela de confirmação.', rodape: 'Não fez esse pedido? Ignore este e-mail: nenhuma alteração será feita na sua conta.' },
     senha: { rotulo: 'Recuperação de acesso', corpo: 'Recebemos um pedido para <strong>redefinir a senha</strong> da sua conta no <strong>sistema de fotos clínicas do Instituto Sharon</strong>. Para continuar, digite o código abaixo na tela de recuperação.', rodape: 'Não fez esse pedido? Ignore este e-mail: sua senha continua a mesma e nenhuma alteração será feita.' },
+    troca: { rotulo: 'Alteração de senha', corpo: 'Recebemos um pedido para <strong>alterar a senha</strong> da sua conta no <strong>sistema de fotos clínicas do Instituto Sharon</strong>. Para confirmar que foi você, digite o código abaixo na tela de configurações.', rodape: 'Não fez esse pedido? Ignore este e-mail: a sua senha continua a mesma. Se desconfiar de acesso indevido, redefina a senha pela opção Esqueceu a senha? da tela de login.' },
     cadastro: { rotulo: 'Verificação de e-mail', corpo: 'Recebemos um pedido de <strong>cadastro</strong> no <strong>sistema de fotos clínicas do Instituto Sharon</strong>. Para verificar este e-mail, digite o código abaixo na tela de cadastro.', rodape: 'Não fez esse pedido? Ignore este e-mail: nenhum cadastro será criado.' },
   }[o.tipo ?? 'email'];
   const primeiro = o.nome.replace(/ \(.*\)$/, '').split(' ')[0].replace(/[<>&"]/g, '');
