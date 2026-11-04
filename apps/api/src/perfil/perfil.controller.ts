@@ -100,6 +100,7 @@ export class PerfilController {
   async matricula(@Me() u: SessionUser, @Body() dto: MatriculaDto, @Req() req: Request) {
     if (u.role !== 'ALUNO') throw new ForbiddenException();
     if (dto.cpf && !cpfValido(dto.cpf)) throw new BadRequestException('CPF inválido.');
+    if (dto.nome && dto.nome.trim().split(/\s+/).filter((p) => p.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ]/g, '').length >= 2).length < 2) throw new BadRequestException('Informe nome e sobrenome, de preferência o nome completo.');
     try {
       await this.db.query('UPDATE sistema.users SET matricula=$2, nome=COALESCE(NULLIF($3, \'\'), nome), cpf=COALESCE($4, cpf) WHERE id=$1', [u.id, dto.matricula.trim(), dto.nome?.replace(/\s+/g, ' ').trim() ?? '', dto.cpf ? soDigitos(dto.cpf) : null]);
     } catch (e) {

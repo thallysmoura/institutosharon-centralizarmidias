@@ -52,6 +52,7 @@ export default function PerfilInicial({ me, sair, recarregar, modo = 'primeiro',
     const m = matricula.trim();
     const n = nome.trim().replace(/\s+/g, ' ');
     if (n.length < 2 || !/^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ' .()-]*$/.test(n)) return falha('nome', 'Informe o seu nome completo, apenas com letras.');
+    if (n.split(' ').filter((p) => p.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ]/g, '').length >= 2).length < 2) return falha('nome', 'Informe nome e sobrenome, de preferência o nome completo.');
     if (!m) return falha('matricula', 'Informe a sua matrícula.');
     if (m.length < 3) return falha('matricula', 'A matrícula deve ter ao menos 3 caracteres.');
     if (!/^[A-Za-z0-9._\-/]+$/.test(m)) return falha('matricula', 'Use apenas letras, números e - . _ /');
