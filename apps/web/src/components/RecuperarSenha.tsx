@@ -136,9 +136,8 @@ export default function RecuperarSenha({ emailInicial, onFechar, onConcluido }: 
           {emailOk && !msgCampo && <CircleCheck size={19} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#22a35a]" aria-hidden />}
         </div>
         <div id="rec-msg" aria-live="polite">
-          {msgCampo ? (
+          {msgCampo && (
             <p role="alert" className="mt-2 flex items-start gap-2 rounded-xl bg-[#fdf0ee] px-3 py-2.5 text-[0.82rem] font-medium leading-snug text-[#b3261e]"><CircleAlert size={16} className="mt-0.5 shrink-0" />{msgCampo}</p>
-          ) : (
           )}
         </div>
         <button type="submit" disabled={busy} className="btn btn-gold mt-5 w-full !min-h-[52px] !text-[1.02rem]">{busy ? <><Spinner />Aguarde...</> : 'Enviar código'}</button>
