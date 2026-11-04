@@ -296,7 +296,7 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
             <button type="submit" disabled={busy || (passo === 1 && !emailVerificado)} className="btn btn-gold w-full !h-[2.9em] !min-h-0 !rounded-[0.85em] !text-[1em] disabled:!opacity-50">
               {busy ? <><Spinner />Cadastrando...</> : passo < 3 ? 'Continuar' : 'Criar conta'}
             </button>
-            {passo === 1 && <p className="mt-[1.6rem] text-center text-[0.8rem] text-ink/60">Já tem conta? <button type="button" onClick={onFechar} className="font-semibold text-gold-700 underline underline-offset-2">Entrar</button></p>}
+            {passo === 1 && <p className="mt-[5px] sm:mt-[1.6rem] text-center text-[0.8rem] text-ink/60">Já tem conta? <button type="button" onClick={onFechar} className="font-semibold text-gold-700 underline underline-offset-2">Entrar</button></p>}
           </footer>
         </form>
       </div>
