@@ -12,7 +12,6 @@ const JSON_H = { 'Content-Type': 'application/json' };
 function Casca({ children, onFechar, rotulo }: { children: React.ReactNode; onFechar: () => void; rotulo: string }) {
   return (
     <div role="group" aria-label={rotulo}>
-      <button type="button" onClick={onFechar} className="mb-3 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-[#a9771a] hover:underline"><ArrowLeft size={16} />Voltar ao login</button>
       {children}
     </div>
   );
@@ -143,7 +142,6 @@ export default function RecuperarSenha({ emailInicial, onFechar, onConcluido }: 
           )}
         </div>
         <button type="submit" disabled={busy} className="btn btn-gold mt-5 w-full !min-h-[52px] !text-[1.02rem]">{busy ? <><Spinner />Aguarde...</> : 'Enviar código'}</button>
-        <button type="button" onClick={onFechar} className="mx-auto mt-4 block text-[0.85rem] font-medium text-ink/60 underline underline-offset-2">Voltar ao login</button>
       </form>
     </Casca>
     {pinModal}
