@@ -189,7 +189,7 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
 
   /** Detalhes da foto: informações, editar nome do paciente, baixar e excluir (só some para o aluno). */
   const modalDetalhe = atual && (
-    <div role="dialog" aria-modal="true" aria-label="Detalhes da foto" className="fade-in fixed inset-0 z-[60] flex bg-black/55 sm:items-center sm:justify-center sm:p-6" onClick={() => setDet(null)}>
+    <div role="dialog" aria-modal="true" aria-label="Detalhes da foto" className="fixed inset-0 z-[60] flex bg-black/55 sm:items-center sm:justify-center sm:p-6" onClick={() => setDet(null)}>
       <div className="pop flex h-full w-full flex-col overflow-hidden bg-white sm:h-auto sm:max-h-[94dvh] sm:max-w-[860px] sm:rounded-3xl sm:shadow-2xl lg:flex-row" onClick={(e) => e.stopPropagation()}>
         <div className="relative h-[44dvh] shrink-0 bg-[#21180D] lg:h-auto lg:min-h-[340px] lg:flex-1">
           <button type="button" onClick={() => setDet(null)} aria-label="Fechar" className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm transition hover:bg-black/70"><X size={20} /></button>
@@ -258,7 +258,7 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
   /** Menu do "Novo envio": câmera ou arquivos do aparelho. */
   const menuNovoUI = menuNovo && (
     <>
-      <div className="fade-in fixed inset-0 z-[65] bg-black/45" onClick={() => { if (Date.now() - aberturaMenu.current > 400) setMenuNovo(false); }} aria-hidden />
+      <div className="fixed inset-0 z-[65] bg-black/45" onClick={() => { if (Date.now() - aberturaMenu.current > 400) setMenuNovo(false); }} aria-hidden />
       <div role="menu" aria-label="Novo envio" className="pop fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] z-[66] mx-auto max-w-[380px] overflow-hidden rounded-2xl bg-white p-2 shadow-[0_24px_60px_-20px_rgba(33,24,13,.6)] lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-[7.5rem] lg:-translate-x-1/2">
         <p className="px-3 pb-1 pt-2 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-ink/45">Novo envio</p>
         <button type="button" role="menuitem" onClick={() => { setMenuNovo(false); if (typeof navigator.mediaDevices?.getUserMedia === 'function') { setCamModo('foto'); setCamAberta(true); } else camera.current?.click(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-left transition hover:bg-ivory active:scale-[0.99]">
@@ -279,7 +279,7 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
 
   /** Folha de confirmação: aparece quando há fotos escolhidas; pede o paciente e envia. */
   const folhaEnvio = itens.length > 0 && (
-    <div role="dialog" aria-modal="true" aria-label="Enviar fotos" className="fade-in fixed inset-0 z-[60] flex items-end justify-center bg-black/50 sm:items-center sm:p-6" onClick={() => !enviando && cancelarEnvio()}>
+    <div role="dialog" aria-modal="true" aria-label="Enviar fotos" className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 sm:items-center sm:p-6" onClick={() => !enviando && cancelarEnvio()}>
       <div className="pop w-full max-w-[460px] rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-[1.35rem] font-bold leading-none">Enviar <span className="text-gold-600">{itens.some((i) => i.video) ? 'arquivos' : 'fotos'}</span></h2>
@@ -329,8 +329,8 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
       {folhaEnvio}
       {camAberta && <CameraCaptura modo={camModo} total={itens.length} max={MAX} onFoto={(f) => adicionar([f])} onVideo={(f) => adicionar([f])} onFechar={() => setCamAberta(false)} onNativo={() => { setCamAberta(false); (camModo === 'video' ? cameraVideo : camera).current?.click(); }} />}
       {apagar !== null && createPortal(
-        <div role="dialog" aria-modal="true" aria-label="Excluir foto" className="pop fixed inset-0 z-[140] grid place-items-center bg-[#120d06]/70 p-5 backdrop-blur-sm" onClick={() => !apagando && setApagar(null)}>
-          <div className="w-full max-w-[340px] rounded-2xl bg-white p-5 shadow-[0_30px_80px_-30px_rgba(0,0,0,.7)]" onClick={(e) => e.stopPropagation()}>
+        <div role="dialog" aria-modal="true" aria-label="Excluir foto" className="fixed inset-0 z-[140] grid place-items-center bg-[#120d06]/70 p-5 backdrop-blur-sm" onClick={() => !apagando && setApagar(null)}>
+          <div className="pop w-full max-w-[340px] rounded-2xl bg-white p-5 shadow-[0_30px_80px_-30px_rgba(0,0,0,.7)]" onClick={(e) => e.stopPropagation()}>
             <span className="grid h-11 w-11 place-items-center rounded-full bg-[#fdf0ee] text-[#b3261e]"><Trash2 size={20} /></span>
             <h3 className="mt-3 text-[1.15rem] font-bold">Excluir esta foto?</h3>
             <p className="mt-1 text-[0.85rem] leading-snug text-ink/65">Ela deixará de aparecer para você. A administração é avisada e pode recuperá-la.</p>

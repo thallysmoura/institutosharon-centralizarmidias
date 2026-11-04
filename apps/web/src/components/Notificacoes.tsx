@@ -168,7 +168,7 @@ export default function Notificacoes({ lugar }: { lugar: 'menu' | 'topo' }) {
       )}
 
       {meu && itemAberto && createPortal(
-        <div role="dialog" aria-modal="true" aria-label={itemAberto.titulo} className="fade-in fixed inset-0 z-[96] flex items-end justify-center bg-black/55 sm:items-center sm:p-6" onClick={() => setAviso(null)}>
+        <div role="dialog" aria-modal="true" aria-label={itemAberto.titulo} className="fixed inset-0 z-[96] flex items-end justify-center bg-black/55 sm:items-center sm:p-6" onClick={() => setAviso(null)}>
           <div className="pop flex max-h-[96dvh] w-full max-w-[600px] flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5 pt-[max(0.875rem,env(safe-area-inset-top))]">
               <p className="inline-flex items-center gap-2 text-[0.78rem] font-semibold uppercase tracking-wide text-gold-700"><Bell size={15} />Aviso</p>

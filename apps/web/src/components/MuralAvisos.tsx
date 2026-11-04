@@ -146,7 +146,7 @@ function FormAviso({ inicial, onFechar, onSalvo }: { inicial: Aviso | null; onFe
   const opcoes: [Alvo, string, typeof Users, string][] = [['todos', 'Todos', Users, 'Todos os usuários'], ['cidades', 'Por cidade', MapPin, 'Só quem é da cidade'], ['pessoas', 'Pessoas', UserRound, 'Escolher quem recebe']];
 
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label={inicial ? 'Editar aviso' : 'Novo aviso'} className="fade-in fixed inset-0 z-[100] flex items-end justify-center bg-black/55 sm:items-center sm:p-6" onClick={() => !busy && onFechar()}>
+    <div role="dialog" aria-modal="true" aria-label={inicial ? 'Editar aviso' : 'Novo aviso'} className="fixed inset-0 z-[100] flex items-end justify-center bg-black/55 sm:items-center sm:p-6" onClick={() => !busy && onFechar()}>
       <div className="pop flex max-h-[96dvh] w-full max-w-[680px] flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
           <h2 className="text-[1.25rem] font-bold">{inicial ? 'Editar aviso' : 'Novo aviso'}</h2>
@@ -316,7 +316,7 @@ function AlcanceAviso({ aviso, onFechar }: { aviso: Aviso; onFechar: () => void 
   const kpis: [string, string | number, string][] = r ? [['Destinatários', r.total, ''], ['Leram', r.lidos, `${pct}%`], ['Pendentes', Math.max(0, r.total - r.lidos), ''], ['Primeira leitura', r.primeira ? fmtData(r.primeira) : '-', '']] : [];
 
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="Alcance do aviso" className="fade-in fixed inset-0 z-[100] flex items-end justify-center bg-black/55 sm:items-center sm:p-6" onClick={onFechar}>
+    <div role="dialog" aria-modal="true" aria-label="Alcance do aviso" className="fixed inset-0 z-[100] flex items-end justify-center bg-black/55 sm:items-center sm:p-6" onClick={onFechar}>
       <div className="pop flex max-h-[96dvh] w-full max-w-[860px] flex-col overflow-hidden rounded-t-3xl bg-page shadow-2xl sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3 border-b border-line bg-white px-5 py-4">
           <div className="min-w-0">
@@ -473,7 +473,7 @@ export default function MuralAvisos() {
       {alcance && <AlcanceAviso key={alcance.id} aviso={alcance} onFechar={() => setAlcance(null)} />}
 
       {apagar && createPortal(
-        <div role="dialog" aria-modal="true" aria-label="Excluir aviso" className="fade-in fixed inset-0 z-[110] grid place-items-center bg-ink/60 p-4" onClick={() => !apagando && setApagar(null)}>
+        <div role="dialog" aria-modal="true" aria-label="Excluir aviso" className="fixed inset-0 z-[110] grid place-items-center bg-ink/60 p-4" onClick={() => !apagando && setApagar(null)}>
           <div className="pop w-full max-w-[400px] rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <span className="grid h-11 w-11 place-items-center rounded-full bg-[#fdf0ee] text-[#b3261e]"><Trash2 size={20} /></span>
             <h3 className="mt-3 text-[1.15rem] font-bold">Excluir este aviso?</h3>

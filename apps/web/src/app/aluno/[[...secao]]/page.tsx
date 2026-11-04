@@ -94,7 +94,7 @@ function Envio({ me, sair, recarregar, abrirConfig }: { me: Me; sair: () => void
         </div>
         </div>
       </header>
-      {menuMovel && <div className="fade-in fixed inset-0 z-40 bg-black/55 lg:hidden" onClick={() => setMenuMovel(false)} aria-hidden />}
+      {menuMovel && <div className="fixed inset-0 z-40 bg-black/55 lg:hidden" onClick={() => setMenuMovel(false)} aria-hidden />}
       <aside aria-label="Menu lateral" className={`fixed inset-y-0 left-0 z-50 flex w-[290px] max-w-[85vw] flex-col bg-side text-white shadow-2xl transition-[transform,visibility] duration-300 ease-out lg:static lg:z-auto lg:h-dvh lg:w-[256px] lg:max-w-none lg:shrink-0 lg:translate-x-0 lg:visible lg:shadow-none ${menuMovel ? 'translate-x-0' : 'invisible -translate-x-full'}`}>
         <div className="flex items-center justify-between gap-2 px-5 py-5">
           <Wordmark light />

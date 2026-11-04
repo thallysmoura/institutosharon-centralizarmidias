@@ -348,7 +348,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
         </div>
         </div>
       </header>
-      {menuMovel && <div className="fade-in fixed inset-0 z-40 bg-black/55 lg:hidden" onClick={() => setMenuMovel(false)} aria-hidden />}
+      {menuMovel && <div className="fixed inset-0 z-40 bg-black/55 lg:hidden" onClick={() => setMenuMovel(false)} aria-hidden />}
       <aside aria-label="Menu lateral" className={`fixed inset-y-0 left-0 z-50 flex w-[290px] max-w-[85vw] flex-col bg-side text-white shadow-2xl transition-[transform,visibility] duration-300 ease-out lg:sticky lg:top-0 lg:z-auto lg:h-dvh lg:w-[256px] lg:max-w-none lg:shrink-0 lg:translate-x-0 lg:shadow-none ${menuMovel ? 'translate-x-0' : 'max-lg:invisible max-lg:-translate-x-full'}`}>
         <div className="flex items-center justify-between gap-2 px-5 py-5 lg:px-5 lg:py-6">
           <button type="button" onClick={() => { setVista('geral'); setMenuMovel(false); }} aria-label="Ir para a tela inicial" className="select-none text-left"><Wordmark light /></button>
@@ -401,7 +401,7 @@ function Painel({ me, sair, abrirConfig }: { me: Me; sair: () => void; abrirConf
 
       <main className={`relative isolate min-w-0 flex-1 overflow-x-clip bg-page px-3 py-5 sm:px-8 sm:py-6 lg:py-8 ${vista === 'fotos' ? 'pb-28 sm:pb-28 lg:pb-28' : ''}`}>
         <OndasDouradas />
-        <Cab t={vista === 'geral' ? 'Painel do Administrador' : NAV.find((n) => n[0] === vista)![1]} s="Gestão centralizada das fotografias clínicas" />
+        <Cab t={NAV.find((n) => n[0] === vista)![1]} s="Gestão centralizada das fotografias clínicas" />
 
         {vista === 'geral' && <VisaoGeral key={rk} recentes={lista} irPara={(v) => setVista(v)} abrir={(a) => setAberta({ a, i: 0 })} />}
 

@@ -108,7 +108,7 @@ export default function AlterarSenha({ me }: { me: Me }) {
       )}
 
       {etapa === 'senha' && createPortal(
-        <div role="dialog" aria-modal="true" aria-label="Nova senha" className="fade-in fixed inset-0 z-[120] flex items-end justify-center bg-black/55 sm:items-center sm:p-6">
+        <div role="dialog" aria-modal="true" aria-label="Nova senha" className="fixed inset-0 z-[120] flex items-end justify-center bg-black/55 sm:items-center sm:p-6">
           <form onSubmit={salvar} noValidate className="pop relative w-full max-w-[420px] rounded-t-3xl bg-[#fdfaf3] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl">
             <button type="button" onClick={() => setEtapa('fechado')} disabled={busy} aria-label="Fechar" className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full text-ink/55 hover:bg-sand"><X size={19} /></button>
             <h2 className="pr-8 text-[1.5rem] font-bold leading-tight text-[#33240F]">Crie a sua <span className="text-gold-600">nova senha</span></h2>

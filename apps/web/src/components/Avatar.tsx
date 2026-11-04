@@ -39,7 +39,7 @@ export function Ampliada({ src, onFechar, nav, baixar, excluir, video }: { video
 
   const btn = 'grid h-11 w-11 place-items-center rounded-full bg-white/12 text-white backdrop-blur-sm transition hover:bg-white/25 disabled:opacity-40';
   return (
-    <div role="dialog" aria-modal="true" aria-label="Foto ampliada" className="pop fixed inset-0 z-[120] flex flex-col bg-[#120d06]/92 backdrop-blur-sm" onClick={onFechar}>
+    <div role="dialog" aria-modal="true" aria-label="Foto ampliada" className="fixed inset-0 z-[120] flex flex-col bg-[#120d06]/92 backdrop-blur-sm" onClick={onFechar}>
       {pronta && (
         <>
           {nav && nav.total > 1 && <span className="absolute left-4 top-[max(1.25rem,env(safe-area-inset-top))] z-10 rounded-full bg-white/12 px-3 py-1.5 text-sm font-semibold tabular-nums text-white/90 backdrop-blur-sm">{nav.atual + 1} / {nav.total}</span>}
@@ -47,7 +47,7 @@ export function Ampliada({ src, onFechar, nav, baixar, excluir, video }: { video
         </>
       )}
       <div
-        className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-4 pt-16 sm:px-10"
+        className="pop relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-4 pt-16 sm:px-10"
         onWheel={(e) => ajusta(z + (e.deltaY < 0 ? 0.3 : -0.3))}
         onPointerMove={(e) => { if (arrasto.current && z > 1) setP({ x: arrasto.current.px + e.clientX - arrasto.current.x, y: arrasto.current.py + e.clientY - arrasto.current.y }); }}
         onPointerUp={() => { arrasto.current = null; }}

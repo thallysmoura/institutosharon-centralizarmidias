@@ -45,7 +45,7 @@ export default function FotosAluno({ aluno, titulo, subtitulo, filtro, onFechar 
 
   const atual = zoom !== null ? itens[zoom] : null;
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label={`Fotos de ${nome}`} className="fade-in fixed inset-0 z-[100] flex items-end justify-center bg-black/55 sm:items-center sm:p-6" onClick={onFechar}>
+    <div role="dialog" aria-modal="true" aria-label={`Fotos de ${nome}`} className="fixed inset-0 z-[100] flex items-end justify-center bg-black/55 sm:items-center sm:p-6" onClick={onFechar}>
       <div className="pop flex h-[94dvh] w-full max-w-[960px] flex-col overflow-hidden rounded-t-3xl bg-page shadow-2xl sm:h-[88vh] sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 border-b border-line bg-white px-4 py-3.5">
           <button type="button" onClick={onFechar} aria-label="Voltar para a lista" className="inline-flex h-10 items-center gap-1.5 rounded-full border border-line px-3.5 text-[0.82rem] font-semibold text-ink/80 transition hover:bg-ivory"><ArrowLeft size={16} />Voltar</button>
