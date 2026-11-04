@@ -282,7 +282,7 @@ const MeusEnvios = forwardRef<MeusEnviosHandle, { modo: 'recentes' | 'historico'
     <div role="dialog" aria-modal="true" aria-label="Enviar fotos" className="fade-in fixed inset-0 z-[60] flex items-end justify-center bg-black/50 sm:items-center sm:p-6" onClick={() => !enviando && cancelarEnvio()}>
       <div className="pop w-full max-w-[460px] rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-[1.35rem] font-bold leading-none">Enviar <span className="italic text-gold-600">{itens.some((i) => i.video) ? 'arquivos' : 'fotos'}</span></h2>
+          <h2 className="text-[1.35rem] font-bold leading-none">Enviar <span className="text-gold-600">{itens.some((i) => i.video) ? 'arquivos' : 'fotos'}</span></h2>
           <span className="text-[0.72rem] font-semibold text-ink/45">{itens.length}/{MAX}</span>
         </div>
         <ul className="mt-3 flex gap-2 overflow-x-auto pb-1">

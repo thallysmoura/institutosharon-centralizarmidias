@@ -178,7 +178,7 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
       <div>
         {passo > 1 && <button type="button" onClick={voltar} className="mb-3 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-[#a9771a] hover:underline"><ArrowLeft size={16} />Voltar</button>}
         <header className="px-[0.5em] min-[1100px]:px-[0.72em]">
-          <h2 className="font-sans text-[2.5em] font-medium leading-[0.92] tracking-[-0.02em] text-[#33240F] min-[1100px]:text-[3em]">Criar uma<br /><span className="font-bold italic" style={{ background: 'linear-gradient(180deg,#d6a431,#a8761a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>Conta</span></h2>
+          <h2 className="font-sans text-[2.5em] font-medium leading-[0.92] tracking-[-0.02em] text-[#33240F] min-[1100px]:text-[3em]">Criar uma<br /><span className="font-bold" style={{ background: 'linear-gradient(180deg,#d6a431,#a8761a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>Conta</span></h2>
         </header>
 
         <ol aria-label="Etapas do cadastro" className="mt-4 flex items-center gap-2">
@@ -293,7 +293,7 @@ export default function Cadastro({ onFechar, onConcluido }: { onFechar: () => vo
       {pinPara && (
         <PinModal
           email={pinPara}
-          titulo={<>Verifique o seu <span className="italic text-gold-600">e-mail</span></>}
+          titulo={<>Verifique o seu <span className="text-gold-600">e-mail</span></>}
           onFechar={() => setPinPara(null)}
           onReenviar={pedirPin}
           onConfirmar={async (pin) => {

@@ -102,7 +102,7 @@ export default function RecuperarSenha({ emailInicial, onFechar, onConcluido }: 
     passo === 'pin' ? (
       <PinModal
         email={email.trim()}
-        titulo={<>Digite o <span className="italic text-gold-600">código</span></>}
+        titulo={<>Digite o <span className="text-gold-600">código</span></>}
         topo={<Passos atual={2} />}
         aviso={aviso}
         onFechar={onFechar}
@@ -120,7 +120,7 @@ export default function RecuperarSenha({ emailInicial, onFechar, onConcluido }: 
       <Casca onFechar={onFechar} rotulo="Definir nova senha">
         <Passos atual={3} />
         <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><KeyRound size={26} /></span>
-        <h2 className="mt-4 text-center text-[1.9rem] font-bold">Crie a sua <span className="italic text-gold-600">nova senha</span></h2>
+        <h2 className="mt-4 text-center text-[1.9rem] font-bold">Crie a sua <span className="text-gold-600">nova senha</span></h2>
         <p className="mt-2 text-center text-[0.88rem] text-ink/65">Código confirmado. Defina uma senha segura para voltar a acessar o sistema.</p>
         <form onSubmit={alterar} noValidate className="mt-6">
           <div className="relative">
@@ -150,7 +150,7 @@ export default function RecuperarSenha({ emailInicial, onFechar, onConcluido }: 
     <Casca onFechar={onFechar} rotulo="Recuperar acesso">
       <Passos atual={1} />
       <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><Mail size={26} /></span>
-      <h2 className="mt-4 text-center text-[1.9rem] font-bold">Recuperar <span className="italic text-gold-600">acesso</span></h2>
+      <h2 className="mt-4 text-center text-[1.9rem] font-bold">Recuperar <span className="text-gold-600">acesso</span></h2>
       <p className="mt-2 text-center text-[0.88rem] text-ink/65">Informe o e-mail da sua conta. Enviaremos um código de 4 números para você criar uma nova senha.</p>
       <form onSubmit={enviarEmail} noValidate className="mt-6">
         <div className="relative">

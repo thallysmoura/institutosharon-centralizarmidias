@@ -86,7 +86,7 @@ export default function PinModal({ email, titulo, topo, aviso, onConfirmar, onRe
         <button type="button" onClick={onFechar} aria-label="Fechar" className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full text-ink/60 hover:bg-sand"><X size={18} /></button>
         {topo}
         <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><MailCheck size={26} /></span>
-        <h2 id="pin-t" className="mt-4 text-[1.9rem] font-bold">{titulo ?? <>Confirme o seu <span className="italic text-gold-600">e-mail</span></>}</h2>
+        <h2 id="pin-t" className="mt-4 text-[1.9rem] font-bold">{titulo ?? <>Confirme o seu <span className="text-gold-600">e-mail</span></>}</h2>
         <p className="mt-2 text-[0.9rem] text-ink/65">Enviamos um código de 4 números para<br /><strong className="break-all text-ink">{email}</strong></p>
 
         <div className="mt-6 flex justify-center gap-3">

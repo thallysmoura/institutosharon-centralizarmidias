@@ -242,7 +242,7 @@ export default function Login() {
     <>
       <div className="px-[0.5em] min-[1100px]:px-[0.72em]">
                 <h1 className="rise font-sans whitespace-nowrap text-[2.05em] font-medium leading-[1] min-[1100px]:text-[2.6em] tracking-[-0.02em] text-[#33240F]" style={{ '--d': '140ms' } as React.CSSProperties}>
-          Fazer{' '}<span className="font-bold italic" style={{ background: 'linear-gradient(180deg,#d6a431,#a8761a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>login</span>
+          Fazer{' '}<span className="font-bold" style={{ background: 'linear-gradient(180deg,#d6a431,#a8761a)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>login</span>
         </h1>
                 <p className="rise mt-[0.7em] text-[0.95em] leading-snug text-[#6b5a3c]" style={{ '--d': '200ms' } as React.CSSProperties}>Continue para o Sistema de Fotos Clínicas</p>
               </div>
@@ -337,7 +337,7 @@ export default function Login() {
               <Layers style={{ width: u(26), height: u(26) }} className="text-[#e0a62c]" strokeWidth={1.6} />Sistema de Centralização
             </div>
             <h2 className="rise font-sans font-medium text-white" style={{ marginTop: u(22), fontSize: u(70.5), lineHeight: 0.9, letterSpacing: '-0.025em', '--d': '120ms' } as React.CSSProperties}>
-              Fotos clínicas,<br /><span className="font-bold italic" style={{ background: 'linear-gradient(180deg,#f0be4a,#cf9420)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>organizadas</span> e<br />seguras.
+              Fotos clínicas,<br /><span className="font-bold" style={{ background: 'linear-gradient(180deg,#f0be4a,#cf9420)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>organizadas</span> e<br />seguras.
             </h2>
             <span aria-hidden className="block bg-[#d4a23a]" style={{ marginTop: u(30), width: u(106), height: u(3) }} />
             <p className="rise text-white/85" style={{ marginTop: u(26), fontSize: u(21.5), lineHeight: 1.34, whiteSpace: 'nowrap', '--d': '260ms' } as React.CSSProperties}>
