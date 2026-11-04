@@ -72,6 +72,8 @@ export default function CameraCaptura({ modo = 'foto', total, max, onFoto, onVid
   const [previa, setPrevia] = useState<Previa | null>(null);
   const [gravando, setGravando] = useState(false);
   const [seg, setSeg] = useState(0);
+  const [contagem, setContagem] = useState<number | null>(null); // 3, 2, 1 antes de gravar
+  const contaTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const rec = useRef<MediaRecorder | null>(null);
   const partes = useRef<Blob[]>([]);
   const gravandoRef = useRef(false);
@@ -85,6 +87,7 @@ export default function CameraCaptura({ modo = 'foto', total, max, onFoto, onVid
   const parar = () => {
     clearTimeout(espera.current);
     clearInterval(relogio.current);
+    clearInterval(contaTimer.current);
     if (rec.current && rec.current.state !== 'inactive') { rec.current.onstop = null; rec.current.stop(); }
     gravandoRef.current = false;
     stream.current?.getTracks().forEach((t) => t.stop());
@@ -219,10 +222,21 @@ export default function CameraCaptura({ modo = 'foto', total, max, onFoto, onVid
     else if (!segurou.current && !cancelado) tirar();
   }
 
+  const cancelarContagem = () => { clearInterval(contaTimer.current); setContagem(null); };
+  // Modo vídeo: o toque inicia uma contagem 3, 2, 1 e só então grava; tocar durante a contagem cancela, tocar gravando encerra.
   const alternarGravacao = () => {
     if (estado !== 'ok' || previa) return;
-    if (gravandoRef.current) pararGravacao();
-    else if (total < max) iniciarGravacao();
+    if (gravandoRef.current) { pararGravacao(); return; }
+    if (contagem !== null) { cancelarContagem(); return; }
+    if (total >= max) return;
+    let n = 3;
+    setContagem(n);
+    navigator.vibrate?.(15);
+    contaTimer.current = setInterval(() => {
+      n--;
+      if (n > 0) { setContagem(n); navigator.vibrate?.(15); }
+      else { clearInterval(contaTimer.current); setContagem(null); iniciarGravacao(); }
+    }, 1000);
   };
 
   const usar = () => {
@@ -241,13 +255,14 @@ export default function CameraCaptura({ modo = 'foto', total, max, onFoto, onVid
         {gravando
           ? <span className="inline-flex items-center gap-2 rounded-full bg-[#b3261e] px-3.5 py-1 text-[0.85rem] font-bold tabular-nums" role="timer"><span className="h-2.5 w-2.5 animate-pulse rounded-full bg-white" />{fmtDur(seg) || '0:00'} <span className="font-medium text-white/70">/ {fmtDur(MAX_GRAVACAO_S)}</span></span>
           : <span className="rounded-full bg-white/10 px-3 py-1 text-[0.78rem] font-semibold">{contados}/{max}</span>}
-        <button type="button" onClick={() => setFacing((f) => (f === 'environment' ? 'user' : 'environment'))} disabled={!!previa || gravando} aria-label="Trocar câmera" className="grid h-11 w-11 place-items-center rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30"><RefreshCw size={20} /></button>
+        <button type="button" onClick={() => setFacing((f) => (f === 'environment' ? 'user' : 'environment'))} disabled={!!previa || gravando || contagem !== null} aria-label="Trocar câmera" className="grid h-11 w-11 place-items-center rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30"><RefreshCw size={20} /></button>
       </div>
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <video ref={video} playsInline muted autoPlay className="h-full w-full object-cover" />
         {flash && <div className="pointer-events-none absolute inset-0 bg-white/80" aria-hidden />}
-        {estado === 'ok' && !previa && onVideo && <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-[0.78rem] font-medium text-white/85 [text-shadow:0_1px_4px_rgba(0,0,0,.7)]">{soVideo ? (gravando ? 'Toque no botão para parar' : 'Toque no botão para gravar') : gravando ? 'Solte para parar a gravação' : 'Toque para foto · Segure para vídeo'}</p>}
+        {contagem !== null && <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/25" role="timer" aria-live="assertive"><span key={contagem} className="pop text-[9rem] font-bold leading-none text-white [text-shadow:0_4px_30px_rgba(0,0,0,.6)]">{contagem}</span></div>}
+        {estado === 'ok' && !previa && onVideo && <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-[0.78rem] font-medium text-white/85 [text-shadow:0_1px_4px_rgba(0,0,0,.7)]">{soVideo ? (gravando ? 'Toque no botão para parar' : contagem !== null ? 'Toque para cancelar' : 'Toque no botão para gravar') : gravando ? 'Solte para parar a gravação' : 'Toque para foto · Segure para vídeo'}</p>}
         {estado === 'pedindo' && <p className="absolute inset-0 grid place-items-center px-8 text-center text-[0.9rem] text-white/80">Permita o uso da câmera quando o navegador perguntar.</p>}
         {estado === 'negada' && (
           <div className="absolute inset-0 grid place-items-center bg-black/80 px-8 text-center">
