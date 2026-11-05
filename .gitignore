@@ -62,3 +62,8 @@ backups/
 qrcode-acesso.png
 *.dump
 .env.docker
+
+# Backups com dados pessoais e arquivos temporarios
+backups/
+qrcode-acesso.png
+*.dump

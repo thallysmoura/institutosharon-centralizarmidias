@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSecao } from '@/lib/rota';
-import { Play, Bell, Download, Eye, GraduationCap, HardDrive, RotateCcw, Trash2, House, ImageIcon, LogOut, MapPin, ShieldCheck, Users, Smartphone, RefreshCw, Settings, ChevronsUpDown, SlidersHorizontal, ChevronDown, LayoutGrid, Menu, X, Search, ScrollText, Megaphone, PlusCircle, History } from 'lucide-react';
+import { Play, Bell, Download, Eye, GraduationCap, HardDrive, RotateCcw, Trash2, House, ImageIcon, LogOut, MapPin, ShieldCheck, Users, Smartphone, RefreshCw, Settings, ChevronsUpDown, SlidersHorizontal, ChevronDown, LayoutGrid, Menu, X, Search, Megaphone, PlusCircle, History } from 'lucide-react';
 import { API, api, Atendimento, fotoUrl, fmtData, Me } from '@/lib/api';
 
 type Pagina = { itens: Atendimento[]; proximo: string | null };
@@ -36,7 +36,7 @@ const VAZIO: Filtros = { cidade: '', aluno_id: '', q: '', de: '', ate: '' };
 
 /** Seções válidas = caminhos /admin/<seção> (a inicial fica em /admin). */
 const SECOES: readonly Vista[] = ['geral', 'fotos', 'alunos', 'cidades', 'armazenamento', 'acessos', 'exclusoes', 'aplicativo', 'auditoria', 'avisos'];
-const GOV: Vista[] = ['exclusoes', 'acessos', 'auditoria', 'armazenamento'];
+const GOV: Vista[] = ['exclusoes', 'acessos', 'armazenamento'];
 const NAV: [Vista, string, typeof House][] = [
   ['geral', 'Visão Geral', House],
   ['fotos', 'Fotos', ImageIcon],
@@ -45,7 +45,6 @@ const NAV: [Vista, string, typeof House][] = [
   ['avisos', 'Mural de Avisos', Megaphone],
   ['exclusoes', 'Exclusões', Trash2],
   ['acessos', 'Controle de Acesso', ShieldCheck],
-  ['auditoria', 'Auditoria', ScrollText],
   ['aplicativo', 'Aplicativo', Smartphone],
   ['armazenamento', 'Armazenamento', HardDrive],
 ];
@@ -81,7 +80,7 @@ function Painel({ me, sair, recarregar }: { me: Me; sair: () => void; recarregar
   const semAcento = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const [govAberto, setGovAberto] = useState(false);
   const termo = semAcento(buscaMenu.trim());
-  // Sem busca: itens principais (o grupo Governança fica embaixo); com busca: todos os itens que combinam.
+  // Sem busca: itens principais (o grupo Administrativo fica embaixo); com busca: todos os itens que combinam.
   const itensMenu = NAV.filter(([k, l]) => (termo ? semAcento(l).includes(termo) : !GOV.includes(k)));
   // Atalho "/" foca a busca do menu (fora de campos de texto).
   useEffect(() => {
@@ -374,7 +373,7 @@ function Painel({ me, sair, recarregar }: { me: Me; sair: () => void; recarregar
         {!buscaMenu.trim() && (
           <div className="shrink-0 px-4 pb-2 pt-1">
             <button type="button" onClick={() => setGovAberto((v) => !v)} aria-expanded={govAberto} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-[0.92rem] font-semibold text-white/75 transition hover:bg-white/5 hover:text-white">
-              <ShieldCheck size={20} strokeWidth={1.7} />Governança
+              <ShieldCheck size={20} strokeWidth={1.7} />Administrativo
               {!govAberto && !!resumo?.ocultas && <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-[#b3261e] px-1.5 text-[0.68rem] font-bold text-white">{resumo.ocultas}</span>}
               <ChevronDown size={16} className={`${!govAberto && resumo?.ocultas ? '' : 'ml-auto'} transition ${govAberto ? '' : 'rotate-180'}`} />
             </button>

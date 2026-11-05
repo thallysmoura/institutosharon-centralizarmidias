@@ -8,5 +8,4 @@ mkdir -p database backups
 docker exec "$CONTAINER" pg_dump -U "$USUARIO" -d "$DB" --schema-only -n sistema --no-owner --no-privileges > database/schema.sql
 ARQ="backups/sistema-$(date +%Y%m%d-%H%M).dump"
 docker exec "$CONTAINER" pg_dump -U "$USUARIO" -d "$DB" -n sistema --no-owner --no-privileges -Fc > "$ARQ"
-echo "Estrutura: database/schema.sql"
-echo "Backup completo: $ARQ"
+echo "Estrutura: database/schema.sql"; echo "Backup completo: $ARQ"

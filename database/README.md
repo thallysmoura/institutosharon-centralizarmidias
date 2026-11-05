@@ -7,7 +7,6 @@ Postgres 16, schema `sistema` (container `sharon-db`, porta 5433). As tabelas sa
 - `../backups/*.dump`: estrutura + dados (formato custom do pg_dump). Contem dados pessoais: fica so na maquina, nunca no Git.
 
 ## Gerar backup
-
     bash scripts/backup-db.sh
 
 ## Restaurar
