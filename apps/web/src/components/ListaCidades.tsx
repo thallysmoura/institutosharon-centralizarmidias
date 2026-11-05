@@ -19,15 +19,15 @@ export default function ListaCidades({ cidades, onVerFotos }: { cidades: CidadeI
     return r.sort((a, b) => (ordem === 'fotos' ? b.fotos - a.fotos : ordem === 'alunos' ? b.alunos - a.alunos : 0) || a.nome.localeCompare(b.nome, 'pt-BR'));
   }, [cidades, q, ordem]);
 
-  const resumo: [typeof MapPin, string, string][] = [[MapPin, 'Cidades', `${cidades.length}${totais.ativas !== cidades.length ? ` (${totais.ativas} com envios)` : ''}`], [GraduationCap, 'Alunos', n(totais.alunos)], [ImageIcon, 'Fotos', n(totais.fotos)]];
+  const resumo: [typeof MapPin, string, string, string?][] = [[MapPin, 'Cidades', `${cidades.length}`, totais.ativas !== cidades.length ? `${totais.ativas} com envios` : undefined], [GraduationCap, 'Alunos', n(totais.alunos)], [ImageIcon, 'Fotos', n(totais.fotos)]];
 
   return (
     <section className="mt-6" aria-label="Cidades">
       <ul className="grid grid-cols-3 gap-2.5">
-        {resumo.map(([Icone, t, v]) => (
+        {resumo.map(([Icone, t, v, extra]) => (
           <li key={t} className="card flex flex-col items-start gap-1 p-3.5 sm:flex-row sm:items-center sm:gap-3 sm:p-4">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#f6efe0] text-gold-600"><Icone size={19} strokeWidth={1.7} /></span>
-            <span className="min-w-0 leading-tight"><span className="block text-[0.74rem] font-semibold text-ink/55">{t}</span><span className="block truncate text-[1.1rem] font-bold sm:text-[1.3rem]">{v}</span></span>
+            <span className="min-w-0 leading-tight"><span className="block text-[0.74rem] font-semibold text-ink/55">{t}</span><span className="block truncate text-[1.1rem] font-bold sm:text-[1.3rem]">{v}</span>{extra && <span className="block text-[0.68rem] font-medium leading-tight text-ink/50">{extra}</span>}</span>
           </li>
         ))}
       </ul>
